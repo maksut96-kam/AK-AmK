@@ -2,10 +2,13 @@ import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta
 import pandas as pd
+import time
 
-st.set_page_config(page_title="Sochi Trading Stars", layout="wide")
+st.set_page_config(page_title="Jyotish Live Terminal", layout="wide")
 
-# Словарь знаков Зодиака
+# Константа Айанамсы Лахири (24г 13м 32с конвертируем в десятичные градусы)
+LAHIRI_AYANAMSA = 24 + (13/60) + (32/3600)
+
 ZODIAC_SIGNS = [
     "Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", 
     "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"
@@ -14,57 +17,66 @@ ZODIAC_SIGNS = [
 def get_zodiac_sign(degrees):
     return ZODIAC_SIGNS[int(degrees / 30)]
 
-def get_karakas(dt_input):
+def get_data():
     ts = load.timescale()
     eph = load('de421.bsp')
     
-    # dt_input уже приходит в сочинском времени (UTC+3)
-    # Для расчетов Skyfield нам нужно передать "чистое" UTC
-    utc_time = dt_input - timedelta(hours=3)
-    t = ts.utc(utc_time.year, utc_time.month, utc_time.day, utc_time.hour, utc_time.minute)
+    # Берем текущее время UTC+3 (Сочи)
+    now_sochi = datetime.utcnow() + timedelta(hours=3)
+    utc_time = now_sochi - timedelta(hours=3)
     
-    planets = {
-        'Sun': eph['sun'], 'Mars': eph['mars'], 'Mercury': eph['mercury'],
-        'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 
-        'Saturn': eph['saturn_barycenter'], 'Moon': eph['moon']
+    t = ts.utc(utc_time.year, utc_time.month, utc_time.day, utc_time.hour, utc_time.minute, utc_time.second)
+    
+    planets_map = {
+        'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 
+        'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 
+        'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']
     }
     
-    data = []
-    for name, obj in planets.items():
-        total_lon = eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees
-        deg_in_sign = total_lon % 30
-        sign_name = get_zodiac_sign(total_lon)
-        data.append({'Planet': name, 'Deg': round(deg_in_sign, 4), 'Sign': sign_name})
+    results = []
+    for name, obj in planets_map.items():
+        # Тропическая долгота
+        tropical_lon = eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees
+        
+        # Сидерическая долгота (Джйотиш)
+        sidereal_lon = (tropical_lon - LAHIRI_AYANAMSA) % 360
+        
+        deg_in_sign = sidereal_lon % 30
+        sign_name = get_zodiac_sign(sidereal_lon)
+        
+        results.append({
+            'Planet': name,
+            'Sign': sign_name,
+            'Deg': round(deg_in_sign, 5)
+        })
     
-    df_sorted = pd.DataFrame(data).sort_values(by='Deg', ascending=False).reset_index(drop=True)
-    karaka_names = ['Atmakaraka (AK)', 'Amatyakaraka (AmK)', 'Bhratrukaraka (BK)', 
-                    'Matrukaraka (MK)', 'Putrakaraka (PK)', 'Gnatikaraka (GK)', 'Darakaraka (DK)']
+    # Сортировка для определения Карак
+    df = pd.DataFrame(results).sort_values(by='Deg', ascending=False).reset_index(drop=True)
+    karakas = ['AK', 'AmK', 'BK', 'MK', 'PK', 'GK', 'DK']
+    df['Role'] = karakas
     
-    df_sorted['Role'] = karaka_names
-    return df_sorted
+    return df, now_sochi
 
-st.title("🛰 Real-time Анализ Карак (Сочи UTC+3)")
+st.title("🏹 Джйотиш-Терминал: Сидерический Зодиак (Лахири)")
+st.write(f"Текущая Айанамса: {round(LAHIRI_AYANAMSA, 4)}°")
 
-col1, col2 = st.columns([1, 2])
+# Создаем пустое место для динамического контента
+placeholder = st.empty()
 
-with col1:
-    st.subheader("Настройки")
-    use_current = st.checkbox("Использовать текущее время Сочи", value=True)
+# Запускаем цикл обновления
+while True:
+    df_live, time_now = get_data()
     
-    if use_current:
-        # Принудительно корректируем время сервера под Сочи
-        calc_dt = datetime.utcnow() + timedelta(hours=3)
-    else:
-        d = st.date_input("Дата", datetime.now() + timedelta(hours=3))
-        t = st.time_input("Время (Сочи)", (datetime.now() + timedelta(hours=3)).time())
-        calc_dt = datetime.combine(d, t)
-    
-    st.success(f"Текущее время в Сочи: **{calc_dt.strftime('%H:%M:%S')}**")
-    df_final = get_karakas(calc_dt)
+    with placeholder.container():
+        st.subheader(f"🕒 Время в Сочи: {time_now.strftime('%H:%M:%S')}")
+        
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.dataframe(df_live[['Role', 'Planet', 'Sign', 'Deg']], use_container_width=True)
+        
+        with col2:
+            ak_planet = df_live.iloc[0]
+            st.metric("Atmakaraka (AK)", ak_planet['Planet'], f"{ak_planet['Sign']} {round(ak_planet['Deg'], 2)}°")
+            st.info("Данные обновляются в реальном времени...")
 
-with col2:
-    st.subheader(f"Иерархия планет")
-    st.dataframe(df_final[['Role', 'Planet', 'Sign', 'Deg']], use_container_width=True)
-
-st.divider()
-st.info("💡 Теперь время синхронизировано. Если AK (Атмакарака) меняется в течение дня — это сигнал к возможному развороту тренда.")
+    time.sleep(1) # Пауза в 1 секунду перед следующим обновлением
