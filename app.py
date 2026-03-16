@@ -14,11 +14,12 @@ ZODIAC_SIGNS = [
 def get_zodiac_sign(degrees):
     return ZODIAC_SIGNS[int(degrees / 30)]
 
-def get_karakas(dt_input, is_now=False):
+def get_karakas(dt_input):
     ts = load.timescale()
     eph = load('de421.bsp')
     
-    # Корректируем время (если Сочи UTC+3, вычитаем 3 для получения UTC)
+    # dt_input уже приходит в сочинском времени (UTC+3)
+    # Для расчетов Skyfield нам нужно передать "чистое" UTC
     utc_time = dt_input - timedelta(hours=3)
     t = ts.utc(utc_time.year, utc_time.month, utc_time.day, utc_time.hour, utc_time.minute)
     
@@ -33,37 +34,37 @@ def get_karakas(dt_input, is_now=False):
         total_lon = eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees
         deg_in_sign = total_lon % 30
         sign_name = get_zodiac_sign(total_lon)
-        data.append({'Planet': name, 'Deg': deg_in_sign, 'Sign': sign_name})
+        data.append({'Planet': name, 'Deg': round(deg_in_sign, 4), 'Sign': sign_name})
     
-    # Сортировка по градусу для Карак
     df_sorted = pd.DataFrame(data).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     karaka_names = ['Atmakaraka (AK)', 'Amatyakaraka (AmK)', 'Bhratrukaraka (BK)', 
                     'Matrukaraka (MK)', 'Putrakaraka (PK)', 'Gnatikaraka (GK)', 'Darakaraka (DK)']
     
     df_sorted['Role'] = karaka_names
-    return df_sorted, utc_time + timedelta(hours=3)
+    return df_sorted
 
-st.title("🛰 Real-time Анализ Карак (Сочи)")
+st.title("🛰 Real-time Анализ Карак (Сочи UTC+3)")
 
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    st.subheader("Настройки времени")
-    use_current = st.checkbox("Использовать текущее время", value=True)
-    if not use_current:
-        d = st.date_input("Дата", datetime.now())
-        t = st.time_input("Время (Сочи)", datetime.now().time())
-        calc_dt = datetime.combine(d, t)
-    else:
-        calc_dt = datetime.now()
+    st.subheader("Настройки")
+    use_current = st.checkbox("Использовать текущее время Сочи", value=True)
     
-    df_final, display_time = get_karakas(calc_dt)
-    st.info(f"Расчет выполнен на: **{display_time.strftime('%H:%M:%S')}**")
+    if use_current:
+        # Принудительно корректируем время сервера под Сочи
+        calc_dt = datetime.utcnow() + timedelta(hours=3)
+    else:
+        d = st.date_input("Дата", datetime.now() + timedelta(hours=3))
+        t = st.time_input("Время (Сочи)", (datetime.now() + timedelta(hours=3)).time())
+        calc_dt = datetime.combine(d, t)
+    
+    st.success(f"Текущее время в Сочи: **{calc_dt.strftime('%H:%M:%S')}**")
+    df_final = get_karakas(calc_dt)
 
 with col2:
-    st.subheader(f"Иерархия планет в знаках")
-    # Красивый вывод таблицы
+    st.subheader(f"Иерархия планет")
     st.dataframe(df_final[['Role', 'Planet', 'Sign', 'Deg']], use_container_width=True)
 
 st.divider()
-st.write("💡 **Для трейдинга:** Обрати внимание на 'Deg'. Если Атмакарака (AK) имеет градус > 29° или < 1°, планета находится в состоянии 'Мритью-бхага' или 'Ганданта' — это зоны экстремальной турбулентности на графиках.")
+st.info("💡 Теперь время синхронизировано. Если AK (Атмакарака) меняется в течение дня — это сигнал к возможному развороту тренда.")
