@@ -7,25 +7,23 @@ import streamlit.components.v1 as components
 
 # 1. Системные настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
-st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.7 Stable | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
-# Оптимальное обновление экрана (раз в секунду)
-st_autorefresh(interval=1000, key="v57_refresh")
+# Автообновление экрана (раз в 2 секунды, чтобы не перегружать)
+st_autorefresh(interval=2000, key="stable_refresh")
 
 # Константы
 LAHIRI_AYANAMSA = 24.2255
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 
-# Кешируем загрузку планет, чтобы не тормозило
+# Движок (Кешируем один раз)
 @st.cache_resource
-def load_data():
+def init_engine():
     return load.timescale(), load('de421.bsp')
 
-ts, eph = load_data()
+ts, eph = init_engine()
 
-def get_planet_data(t, eph):
+def get_planet_data(t):
     planets = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 
                'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     res = []
@@ -43,68 +41,63 @@ def get_info(row):
     return f"{row['Planet']} ({sign}, {nak})"
 
 # --- ИНТЕРФЕЙС ---
-tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли (Интервалы)"])
+st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
+
+tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
 with tab1:
-    c_now = datetime.utcnow() + timedelta(hours=3)
-    t_c = ts.utc(c_now.year, c_now.month, c_now.day, c_now.hour-3, c_now.minute, c_now.second)
-    df = get_planet_data(t_c, eph)
+    now = datetime.utcnow() + timedelta(hours=3)
+    t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
+    df = get_planet_data(t_c)
     ak, amk = df.iloc[0], df.iloc[1]
     
-    st.write(f"### 🕒 Сочи: {c_now.strftime('%H:%M:%S')}")
+    st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
     
-    # Основная таблица
+    # Таблица планет
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: ZODIAC_SIGNS[int(x/30)])
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: NAKSHATRAS[int(x/(360/27)) % 27])
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Deg']])
     
+    # Ближайшая смена (быстрый расчет на 12 часов вперед)
     st.markdown("---")
-    st.subheader("🎙 Голос Звезд: Анализ XAU/USD")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info(f"**Психология рынка (AK):** {get_info(ak)}\n\nНастроение на текущий цикл.")
-    with col2:
-        st.warning(f"**Инструментарий (AmK):** {get_info(amk)}\n\nМетод достижения целей.")
+    st.subheader("🚀 Ближайшая смена Карака")
+    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
+    found = False
+    for m in range(1, 720, 5): # Шаг 5 мин для скорости
+        t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
+        df_f = get_planet_data(t_f)
+        if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
+            st.success(f"📅 Смена через {m} мин: **{(now + timedelta(minutes=m)).strftime('%H:%M')}**")
+            st.write(f"**Новая пара:** AK: {get_info(df_f.iloc[0])} | AmK: {get_info(df_f.iloc[1])}")
+            found = True
+            break
+    if not found: st.write("В ближайшие 12 часов смен не ожидается.")
 
 with tab2:
-    st.subheader("Стратегический таймлайн на неделю")
+    st.subheader("Таймлайн на неделю (Пн-Пт)")
     
-    @st.cache_data(ttl=3600) # Кешируем план на час, чтобы не пересчитывать каждую секунду
-    def get_weekly_plan():
+    @st.cache_data(ttl=3600)
+    def generate_weekly():
         now_ref = datetime.utcnow() + timedelta(hours=3)
-        start_monday = now_ref - timedelta(days=now_ref.weekday())
-        start_monday = start_monday.replace(hour=2, minute=0, second=0, microsecond=0)
+        start_mon = now_ref - timedelta(days=now_ref.weekday())
+        start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
         
-        events = []
-        last_pair = ""
-        last_time = start_monday
-        
-        # Поиск с точностью до 15 минут
-        for m in range(0, 7200, 15):
-            ct = start_monday + timedelta(minutes=m)
+        events, last_pair = [], ""
+        for m in range(0, 7200, 30): # Шаг 30 мин для стабильности
+            ct = start_mon + timedelta(minutes=m)
             if ct.weekday() > 4: break
-            
             t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, ct.minute)
-            df_w = get_planet_data(t_w, eph)
-            ak_w, amk_w = df_w.iloc[0], df_w.iloc[1]
+            df_w = get_planet_data(t_w)
+            curr_pair = f"{df_w.iloc[0]['Planet']}/{df_w.iloc[1]['Planet']}"
             
-            curr_pair = f"{ak_w['Planet']}/{amk_w['Planet']}"
             if curr_pair != last_pair:
-                if last_pair != "":
-                    duration = ct - last_time
-                    events[-1]["Длительность"] = f"{duration.seconds//3600}ч {(duration.seconds//60)%60}м"
-                
                 events.append({
                     "Начало": ct.strftime("%d.%m %H:%M"),
-                    "Пара (AK / AmK)": f"AK: {get_info(ak_w)} \n AmK: {get_info(amk_w)}",
-                    "Длительность": "...",
-                    "Прогноз": "________________"
+                    "Пара (AK / AmK)": f"AK: {get_info(df_w.iloc[0])} | AmK: {get_info(df_w.iloc[1])}"
                 })
                 last_pair = curr_pair
-                last_time = ct
         return pd.DataFrame(events)
 
-    df_events = get_weekly_plan()
-    st.table(df_events)
-    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ТАЙМЛАЙНА</button>", height=60)
+    st.table(generate_weekly())
+    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ</button>", height=60)
