@@ -8,9 +8,8 @@ import streamlit.components.v1 as components
 # 1. Системные настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9.6 Stable Full | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.9.7 | Gandanta Check | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
-# Обновляем страницу каждые 10 секунд
 st_autorefresh(interval=10000, key="datarefresh")
 
 # Константы
@@ -24,23 +23,35 @@ def init_engine():
 
 ts, eph = init_engine()
 
+def check_gandanta(lon):
+    """Проверка Ганданты: последние 3.33° Воды или первые 3.33° Огня"""
+    # Границы стыков: 120° (Рак/Лев), 240° (Скорп/Стрел), 0/360° (Рыбы/Овен)
+    threshold = 3.333
+    for junction in [0, 120, 240, 360]:
+        if abs(lon - junction) <= threshold or abs(lon - (junction + 360) % 360) <= threshold:
+            return True
+    return False
+
 def get_planet_data(t):
     planets = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 
                'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     res = []
     for name, obj in planets.items():
         lon = (eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees - LAHIRI_AYANAMSA) % 360
-        res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
+        res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30, 'IsGandanta': check_gandanta(lon)})
+    
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     df.index += 1
-    df['Role'] = ['AK', 'AmK', 'BK', 'MK', 'PK', 'GK', 'DK']
+    roles = ['AK', 'AmK', 'BK', 'MK', 'PK', 'GK', 'DK']
+    df['Role'] = [f"{roles[i]} ⚠️ Узел" if df.iloc[i]['IsGandanta'] else roles[i] for i in range(len(roles))]
     df['Сила'] = df['Deg'].apply(lambda d: "💪 Высокая" if 10 <= d <= 20 else "⚡ Средняя")
     return df
 
 def format_info(row):
     nak = NAKSHATRAS[int(row['Lon'] / (360/27)) % 27]
     sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
-    return f"{row['Planet']} ({sign}, {nak})"
+    prefix = "⚠️ Узел! " if row.get('IsGandanta') else ""
+    return f"{prefix}{row['Planet']} ({sign}, {nak})"
 
 @st.cache_data(ttl=3600)
 def build_weekly_plan_fast():
@@ -77,34 +88,20 @@ with tab1:
     
     st.markdown("---")
     st.subheader("🚀 Ближайшая ротация")
-    
-    # Расширенный поиск следующей смены
-    ak_now = df.iloc[0]['Planet']
-    amk_now = df.iloc[1]['Planet']
+    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     next_shift = None
-    
-    # Сканируем вперед на 48 часов с шагом 15 минут для точности
     for m in range(15, 2880, 15):
         t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
         df_f = get_planet_data(t_f)
-        # Проверяем смену АК или АмК
         if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-            next_shift = {
-                "time": (now + timedelta(minutes=m)).strftime("%d.%m %H:%M"),
-                "ak": df_f.iloc[0],
-                "amk": df_f.iloc[1]
-            }
+            next_shift = {"time": (now + timedelta(minutes=m)).strftime("%d.%m %H:%M"), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}
             break
     
     if next_shift:
         st.success(f"📅 **Следующая смена:** {next_shift['time']}")
         col1, col2 = st.columns(2)
-        with col1:
-            st.info(f"🔵 **Новая АК:**\n\n{format_info(next_shift['ak'])}")
-        with col2:
-            st.warning(f"🟡 **Новая АмК:**\n\n{format_info(next_shift['amk'])}")
-    else:
-        st.write("Поиск ближайшей ротации...")
+        with col1: st.info(f"🔵 **Новая АК:**\n\n{format_info(next_shift['ak'])}")
+        with col2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(next_shift['amk'])}")
 
 with tab2:
     st.subheader("Стратегический таймлайн")
