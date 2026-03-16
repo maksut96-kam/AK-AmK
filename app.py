@@ -5,10 +5,9 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
-# 1. Настройки системы
+# 1. Настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 
-# Стиль
 st.markdown("""
     <style>
     .stTable { font-size: 16px !important; }
@@ -55,10 +54,11 @@ def format_info(row):
     return f"{row['Planet']} ({sign}, {nak})"
 
 # --- ИНТЕРФЕЙС ---
+st_autorefresh(interval=1000, key="global_refresh")
+
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
 with tab1:
-    st_autorefresh(interval=1000, key="live_refresh")
     now = datetime.utcnow() + timedelta(hours=3)
     t_now = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
     df = get_planet_data(t_now)
@@ -68,40 +68,40 @@ with tab1:
     
     st.markdown("---")
     st.subheader("🚀 Ближайшая ротация")
+    
+    # Считаем ротацию (без кеша, чтобы не было "затыка")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     for m in range(1, 1440):
         t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
         df_f = get_planet_data(t_f)
         if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
             st.success(f"📅 Смена через {m} мин: **{(now + timedelta(minutes=m)).strftime('%H:%M')}**")
-            st.info(f"АК: {format_info(df_f.iloc[0])} | AmK: {format_info(df_f.iloc[1])}")
+            c1, c2 = st.columns(2)
+            with c1: st.info(f"🔵 АК: {format_info(df_f.iloc[0])}")
+            with c2: st.warning(f"🟡 AmK: {format_info(df_f.iloc[1])}")
             break
 
 with tab2:
     st.header("📅 План на неделю")
+    # Чтобы не грузить систему каждую секунду во время Эфира, план кешируется
     @st.cache_data(ttl=3600)
     def generate_plan():
         now_ref = datetime.utcnow() + timedelta(hours=3)
         start_mon = now_ref - timedelta(days=now_ref.weekday())
-        start_mon = start_mon.replace(hour=2, minute=0, second=0)
+        start_mon = start_mon.replace(hour=0, minute=0, second=0)
         events, last_pair = [], ""
-        for h in range(0, 125):
+        for h in range(0, 144): # 6 дней
             base_time = start_mon + timedelta(hours=h)
             t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
             df_w = get_planet_data(t_w)
             pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
             if pair_key != last_pair:
-                # Уточнение минут
-                for m in range(0, 60):
-                    t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, m)
-                    df_m = get_planet_data(t_m)
-                    if f"{df_m.iloc[0]['Planet']}-{df_m.iloc[1]['Planet']}" == pair_key:
-                        events.append({
-                            "Дата/Время": (base_time.replace(minute=m)).strftime("%d.%m %H:%M"),
-                            "АК": format_info(df_m.iloc[0]), "AmK": format_info(df_m.iloc[1]),
-                            "Ганданта": "⚠️" if (df_m.iloc[0]['IsGandanta'] or df_m.iloc[1]['IsGandanta']) else "✅"
-                        })
-                        break
+                events.append({
+                    "Дата/Время": base_time.strftime("%d.%m %H:00"),
+                    "АК": format_info(df_w.iloc[0]),
+                    "AmK": format_info(df_w.iloc[1]),
+                    "Ганданта": "⚠️" if (df_w.iloc[0]['IsGandanta'] or df_w.iloc[1]['IsGandanta']) else "✅"
+                })
                 last_pair = pair_key
         return pd.DataFrame(events)
 
