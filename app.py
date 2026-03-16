@@ -2,16 +2,23 @@ import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta
 import pandas as pd
-from streamlit_autorefresh import st_autorefresh
+import time
 import streamlit.components.v1 as components
 
-# 1. Настройки
+# 1. Настройки и стиль
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
+st.markdown("""
+    <style>
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #f0f2f6; border-radius: 4px 4px 0 0; gap: 1px; }
+    .stTabs [aria-selected="true"] { background-color: #4CAF50 !important; color: white !important; }
+    </style>
+""", unsafe_allow_html=True)
+
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9.9 Logic Fix | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v6.0.0 Real-Time | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
-st_autorefresh(interval=10000, key="datarefresh")
-
+# Константы
 LAHIRI_AYANAMSA = 24.2255
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
@@ -35,7 +42,7 @@ def get_planet_data(t):
     res = []
     for name, obj in planets.items():
         lon = (eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees - LAHIRI_AYANAMSA) % 360
-        res.append({'Planet': name, 'Lon': lon, 'Deg': round(lon % 30, 2), 'IsGandanta': check_gandanta(lon)})
+        res.append({'Planet': name, 'Lon': lon, 'Deg': round(lon % 30, 4), 'IsGandanta': check_gandanta(lon)})
     
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     df.index += 1
@@ -55,7 +62,6 @@ def build_weekly_plan_precise():
     now_ref = datetime.utcnow() + timedelta(hours=3)
     start_mon = now_ref - timedelta(days=now_ref.weekday())
     start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
-    
     events, last_pair = [], ""
     
     for h in range(0, 144):
@@ -65,14 +71,13 @@ def build_weekly_plan_precise():
         pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
         
         if pair_key != last_pair:
-            # Уточнение: проверяем каждую минуту часа, ПОКА не увидим смену
             precise_time = base_time
-            if last_pair != "": # Пропускаем самый первый замер
+            if last_pair != "":
                 for m in range(0, 60):
-                    t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-4, m) # -4 чтобы захватить переход
+                    t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, m)
                     df_m = get_planet_data(t_m)
                     if f"{df_m.iloc[0]['Planet']}-{df_m.iloc[1]['Planet']}" == pair_key:
-                        precise_time = (base_time - timedelta(hours=1)).replace(minute=m)
+                        precise_time = base_time.replace(minute=m)
                         break
             
             events.append({
@@ -83,27 +88,42 @@ def build_weekly_plan_precise():
             last_pair = pair_key
     return pd.DataFrame(events)
 
+# Интерфейс
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
 with tab1:
-    now = datetime.utcnow() + timedelta(hours=3)
-    t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
-    df = get_planet_data(t_c)
-    st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
-    st.table(df[['Role', 'Planet', 'Deg', 'Сила']])
-    
-    st.markdown("---")
-    st.subheader("🚀 Ближайшая ротация")
-    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    for m in range(1, 1440):
-        t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
-        df_f = get_planet_data(t_f)
-        if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-            st.success(f"📅 **Смена через {m} мин: {(now + timedelta(minutes=m)).strftime('%H:%M')}**")
-            col1, col2 = st.columns(2)
-            with col1: st.info(f"🔵 **Новая АК:**\n\n{format_info(df_f.iloc[0])}")
-            with col2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(df_f.iloc[1])}")
-            break
+    placeholder = st.empty()
+    # Теперь Прямой эфир работает в реальном времени через внутренний цикл
+    while True:
+        now = datetime.utcnow() + timedelta(hours=3)
+        t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
+        df = get_planet_data(t_c)
+        
+        with placeholder.container():
+            st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
+            st.table(df[['Role', 'Planet', 'Deg', 'Сила']])
+            
+            st.markdown("---")
+            st.subheader("🚀 Ближайшая ротация")
+            ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
+            
+            # Поиск следующей смены
+            found_shift = False
+            for m in range(1, 1440):
+                t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
+                df_f = get_planet_data(t_f)
+                if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
+                    st.success(f"📅 **Смена через {m} мин: {(now + timedelta(minutes=m)).strftime('%H:%M')}**")
+                    col1, col2 = st.columns(2)
+                    with col1: st.info(f"🔵 **Новая АК:**\n\n{format_info(df_f.iloc[0])}")
+                    with col2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(df_f.iloc[1])}")
+                    found_shift = True
+                    break
+            if not found_shift:
+                st.write("Поиск ближайшей ротации...")
+                
+        time.sleep(1) # Обновление каждую секунду
+        # Проверка на переключение вкладки (Streamlit делает это автоматически, но sleep дает ресурсам "дышать")
 
 with tab2:
     st.subheader("Стратегический таймлайн (Точность: 1 мин)")
