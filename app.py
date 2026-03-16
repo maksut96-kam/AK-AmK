@@ -8,9 +8,8 @@ import streamlit.components.v1 as components
 # 1. Настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9.8 Precise Timeline | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.9.9 Logic Fix | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
-# Обновление только для Прямого эфира
 st_autorefresh(interval=10000, key="datarefresh")
 
 LAHIRI_AYANAMSA = 24.2255
@@ -36,7 +35,7 @@ def get_planet_data(t):
     res = []
     for name, obj in planets.items():
         lon = (eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees - LAHIRI_AYANAMSA) % 360
-        res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30, 'IsGandanta': check_gandanta(lon)})
+        res.append({'Planet': name, 'Lon': lon, 'Deg': round(lon % 30, 2), 'IsGandanta': check_gandanta(lon)})
     
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     df.index += 1
@@ -51,7 +50,7 @@ def format_info(row):
     prefix = "⚠️ Узел! " if row.get('IsGandanta') else ""
     return f"{prefix}{row['Planet']} ({sign}, {nak})"
 
-@st.cache_data(ttl=86400) # Кешируем на сутки, незачем считать чаще
+@st.cache_data(ttl=86400)
 def build_weekly_plan_precise():
     now_ref = datetime.utcnow() + timedelta(hours=3)
     start_mon = now_ref - timedelta(days=now_ref.weekday())
@@ -59,7 +58,6 @@ def build_weekly_plan_precise():
     
     events, last_pair = [], ""
     
-    # Идем по часам (144 часа в торговой неделе)
     for h in range(0, 144):
         base_time = start_mon + timedelta(hours=h)
         t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
@@ -67,14 +65,15 @@ def build_weekly_plan_precise():
         pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
         
         if pair_key != last_pair:
-            # Нашли смену в этом часе! Теперь уточняем до минуты
+            # Уточнение: проверяем каждую минуту часа, ПОКА не увидим смену
             precise_time = base_time
-            for m in range(0, 60, 1):
-                t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, m)
-                df_m = get_planet_data(t_m)
-                if f"{df_m.iloc[0]['Planet']}-{df_m.iloc[1]['Planet']}" == pair_key:
-                    precise_time = base_time.replace(minute=m)
-                    break
+            if last_pair != "": # Пропускаем самый первый замер
+                for m in range(0, 60):
+                    t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-4, m) # -4 чтобы захватить переход
+                    df_m = get_planet_data(t_m)
+                    if f"{df_m.iloc[0]['Planet']}-{df_m.iloc[1]['Planet']}" == pair_key:
+                        precise_time = (base_time - timedelta(hours=1)).replace(minute=m)
+                        break
             
             events.append({
                 "Время": precise_time.strftime("%d.%m %H:%M"),
@@ -96,7 +95,7 @@ with tab1:
     st.markdown("---")
     st.subheader("🚀 Ближайшая ротация")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    for m in range(1, 1440): # Ищем с точностью до минуты
+    for m in range(1, 1440):
         t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
         df_f = get_planet_data(t_f)
         if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
