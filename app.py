@@ -8,7 +8,7 @@ import streamlit.components.v1 as components
 # 1. Настройка и заголовок
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.1 Stable | Цель: XAU/USD | Owner: Max</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.1.1 Stable | Цель: XAU/USD | Owner: Max</p>", unsafe_allow_html=True)
 
 # Константы
 LAHIRI_AYANAMSA = 24.2255
@@ -71,4 +71,55 @@ with tab1:
     eph = load('de421.bsp')
     
     while True:
-        now = datetime.utcnow() + timedelta(hours
+        # ИСПРАВЛЕННАЯ СТРОКА 74
+        now = datetime.utcnow() + timedelta(hours=3)
+        t_now = ts.utc(now.year, now.month, now.day, now.hour, now.minute, now.second)
+        df = get_planet_data(t_now, eph)
+        ak, amk = df.iloc[0], df.iloc[1]
+        ak_nak = get_nakshatra(ak['Lon'])
+        
+        with placeholder.container():
+            st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
+            
+            # Таблица
+            df_view = df.copy()
+            df_view['Знак'] = df_view['Lon'].apply(lambda x: ZODIAC_SIGNS[int(x/30)])
+            df_view['Накшатра'] = df_view['Lon'].apply(get_nakshatra)
+            st.table(df_view[['Role', 'Planet', 'Знак', 'Накшатра', 'Deg']])
+            
+            # Аналитика
+            st.subheader("🎙 Голос Звезд: Анализ XAU/USD")
+            st.info(f"**Атмакарака (Психология):** {ak['Planet']} в {ak_nak}. \n\n**Стратегия:** {GOLD_STRATEGIES[ak_nak]}")
+            st.warning(f"**Аматьякарака (Инструменты):** {amk['Planet']} помогает реализовать цели через энергию {get_nakshatra(amk['Lon'])}.")
+            
+        time.sleep(1)
+
+with tab2:
+    st.subheader("Еженедельный план координации")
+    ts_w, eph_w = load.timescale(), load('de421.bsp')
+    base = datetime.utcnow() + timedelta(hours=3)
+    
+    weekly_data = []
+    for i in range(7):
+        d = base + timedelta(days=i)
+        tw = ts_w.utc(d.year, d.month, d.day, 12, 0)
+        dfw = get_planet_data(tw, eph_w)
+        akw, amkw = dfw.iloc[0], dfw.iloc[1]
+        nakw = get_nakshatra(akw['Lon'])
+        
+        weekly_data.append({
+            "Дата": d.strftime("%d.%m"),
+            "Пара AK/AmK": f"{akw['Planet']} / {amkw['Planet']}",
+            "Накшатра AK": nakw,
+            "Торговый контекст": GOLD_STRATEGIES[nakw],
+            "Прогноз Max/Юля": "________________"
+        })
+    
+    st.table(pd.DataFrame(weekly_data).set_index(pd.Index(range(1, 8))))
+    
+    components.html("""
+        <script>function printPage() { window.print(); }</script>
+        <button onclick="printPage()" style="width:100%; height:50px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">
+            🖨 ПЕЧАТЬ ПЛАНА (CTRL+P)
+        </button>
+    """, height=70)
