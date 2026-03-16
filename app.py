@@ -5,93 +5,91 @@ import pandas as pd
 import time
 import streamlit.components.v1 as components
 
-# Настройка страницы
+# 1. Настройка и статический заголовок
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
-
-# Статичный заголовок и версия
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v4.7 Build | Last Update: 2026-03-16</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v4.8 Build | System Area: Sochi (UTC+3)</p>", unsafe_allow_html=True)
 
-# Константы
+# Константы (Накшатры)
 LAHIRI_AYANAMSA = 24.2255
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS_DB = [
-    ("Ашвини", "Кету", "Резкое начало тренда"), ("Бхарани", "Венера", "Фиксация прибыли"),
-    ("Криттика", "Солнце", "Пробитие уровней"), ("Рохини", "Луна", "Стабильный рост"),
-    ("Мригашира", "Марс", "Волатильность"), ("Аридра", "Раху", "Хаос и новости"),
-    # ... (здесь используется полная база из 27 накшатр)
+    ("Ашвини", "Кету", "Резкий старт"), ("Бхарани", "Венера", "Напряжение"), ("Криттика", "Солнце", "Прорыв"),
+    ("Рохини", "Луна", "Рост"), ("Мригашира", "Марс", "Поиск"), ("Аридра", "Раху", "Хаос"),
+    ("Пунарвасу", "Юпитер", "Отскок"), ("Пушья", "Сатурн", "Стабильность"), ("Ашлеша", "Меркурий", "Ловушка"),
+    ("Магха", "Кету", "Традиция"), ("Пурва-пх", "Венера", "Пауза"), ("Уттара-пх", "Солнце", "Успех"),
+    ("Хаста", "Луна", "Точность"), ("Читра", "Марс", "Структура"), ("Свати", "Раху", "Ветер"),
+    ("Вишакха", "Юпитер", "Цель"), ("Анурадха", "Сатурн", "Скрытое"), ("Джьештха", "Меркурий", "Мастерство"),
+    ("Мула", "Кету", "Корень/Крах"), ("Пурва-аш", "Венера", "Оптимизм"), ("Уттара-аш", "Солнце", "Победа"),
+    ("Шравана", "Луна", "Инсайд"), ("Дхаништха", "Марс", "Импульс"), ("Шатабхиша", "Раху", "Манипуляция"),
+    ("Пурва-бх", "Юпитер", "Жертва"), ("Уттара-бх", "Сатурн", "Глубина"), ("Ревати", "Меркурий", "Финал")
 ]
 
 def get_planet_data(t, eph):
-    planets_map = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 
-                   'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
+    planets = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 
+               'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     res = []
-    for name, obj in planets_map.items():
+    for name, obj in planets.items():
         lon = (eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees - LAHIRI_AYANAMSA) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     df.index += 1
     return df
 
-def get_weekly_plan():
-    # Упрощенная логика: расчет на 7 дней вперед с шагом 12 часов
-    ts = load.timescale()
-    eph = load('de421.bsp')
-    start_date = datetime.utcnow() + timedelta(hours=3)
-    plan_data = []
-    
-    for i in range(7):
-        check_t = ts.utc(start_date.year, start_date.month, start_date.day + i, 12, 0)
-        df_day = get_planet_data(check_t, eph)
-        ak = df_day.iloc[0]['Planet']
-        amk = df_day.iloc[1]['Planet']
-        lon_ak = df_day.iloc[0]['Lon']
-        nak_name = NAKSHATRAS_DB[int(lon_ak / (360/27)) % 27][0]
-        
-        plan_data.append({
-            "Дата": (start_date + timedelta(days=i)).strftime("%d.%m"),
-            "AK-AmK": f"{ak} / {amk}",
-            "Накшатра AK": nak_name,
-            "Влияние": "Влияние на тренд...", # Сюда подставим описание
-            "Прогноз (Ваш)": "________________" 
-        })
-    return pd.DataFrame(plan_data)
-
-# Скрипт для кнопки печати
-def print_page():
-    components.html("""
-        <script>
-            function printDiv() {
-                window.print();
-            }
-        </script>
-        <button onclick="printDiv()" style="width: 100%; height: 40px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
-            🖨 Распечатать план на неделю
-        </button>
-    """, height=50)
-
-# ОСНОВНОЙ ИНТЕРФЕЙС
-tab1, tab2 = st.tabs(["📊 Real-time Terminal", "📅 Weekly Strategy"])
+# Вкладки
+tab1, tab2 = st.tabs(["📊 Real-time Terminal", "📅 Weekly Strategy & Print"])
 
 with tab1:
     placeholder = st.empty()
-    # Здесь остается твой живой код из v4.6...
+    ts = load.timescale()
+    eph = load('de421.bsp')
+    
+    # Живой цикл
+    while True:
+        now_sochi = datetime.utcnow() + timedelta(hours=3)
+        t_now = ts.utc(now_sochi.year, now_sochi.month, now_sochi.day, now_sochi.hour, now_sochi.minute, now_sochi.second)
+        df_now = get_planet_data(t_now, eph)
+        ak = df_now.iloc[0]
+        nak_info = NAKSHATRAS_DB[int(ak['Lon'] / (360/27)) % 27]
+
+        with placeholder.container():
+            st.write(f"### 🕒 Sochi Time: {now_sochi.strftime('%H:%M:%S')}")
+            st.dataframe(df_now[['Planet', 'Deg']], use_container_width=True)
+            st.success(f"**AK {ak['Planet']} в {nak_info[0]}:** {nak_info[2]}")
+        time.sleep(1)
 
 with tab2:
-    st.subheader("Weekly Strategy Planner")
-    st.write("Сгенерированная форма для печати и анализа с Юлей.")
+    st.subheader("Weekly Coordination Plan")
+    st.info("Распечатайте эту форму для совместной работы с Юлей.")
     
-    weekly_df = get_weekly_plan()
-    st.table(weekly_df)
+    # Генерация плана на 7 дней
+    ts_w = load.timescale()
+    eph_w = load('de421.bsp')
+    base_date = datetime.utcnow() + timedelta(hours=3)
+    weekly_list = []
     
-    print_page()
+    for i in range(7):
+        day = base_date + timedelta(days=i)
+        t_w = ts_w.utc(day.year, day.month, day.day, 12, 0) # Расчет на полдень
+        df_w = get_planet_data(t_w, eph_w)
+        ak_w = df_w.iloc[0]
+        amk_w = df_w.iloc[1]
+        nak_w = NAKSHATRAS_DB[int(ak_w['Lon'] / (360/27)) % 27]
+        
+        weekly_list.append({
+            "Дата": day.strftime("%d.%m"),
+            "Пара AK / AmK": f"{ak_w['Planet']} / {amk_w['Planet']}",
+            "Накшатра AK": nak_w[0],
+            "Характер периода": nak_w[2],
+            "Прогноз (Max/Юля)": "________________" 
+        })
+    
+    st.table(pd.DataFrame(weekly_list))
 
-# СТИЛИЗАЦИЯ ДЛЯ ПЕЧАТИ
-st.markdown("""
-    <style>
-    @media print {
-        .stButton, .stTabs, header, footer { display: none !important; }
-        .main { visibility: visible !important; }
-    }
-    </style>
-""", unsafe_allow_html=True)
+    # Кнопка печати через JS (вне цикла!)
+    components.html("""
+        <script>function printPage() { window.print(); }</script>
+        <button onclick="printPage()" style="width:100%; height:50px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">
+            🖨 ОТПРАВИТЬ ПЛАН НА ПЕЧАТЬ (CTRL+P)
+        </button>
+    """, height=70)
