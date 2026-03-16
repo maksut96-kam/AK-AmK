@@ -5,14 +5,14 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
-# 1. Системные настройки
+# 1. Настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9.7 | Gandanta Check | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.9.8 Precise Timeline | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
+# Обновление только для Прямого эфира
 st_autorefresh(interval=10000, key="datarefresh")
 
-# Константы
 LAHIRI_AYANAMSA = 24.2255
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
@@ -24,8 +24,6 @@ def init_engine():
 ts, eph = init_engine()
 
 def check_gandanta(lon):
-    """Проверка Ганданты: последние 3.33° Воды или первые 3.33° Огня"""
-    # Границы стыков: 120° (Рак/Лев), 240° (Скорп/Стрел), 0/360° (Рыбы/Овен)
     threshold = 3.333
     for junction in [0, 120, 240, 360]:
         if abs(lon - junction) <= threshold or abs(lon - (junction + 360) % 360) <= threshold:
@@ -53,22 +51,35 @@ def format_info(row):
     prefix = "⚠️ Узел! " if row.get('IsGandanta') else ""
     return f"{prefix}{row['Planet']} ({sign}, {nak})"
 
-@st.cache_data(ttl=3600)
-def build_weekly_plan_fast():
+@st.cache_data(ttl=86400) # Кешируем на сутки, незачем считать чаще
+def build_weekly_plan_precise():
     now_ref = datetime.utcnow() + timedelta(hours=3)
     start_mon = now_ref - timedelta(days=now_ref.weekday())
     start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
+    
     events, last_pair = [], ""
-    for h in range(0, 120):
-        ct = start_mon + timedelta(hours=h)
-        t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, ct.minute)
+    
+    # Идем по часам (144 часа в торговой неделе)
+    for h in range(0, 144):
+        base_time = start_mon + timedelta(hours=h)
+        t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
         df_w = get_planet_data(t_w)
         pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
+        
         if pair_key != last_pair:
+            # Нашли смену в этом часе! Теперь уточняем до минуты
+            precise_time = base_time
+            for m in range(0, 60, 1):
+                t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, m)
+                df_m = get_planet_data(t_m)
+                if f"{df_m.iloc[0]['Planet']}-{df_m.iloc[1]['Planet']}" == pair_key:
+                    precise_time = base_time.replace(minute=m)
+                    break
+            
             events.append({
-                "Время": ct.strftime("%d.%m %H:%M"),
+                "Время": precise_time.strftime("%d.%m %H:%M"),
                 "Пара AK / AmK": f"AK: {format_info(df_w.iloc[0])}\nAmK: {format_info(df_w.iloc[1])}",
-                "Прогноз": "________________"
+                "Статус": "⚠️ Ганданта!" if (df_w.iloc[0]['IsGandanta'] or df_w.iloc[1]['IsGandanta']) else "✅ Норма"
             })
             last_pair = pair_key
     return pd.DataFrame(events)
@@ -79,32 +90,24 @@ with tab1:
     now = datetime.utcnow() + timedelta(hours=3)
     t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
     df = get_planet_data(t_c)
-    
     st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
-    df_v = df.copy()
-    df_v['Знак'] = df_v['Lon'].apply(lambda x: ZODIAC_SIGNS[int(x/30)])
-    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: NAKSHATRAS[int(x/(360/27)) % 27])
-    st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Deg', 'Сила']])
+    st.table(df[['Role', 'Planet', 'Deg', 'Сила']])
     
     st.markdown("---")
     st.subheader("🚀 Ближайшая ротация")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    next_shift = None
-    for m in range(15, 2880, 15):
+    for m in range(1, 1440): # Ищем с точностью до минуты
         t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
         df_f = get_planet_data(t_f)
         if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-            next_shift = {"time": (now + timedelta(minutes=m)).strftime("%d.%m %H:%M"), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}
+            st.success(f"📅 **Смена через {m} мин: {(now + timedelta(minutes=m)).strftime('%H:%M')}**")
+            col1, col2 = st.columns(2)
+            with col1: st.info(f"🔵 **Новая АК:**\n\n{format_info(df_f.iloc[0])}")
+            with col2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(df_f.iloc[1])}")
             break
-    
-    if next_shift:
-        st.success(f"📅 **Следующая смена:** {next_shift['time']}")
-        col1, col2 = st.columns(2)
-        with col1: st.info(f"🔵 **Новая АК:**\n\n{format_info(next_shift['ak'])}")
-        with col2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(next_shift['amk'])}")
 
 with tab2:
-    st.subheader("Стратегический таймлайн")
-    weekly_data = build_weekly_plan_fast()
+    st.subheader("Стратегический таймлайн (Точность: 1 мин)")
+    weekly_data = build_weekly_plan_precise()
     st.table(weekly_data)
     components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ</button>", height=60)
