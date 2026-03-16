@@ -8,6 +8,19 @@ import streamlit.components.v1 as components
 # 1. Настройки системы
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 
+# Стиль
+st.markdown("""
+    <style>
+    .stTable { font-size: 16px !important; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 5px; }
+    .stTabs [aria-selected="true"] { background-color: #4CAF50 !important; color: white !important; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
+
+# 2. Движок
 @st.cache_resource
 def init_engine():
     return load.timescale(), load('de421.bsp')
@@ -41,13 +54,11 @@ def format_info(row):
     sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
     return f"{row['Planet']} ({sign}, {nak})"
 
-# --- МЕНЮ ---
-page = st.sidebar.radio("Навигация", ["📊 Прямой эфир", "📅 План для Юли"])
+# --- ИНТЕРФЕЙС ---
+tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
-if page == "📊 Прямой эфир":
-    st_autorefresh(interval=1000, key="live_refresh") # Авто-обновление вернул
-    st.header("📊 Прямой эфир (Real-time)")
-    
+with tab1:
+    st_autorefresh(interval=1000, key="live_refresh")
     now = datetime.utcnow() + timedelta(hours=3)
     t_now = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
     df = get_planet_data(t_now)
@@ -66,37 +77,34 @@ if page == "📊 Прямой эфир":
             st.info(f"АК: {format_info(df_f.iloc[0])} | AmK: {format_info(df_f.iloc[1])}")
             break
 
-else:
-    st.header("📅 Стратегический план для Юли")
-    if st.button('🚀 Рассчитать план (точность 1 мин)'):
+with tab2:
+    st.header("📅 План на неделю")
+    @st.cache_data(ttl=3600)
+    def generate_plan():
         now_ref = datetime.utcnow() + timedelta(hours=3)
         start_mon = now_ref - timedelta(days=now_ref.weekday())
         start_mon = start_mon.replace(hour=2, minute=0, second=0)
-        
         events, last_pair = [], ""
-        with st.spinner("Идет сверхточный расчет..."):
-            for h in range(0, 125):
-                base_time = start_mon + timedelta(hours=h)
-                t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
-                df_w = get_planet_data(t_w)
-                pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
-                
-                if pair_key != last_pair:
-                    # Уточняем время до минуты
-                    precise_time = base_time
-                    for m in range(0, 60):
-                        t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, m)
-                        df_m = get_planet_data(t_m)
-                        if f"{df_m.iloc[0]['Planet']}-{df_m.iloc[1]['Planet']}" == pair_key:
-                            precise_time = base_time.replace(minute=m)
-                            break
-                    
-                    events.append({
-                        "Дата/Время": precise_time.strftime("%d.%m %H:%M"),
-                        "АК (Карака)": format_info(df_w.iloc[0]),
-                        "AmK (Карака)": format_info(df_w.iloc[1]),
-                        "Ганданта": "⚠️" if (df_w.iloc[0]['IsGandanta'] or df_w.iloc[1]['IsGandanta']) else "✅"
-                    })
-                    last_pair = pair_key
-        st.table(pd.DataFrame(events))
-        components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=60)
+        for h in range(0, 125):
+            base_time = start_mon + timedelta(hours=h)
+            t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
+            df_w = get_planet_data(t_w)
+            pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
+            if pair_key != last_pair:
+                # Уточнение минут
+                for m in range(0, 60):
+                    t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, m)
+                    df_m = get_planet_data(t_m)
+                    if f"{df_m.iloc[0]['Planet']}-{df_m.iloc[1]['Planet']}" == pair_key:
+                        events.append({
+                            "Дата/Время": (base_time.replace(minute=m)).strftime("%d.%m %H:%M"),
+                            "АК": format_info(df_m.iloc[0]), "AmK": format_info(df_m.iloc[1]),
+                            "Ганданта": "⚠️" if (df_m.iloc[0]['IsGandanta'] or df_m.iloc[1]['IsGandanta']) else "✅"
+                        })
+                        break
+                last_pair = pair_key
+        return pd.DataFrame(events)
+
+    df_yulia = generate_plan()
+    st.table(df_yulia)
+    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px;'>🖨 ПЕЧАТЬ</button>")
