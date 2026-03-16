@@ -4,79 +4,92 @@ from datetime import datetime, timedelta
 import pandas as pd
 import time
 
-st.set_page_config(page_title="Jyotish Live Terminal", layout="wide")
+st.set_page_config(page_title="Jyotish Pro Terminal", layout="wide")
 
-# Константа Айанамсы Лахири (24г 13м 32с конвертируем в десятичные градусы)
-LAHIRI_AYANAMSA = 24 + (13/60) + (32/3600)
-
-ZODIAC_SIGNS = [
-    "Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", 
-    "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"
+# Константы
+LAHIRI_AYANAMSA = 24.2255 # Уточненная на 2026 год
+ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
+NAKSHATRAS = [
+    "Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша",
+    "Магха", "Пурва-пхалгуни", "Уттара-пхалгуни", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха",
+    "Мула", "Пурва-ашадха", "Уттара-ашадха", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бхадрапада", "Уттара-бхадрапада", "Ревати"
 ]
 
-def get_zodiac_sign(degrees):
-    return ZODIAC_SIGNS[int(degrees / 30)]
+def get_nakshatra(degrees):
+    idx = int(degrees / (360/27))
+    return NAKSHATRAS[idx % 27]
+
+def get_voice_of_ak(ak_planet, sign):
+    interpretations = {
+        'Sun': f"AK Солнце в {sign}: Рынок под влиянием крупных государственных структур или лидеров индустрии. Время 'сильных' трендов.",
+        'Moon': f"AK Луна в {sign}: Высокая эмоциональность масс. Ожидайте хаотичных движений и влияния новостного фона.",
+        'Mars': f"AK Марс в {sign}: Агрессивные продажи или покупки. Импульсивные пробои уровней Фибоначчи.",
+        'Mercury': f"AK Меркурий в {sign}: Время высокой активности скальперов и ботов. Множество мелких сделок.",
+        'Jupiter': f"AK Юпитер в {sign}: Глобальные инвесторы ищут ценность. Позитивные ожидания и расширение рынка.",
+        'Venus': f"AK Венера в {sign}: Период консолидации и поиска баланса. Рынок стремится к 'справедливой' цене.",
+        'Saturn': f"AK Сатурн в {sign}: Жесткое давление, ограничения и затяжные коррекции. Время терпеливых трейдеров."
+    }
+    return interpretations.get(ak_planet, "Планеты шепчут... наблюдайте за графиком.")
 
 def get_data():
     ts = load.timescale()
     eph = load('de421.bsp')
-    
-    # Берем текущее время UTC+3 (Сочи)
     now_sochi = datetime.utcnow() + timedelta(hours=3)
-    utc_time = now_sochi - timedelta(hours=3)
     
-    t = ts.utc(utc_time.year, utc_time.month, utc_time.day, utc_time.hour, utc_time.minute, utc_time.second)
+    # Расчет для двух моментов времени (сейчас и через секунду) для определения скорости
+    t1 = ts.utc(now_sochi.year, now_sochi.month, now_sochi.day, now_sochi.hour, now_sochi.minute, now_sochi.second)
+    t2 = ts.utc(now_sochi.year, now_sochi.month, now_sochi.day, now_sochi.hour, now_sochi.minute, now_sochi.second + 1)
     
-    planets_map = {
-        'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 
-        'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 
-        'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']
-    }
+    planets_map = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     
     results = []
     for name, obj in planets_map.items():
-        # Тропическая долгота
-        tropical_lon = eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees
+        lon1 = (eph['earth'].at(t1).observe(obj).ecliptic_latlon()[1].degrees - LAHIRI_AYANAMSA) % 360
+        lon2 = (eph['earth'].at(t2).observe(obj).ecliptic_latlon()[1].degrees - LAHIRI_AYANAMSA) % 360
         
-        # Сидерическая долгота (Джйотиш)
-        sidereal_lon = (tropical_lon - LAHIRI_AYANAMSA) % 360
+        speed = lon2 - lon1
+        # Учитываем переход через 0/360 градусов
+        if speed > 180: speed -= 360
+        if speed < -180: speed += 360
         
-        deg_in_sign = sidereal_lon % 30
-        sign_name = get_zodiac_sign(sidereal_lon)
+        deg_in_sign = lon1 % 30
+        status = "(R)" if speed < 0 else ""
         
         results.append({
-            'Planet': name,
-            'Sign': sign_name,
-            'Deg': round(deg_in_sign, 5)
+            'Planet': f"{name} {status}",
+            'Sign': ZODIAC_SIGNS[int(lon1 / 30)],
+            'Deg': round(deg_in_sign, 5),
+            'Nakshatra': get_zodiac_sign_with_nakshatra(lon1)
         })
     
-    # Сортировка для определения Карак
     df = pd.DataFrame(results).sort_values(by='Deg', ascending=False).reset_index(drop=True)
-    karakas = ['AK', 'AmK', 'BK', 'MK', 'PK', 'GK', 'DK']
-    df['Role'] = karakas
-    
+    df['Role'] = ['AK', 'AmK', 'BK', 'MK', 'PK', 'GK', 'DK']
     return df, now_sochi
 
-st.title("🏹 Джйотиш-Терминал: Сидерический Зодиак (Лахири)")
-st.write(f"Текущая Айанамса: {round(LAHIRI_AYANAMSA, 4)}°")
+def get_zodiac_sign_with_nakshatra(lon):
+    return get_nakshatra(lon)
 
-# Создаем пустое место для динамического контента
+st.title("🏹 Jyotish Pro-Trader Terminal (v4.0)")
+
 placeholder = st.empty()
 
-# Запускаем цикл обновления
 while True:
     df_live, time_now = get_data()
+    ak_row = df_live.iloc[0]
     
     with placeholder.container():
-        st.subheader(f"🕒 Время в Сочи: {time_now.strftime('%H:%M:%S')}")
+        st.subheader(f"🕒 Сочи: {time_now.strftime('%H:%M:%S')}")
         
-        col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([3, 1])
         with col1:
-            st.dataframe(df_live[['Role', 'Planet', 'Sign', 'Deg']], use_container_width=True)
+            st.dataframe(df_live[['Role', 'Planet', 'Sign', 'Deg', 'Nakshatra']], use_container_width=True)
         
         with col2:
-            ak_planet = df_live.iloc[0]
-            st.metric("Atmakaraka (AK)", ak_planet['Planet'], f"{ak_planet['Sign']} {round(ak_planet['Deg'], 2)}°")
-            st.info("Данные обновляются в реальном времени...")
+            st.metric("Текущая Атмакарака", ak_row['Planet'])
+            st.write(f"**Знак:** {ak_row['Sign']}")
+            st.write(f"**Накшатра:** {ak_row['Nakshatra']}")
 
-    time.sleep(1) # Пауза в 1 секунду перед следующим обновлением
+        st.subheader("🎙 Голос Планет")
+        st.success(get_voice_of_ak(ak_row['Planet'].split()[0], ak_row['Sign']))
+        
+    time.sleep(1)
