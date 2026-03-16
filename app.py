@@ -2,12 +2,13 @@ import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta
 import pandas as pd
+import time  # Вынес наверх для чистоты
 import streamlit.components.v1 as components
 
 # 1. Системные настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9.3 Engine Split | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.9.3 Stable Engine | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
 # Константы
 LAHIRI_AYANAMSA = 24.2255
@@ -39,15 +40,14 @@ def format_info(row):
     sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
     return f"{row['Planet']} ({sign}, {nak})"
 
-# 3. ФОНОВЫЙ РАСЧЕТ ПЛАНА (Один раз при загрузке)
-@st.cache_data(show_spinner="Генерация стратегии на неделю...")
+# 3. ФОНОВЫЙ РАСЧЕТ ПЛАНА (Кешируем на 1 час)
+@st.cache_data(ttl=3600)
 def build_weekly_plan_fast():
     now_ref = datetime.utcnow() + timedelta(hours=3)
     start_mon = now_ref - timedelta(days=now_ref.weekday())
     start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
     
     events, last_pair = [], ""
-    # Сканируем неделю с шагом 1 час (достаточно для плана Юли)
     for h in range(0, 120):
         ct = start_mon + timedelta(hours=h)
         t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, ct.minute)
@@ -59,29 +59,27 @@ def build_weekly_plan_fast():
             events.append({
                 "Время": ct.strftime("%d.%m %H:%M"),
                 "Пара AK / AmK": f"AK: {format_info(ak_w)}\nAmK: {format_info(amk_w)}",
-                "Юля / Max": "________________"
+                "Прогноз Max/Юля": "________________"
             })
             last_pair = pair_key
     return pd.DataFrame(events)
 
-# Запускаем расчет сразу
+# Предварительный расчет
 weekly_data = build_weekly_plan_fast()
 
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
 with tab1:
     placeholder = st.empty()
-    # Цикл терминала
-    import time
     while True:
         now = datetime.utcnow() + timedelta(hours=3)
         t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
         df = get_planet_data(t_c)
         ak_now = df.iloc[0]
         
-        # Поиск следующей смены
+        # Поиск следующей смены (оптимизированный шаг 30 мин)
         next_shift = None
-        for m in range(15, 2880, 30):
+        for m in range(30, 2880, 30):
             t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
             df_f = get_planet_data(t_f)
             if df_f.iloc[0]['Planet'] != ak_now['Planet']:
@@ -106,5 +104,8 @@ with tab1:
 
 with tab2:
     st.subheader("Стратегический таймлайн")
-    st.table(weekly_data)
-    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:40px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=50)
+    if not weekly_data.empty:
+        st.table(weekly_data)
+        components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=60)
+    else:
+        st.write("Сбор данных... Обновите страницу через секунду.")
