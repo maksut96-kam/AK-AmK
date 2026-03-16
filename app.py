@@ -8,11 +8,9 @@ import streamlit.components.v1 as components
 # 1. Системный конфиг
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 
-# Принудительный стиль отображения
 st.markdown("""
     <style>
     .stTable { font-size: 16px !important; }
-    div[data-baseweb="tab-panel"] { margin-top: 20px; }
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 5px; }
     .stTabs [aria-selected="true"] { background-color: #4CAF50 !important; color: white !important; }
@@ -21,10 +19,7 @@ st.markdown("""
 
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
 
-# Оптимальное обновление (1 секунда для онлайн-режима)
-st_autorefresh(interval=1000, key="v620_refresh")
-
-# --- ДВИЖОК ---
+# 2. ДВИЖОК
 @st.cache_resource
 def init_engine():
     return load.timescale(), load('de421.bsp')
@@ -62,13 +57,12 @@ def format_info(row):
     prefix = "⚠️ Узел! " if row.get('IsGandanta') else ""
     return f"{prefix}{row['Planet']} ({sign}, {nak})"
 
-# --- КЕШИРОВАННЫЕ РАСЧЕТЫ ---
-@st.cache_data(ttl=60) # Поиск ротации кешируем на 1 минуту
+@st.cache_data(ttl=600)
 def get_next_rotation(now_dt):
     t_c = ts.utc(now_dt.year, now_dt.month, now_dt.day, now_dt.hour-3, now_dt.minute)
     df = get_planet_data(t_c)
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    for m in range(1, 1440, 2): # Шаг 2 мин для скорости
+    for m in range(1, 1440, 2):
         t_f = ts.utc(now_dt.year, now_dt.month, now_dt.day, now_dt.hour-3, now_dt.minute + m)
         df_f = get_planet_data(t_f)
         if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
@@ -99,11 +93,14 @@ def get_weekly_plan():
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
 with tab1:
+    # Запускаем автообновление ТОЛЬКО здесь
+    st_autorefresh(interval=1000, key="live_refresh")
+    
     now = datetime.utcnow() + timedelta(hours=3)
     t_now = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
     df_current = get_planet_data(t_now)
     
-    st.write(f"### 🕒 Сочи (Real-Time): **{now.strftime('%H:%M:%S')}**")
+    st.write(f"### 🕒 Сочи (Live): **{now.strftime('%H:%M:%S')}**")
     st.table(df_current[['Role', 'Planet', 'Deg', 'Сила']])
     
     st.markdown("---")
@@ -118,7 +115,10 @@ with tab1:
         with c2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(amk_new)}")
 
 with tab2:
+    # Здесь автообновление НЕ НУЖНО, чтобы не вешать расчет
     st.subheader("Стратегический таймлайн")
-    df_weekly = get_weekly_plan()
-    st.table(df_weekly)
+    with st.spinner("Загрузка плана..."):
+        df_weekly = get_weekly_plan()
+        st.table(df_weekly)
+    
     components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=60)
