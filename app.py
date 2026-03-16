@@ -2,16 +2,16 @@ import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta
 import pandas as pd
-from streamlit_autorefresh import st_autorefresh # Это замена циклу while
+from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
 # 1. Системные настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9.5 Stable | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.9.5.1 Stable | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
-# Обновляем страницу каждые 5 секунд (чтобы не перегружать сервер, но видеть актуальное время)
-st_autorefresh(interval=5000, key="datarefresh")
+# Обновляем страницу каждые 10 секунд (достаточно для контроля времени)
+st_autorefresh(interval=10000, key="datarefresh")
 
 # Константы
 LAHIRI_AYANAMSA = 24.2255
@@ -92,4 +92,7 @@ with tab1:
         st.warning(f"🟡 **AmK:** {format_info(next_shift['amk'])}")
 
 with tab2:
-    st.subheader("
+    st.subheader("Стратегический таймлайн")
+    weekly_data = build_weekly_plan_fast()
+    st.table(weekly_data)
+    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ</button>", height=60)
