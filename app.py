@@ -2,7 +2,7 @@ import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta
 import pandas as pd
-import time
+from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
 # 1. Настройки и стиль
@@ -10,13 +10,16 @@ st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("""
     <style>
     .stTabs [data-baseweb="tab-list"] { gap: 24px; }
-    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #f0f2f6; border-radius: 4px 4px 0 0; gap: 1px; }
+    .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 4px; }
     .stTabs [aria-selected="true"] { background-color: #4CAF50 !important; color: white !important; }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v6.0.0 Real-Time | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v6.0.1 Stable Real-Time | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+
+# Обновление каждую секунду для реального времени
+st_autorefresh(interval=1000, key="globalrefresh")
 
 # Константы
 LAHIRI_AYANAMSA = 24.2255
@@ -57,14 +60,14 @@ def format_info(row):
     prefix = "⚠️ Узел! " if row.get('IsGandanta') else ""
     return f"{prefix}{row['Planet']} ({sign}, {nak})"
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=3600) # Пересчитываем план раз в час
 def build_weekly_plan_precise():
     now_ref = datetime.utcnow() + timedelta(hours=3)
     start_mon = now_ref - timedelta(days=now_ref.weekday())
     start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
     events, last_pair = [], ""
     
-    for h in range(0, 144):
+    for h in range(0, 130): # 5 дней
         base_time = start_mon + timedelta(hours=h)
         t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
         df_w = get_planet_data(t_w)
@@ -73,7 +76,7 @@ def build_weekly_plan_precise():
         if pair_key != last_pair:
             precise_time = base_time
             if last_pair != "":
-                for m in range(0, 60):
+                for m in range(0, 60, 2): # Шаг 2 минуты для скорости
                     t_m = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, m)
                     df_m = get_planet_data(t_m)
                     if f"{df_m.iloc[0]['Planet']}-{df_m.iloc[1]['Planet']}" == pair_key:
@@ -88,45 +91,32 @@ def build_weekly_plan_precise():
             last_pair = pair_key
     return pd.DataFrame(events)
 
-# Интерфейс
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
 with tab1:
-    placeholder = st.empty()
-    # Теперь Прямой эфир работает в реальном времени через внутренний цикл
-    while True:
-        now = datetime.utcnow() + timedelta(hours=3)
-        t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
-        df = get_planet_data(t_c)
-        
-        with placeholder.container():
-            st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
-            st.table(df[['Role', 'Planet', 'Deg', 'Сила']])
-            
-            st.markdown("---")
-            st.subheader("🚀 Ближайшая ротация")
-            ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-            
-            # Поиск следующей смены
-            found_shift = False
-            for m in range(1, 1440):
-                t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
-                df_f = get_planet_data(t_f)
-                if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-                    st.success(f"📅 **Смена через {m} мин: {(now + timedelta(minutes=m)).strftime('%H:%M')}**")
-                    col1, col2 = st.columns(2)
-                    with col1: st.info(f"🔵 **Новая АК:**\n\n{format_info(df_f.iloc[0])}")
-                    with col2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(df_f.iloc[1])}")
-                    found_shift = True
-                    break
-            if not found_shift:
-                st.write("Поиск ближайшей ротации...")
-                
-        time.sleep(1) # Обновление каждую секунду
-        # Проверка на переключение вкладки (Streamlit делает это автоматически, но sleep дает ресурсам "дышать")
+    now = datetime.utcnow() + timedelta(hours=3)
+    t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
+    df = get_planet_data(t_c)
+    
+    st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
+    st.table(df[['Role', 'Planet', 'Deg', 'Сила']])
+    
+    st.markdown("---")
+    st.subheader("🚀 Ближайшая ротация")
+    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
+    
+    for m in range(1, 1440, 1):
+        t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
+        df_f = get_planet_data(t_f)
+        if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
+            st.success(f"📅 **Смена через {m} мин: {(now + timedelta(minutes=m)).strftime('%H:%M')}**")
+            c1, c2 = st.columns(2)
+            with c1: st.info(f"🔵 **Новая АК:**\n\n{format_info(df_f.iloc[0])}")
+            with c2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(df_f.iloc[1])}")
+            break
 
 with tab2:
-    st.subheader("Стратегический таймлайн (Точность: 1 мин)")
+    st.subheader("Стратегический таймлайн")
     weekly_data = build_weekly_plan_precise()
     st.table(weekly_data)
     components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ</button>", height=60)
