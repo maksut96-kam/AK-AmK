@@ -5,11 +5,14 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
-# 1. Настройки
+# 1. Системный конфиг
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 
+# Принудительный стиль отображения
 st.markdown("""
     <style>
+    .stTable { font-size: 16px !important; }
+    div[data-baseweb="tab-panel"] { margin-top: 20px; }
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 5px; }
     .stTabs [aria-selected="true"] { background-color: #4CAF50 !important; color: white !important; }
@@ -18,19 +21,18 @@ st.markdown("""
 
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
 
-# Живое обновление каждую секунду
-st_autorefresh(interval=1000, key="realtime_tick")
+# Оптимальное обновление (1 секунда для онлайн-режима)
+st_autorefresh(interval=1000, key="v620_refresh")
 
-# Константы
-LAHIRI_AYANAMSA = 24.2255
-ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
-NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
-
+# --- ДВИЖОК ---
 @st.cache_resource
 def init_engine():
     return load.timescale(), load('de421.bsp')
 
 ts, eph = init_engine()
+LAHIRI_AYANAMSA = 24.2255
+ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
+NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 
 def check_gandanta(lon):
     threshold = 3.333
@@ -60,32 +62,26 @@ def format_info(row):
     prefix = "⚠️ Узел! " if row.get('IsGandanta') else ""
     return f"{prefix}{row['Planet']} ({sign}, {nak})"
 
-# Кешируем поиск ротации, чтобы не искать каждую секунду (обновляем раз в 5 минут)
-@st.cache_data(ttl=300)
-def find_next_rotation(now_dt):
+# --- КЕШИРОВАННЫЕ РАСЧЕТЫ ---
+@st.cache_data(ttl=60) # Поиск ротации кешируем на 1 минуту
+def get_next_rotation(now_dt):
     t_c = ts.utc(now_dt.year, now_dt.month, now_dt.day, now_dt.hour-3, now_dt.minute)
     df = get_planet_data(t_c)
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    
-    for m in range(1, 1440):
+    for m in range(1, 1440, 2): # Шаг 2 мин для скорости
         t_f = ts.utc(now_dt.year, now_dt.month, now_dt.day, now_dt.hour-3, now_dt.minute + m)
         df_f = get_planet_data(t_f)
         if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-            return {
-                "mins": m,
-                "time": (now_dt + timedelta(minutes=m)).strftime("%H:%M"),
-                "ak": df_f.iloc[0],
-                "amk": df_f.iloc[1]
-            }
+            return m, (now_dt + timedelta(minutes=m)).strftime("%H:%M"), df_f.iloc[0], df_f.iloc[1]
     return None
 
 @st.cache_data(ttl=3600)
-def build_weekly_plan():
+def get_weekly_plan():
     now_ref = datetime.utcnow() + timedelta(hours=3)
     start_mon = now_ref - timedelta(days=now_ref.weekday())
     start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
     events, last_pair = [], ""
-    for h in range(0, 130):
+    for h in range(0, 125):
         base_time = start_mon + timedelta(hours=h)
         t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
         df_w = get_planet_data(t_w)
@@ -99,29 +95,30 @@ def build_weekly_plan():
             last_pair = pair_key
     return pd.DataFrame(events)
 
+# --- ИНТЕРФЕЙС ---
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
 with tab1:
     now = datetime.utcnow() + timedelta(hours=3)
-    t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
-    df_current = get_planet_data(t_c)
+    t_now = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
+    df_current = get_planet_data(t_now)
     
-    st.write(f"### 🕒 Сочи: **{now.strftime('%H:%M:%S')}**")
+    st.write(f"### 🕒 Сочи (Real-Time): **{now.strftime('%H:%M:%S')}**")
     st.table(df_current[['Role', 'Planet', 'Deg', 'Сила']])
     
     st.markdown("---")
     st.subheader("🚀 Ближайшая ротация")
     
-    # Берем данные ротации из кеша (обновляются раз в 5 минут, а не каждую секунду)
-    rotation = find_next_rotation(now.replace(second=0, microsecond=0))
-    if rotation:
-        st.success(f"📅 Смена через {rotation['mins']} мин: **{rotation['time']}**")
+    rot_data = get_next_rotation(now.replace(second=0, microsecond=0))
+    if rot_data:
+        m, t_str, ak_new, amk_new = rot_data
+        st.success(f"📅 Смена через {m} мин: **{t_str}**")
         c1, c2 = st.columns(2)
-        with c1: st.info(f"🔵 **Новая АК:**\n\n{format_info(rotation['ak'])}")
-        with c2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(rotation['amk'])}")
+        with c1: st.info(f"🔵 **Новая АК:**\n\n{format_info(ak_new)}")
+        with c2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(amk_new)}")
 
 with tab2:
     st.subheader("Стратегический таймлайн")
-    yulia_data = build_weekly_plan()
-    st.table(yulia_data)
-    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ</button>", height=60)
+    df_weekly = get_weekly_plan()
+    st.table(df_weekly)
+    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=60)
