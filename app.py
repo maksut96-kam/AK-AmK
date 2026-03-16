@@ -1,49 +1,50 @@
 import streamlit as st
-from skyfield.api import load, Topos
+from skyfield.api import load
 from datetime import datetime, timedelta
 import pandas as pd
 
-st.set_page_config(page_title="Planetary Cycles Sochi", layout="wide")
+st.set_page_config(page_title="Sochi Trading Stars", layout="wide")
 
-st.title("🛰 Расчет планетных циклов (v2.0)")
-st.write("Метод: Skyfield (Pure Python) — Стабильная сборка")
+st.title("🛰 Анализ Карак для Трейдинга (v2.1)")
 
-# Настройки времени для Сочи
-UTC_OFFSET = 3 
-
-def get_planet_positions():
+def get_karakas(dt_utc):
     ts = load.timescale()
     eph = load('de421.bsp')
+    t = ts.utc(dt_utc.year, dt_utc.month, dt_utc.day, dt_utc.hour, dt_utc.minute)
+    
     planets = {
-        'Sun': eph['sun'],
-        'Moon': eph['moon'],
-        'Mars': eph['mars'],
-        'Mercury': eph['mercury'],
-        'Jupiter': eph['jupiter_barycenter'],
-        'Venus': eph['venus'],
-        'Saturn': eph['saturn_barycenter']
+        'Sun': eph['sun'], 'Mars': eph['mars'], 'Mercury': eph['mercury'],
+        'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter'],
+        'Moon': eph['moon']
     }
     
-    now = datetime.now()
-    results = []
+    data = []
+    for name, obj in planets.items():
+        pos = eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees
+        deg_in_sign = pos % 30  # Градус внутри знака (0-30)
+        data.append({'Planet': name, 'Deg': deg_in_sign})
     
-    for i in range(7):
-        check_date = now + timedelta(days=i)
-        t = ts.utc(check_date.year, check_date.month, check_date.day)
-        
-        day_data = {"Дата": check_date.strftime("%d.%m.%Y")}
-        for name, obj in planets.items():
-            astrometric = eph['earth'].at(t).observe(obj)
-            lat, lon, distance = astrometric.ecliptic_latlon()
-            day_data[name] = round(lon.degrees, 2)
-        results.append(day_data)
-        
-    return pd.DataFrame(results)
+    # Сортировка по убыванию градуса для определения Карак
+    df_sorted = pd.DataFrame(data).sort_values(by='Deg', ascending=False).reset_index(drop=True)
+    
+    karaka_names = ['Atmakaraka (AK)', 'Amatyakaraka (AmK)', 'Bhratrukaraka (BK)', 
+                    'Matrukaraka (MK)', 'Putrakaraka (PK)', 'Gnatikaraka (GK)', 'Darakaraka (DK)']
+    
+    df_sorted['Role'] = karaka_names
+    return df_sorted
 
-try:
-    df = get_planet_positions()
-    st.success(f"Часовой пояс: UTC+{UTC_OFFSET} (Сочи)")
-    st.table(df)
-    st.info("Это базовые координаты. Как только этот код 'взлетит', я добавлю расчет Карак (Атмакарака и др.).")
-except Exception as e:
-    st.error(f"Ошибка расчета: {e}")
+# Интерфейс
+col1, col2 = st.columns([1, 2])
+with col1:
+    st.subheader("Настройки")
+    date_input = st.date_input("Выберите дату", datetime.now())
+    st.info("Расчет ведется на 10:00 (МСК/Сочи)")
+
+# Получаем данные
+df_final = get_karakas(datetime.combine(date_input, datetime.min.time()) - timedelta(hours=3))
+
+with col2:
+    st.subheader(f"Иерархия планет на {date_input}")
+    st.table(df_final[['Role', 'Planet', 'Deg']])
+
+st.warning("Внимание: Смена Атмакараки (верхняя строчка) часто совпадает с сильными движениями на графиках MT5.")
