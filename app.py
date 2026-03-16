@@ -8,14 +8,21 @@ import streamlit.components.v1 as components
 # 1. Настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9 UI Refinement | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.9.1 Stable | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
 # Константы
 LAHIRI_AYANAMSA = 24.2255
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 
-def get_planet_data(t, eph):
+# Кешируем загрузку эфемерид для скорости
+@st.cache_resource
+def load_assets():
+    return load.timescale(), load('de421.bsp')
+
+ts, eph = load_assets()
+
+def get_planet_data(t):
     planets = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 
                'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     res = []
@@ -33,8 +40,33 @@ def format_info(row):
     sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
     return f"{row['Planet']} ({sign}, {nak})"
 
-ts = load.timescale()
-eph = load('de421.bsp')
+# --- ПРЕДВАРИТЕЛЬНЫЙ РАСЧЕТ ПЛАНА (чтобы вкладка не висела) ---
+@st.cache_data(ttl=3600)
+def generate_weekly_plan():
+    now_ref = datetime.utcnow() + timedelta(hours=3)
+    start_mon = now_ref - timedelta(days=now_ref.weekday())
+    start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
+    
+    events, last_p = [], ""
+    # Шаг 30 минут для баланса точности и скорости
+    for m in range(0, 7200, 30):
+        ct = start_mon + timedelta(minutes=m)
+        if ct.weekday() > 4: break
+        t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, ct.minute)
+        df_w = get_planet_data(t_w)
+        ak_w, amk_w = df_w.iloc[0], df_w.iloc[1]
+        pair_id = f"{ak_w['Planet']}-{amk_w['Planet']}"
+        if pair_id != last_p:
+            events.append({
+                "Время": ct.strftime("%d.%m %H:%M"), 
+                "Пара AK / AmK": f"AK: {format_info(ak_w)}\nAmK: {format_info(amk_w)}", 
+                "Прогноз": "________________"
+            })
+            last_p = pair_id
+    return pd.DataFrame(events)
+
+# Генерируем план заранее
+weekly_df = generate_weekly_plan()
 
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
@@ -43,16 +75,16 @@ with tab1:
     while True:
         now = datetime.utcnow() + timedelta(hours=3)
         t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
-        df = get_planet_data(t_c, eph)
+        df = get_planet_data(t_c)
         ak_now = df.iloc[0]
         
-        # Поиск следующей смены
+        # Поиск следующей смены (мини-скан на 24ч)
         next_shift = None
-        for m in range(1, 2880, 5):
-            t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
-            df_f = get_planet_data(t_f, eph)
+        for i in range(10, 1440, 20):
+            t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + i)
+            df_f = get_planet_data(t_f)
             if df_f.iloc[0]['Planet'] != ak_now['Planet']:
-                next_shift = {"time": (now + timedelta(minutes=m)).strftime("%d.%m %H:%M"), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}
+                next_shift = {"time": (now + timedelta(minutes=i)).strftime("%d.%m %H:%M"), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}
                 break
 
         with placeholder.container():
@@ -65,27 +97,18 @@ with tab1:
             st.markdown("---")
             st.subheader("🚀 Ближайшая ротация")
             if next_shift:
-                # ВЕРТИКАЛЬНОЕ РАСПОЛОЖЕНИЕ ПО ЗАПРОСУ
-                st.info(f"**Смена произойдет:** {next_shift['time']}")
+                # ВЕРТИКАЛЬНЫЕ БЛОКИ (Новая AK сверху, AmK снизу)
+                st.info(f"**Смена в:** {next_shift['time']}")
                 st.info(f"🔵 **Новая Атмакарака (AK):** {format_info(next_shift['ak'])}")
                 st.warning(f"🟡 **Аматьякарака (AmK):** {format_info(next_shift['amk'])}")
+            else:
+                st.write("В ближайшие 24 часа смен не обнаружено.")
         time.sleep(1)
 
 with tab2:
-    st.subheader("Стратегический таймлайн")
-    start_mon = (datetime.utcnow() + timedelta(hours=3))
-    start_mon = start_mon - timedelta(days=start_mon.weekday())
-    start_mon = start_mon.replace(hour=2, minute=0, second=0)
-    
-    events, last_p = [], ""
-    for m in range(0, 7200, 30):
-        ct = start_mon + timedelta(minutes=m)
-        if ct.weekday() > 4: break
-        t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, ct.minute)
-        df_w = get_planet_data(t_w, eph)
-        ak_w, amk_w = df_w.iloc[0], df_w.iloc[1]
-        if f"{ak_w['Planet']}-{amk_w['Planet']}" != last_p:
-            events.append({"Время": ct.strftime("%d.%m %H:%M"), "AK / AmK": f"AK: {format_info(ak_w)}\nAmK: {format_info(amk_w)}", "Юля / Max": "________________"})
-            last_p = f"{ak_w['Planet']}-{amk_w['Planet']}"
-    st.table(pd.DataFrame(events))
-    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:40px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=50)
+    st.subheader("Еженедельный план координации")
+    if not weekly_df.empty:
+        st.table(weekly_df)
+        components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:40px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=50)
+    else:
+        st.error("Ошибка загрузки данных плана. Попробуйте обновить страницу.")
