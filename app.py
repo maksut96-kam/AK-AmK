@@ -8,9 +8,9 @@ import streamlit.components.v1 as components
 # 1. Системные настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9.5.1 Stable | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.9.6 Stable Full | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
 
-# Обновляем страницу каждые 10 секунд (достаточно для контроля времени)
+# Обновляем страницу каждые 10 секунд
 st_autorefresh(interval=10000, key="datarefresh")
 
 # Константы
@@ -77,19 +77,34 @@ with tab1:
     
     st.markdown("---")
     st.subheader("🚀 Ближайшая ротация")
+    
+    # Расширенный поиск следующей смены
     ak_now = df.iloc[0]['Planet']
+    amk_now = df.iloc[1]['Planet']
     next_shift = None
-    for m in range(30, 1440, 30):
+    
+    # Сканируем вперед на 48 часов с шагом 15 минут для точности
+    for m in range(15, 2880, 15):
         t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
         df_f = get_planet_data(t_f)
-        if df_f.iloc[0]['Planet'] != ak_now:
-            next_shift = {"time": (now + timedelta(minutes=m)).strftime("%d.%m %H:%M"), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}
+        # Проверяем смену АК или АмК
+        if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
+            next_shift = {
+                "time": (now + timedelta(minutes=m)).strftime("%d.%m %H:%M"),
+                "ak": df_f.iloc[0],
+                "amk": df_f.iloc[1]
+            }
             break
     
     if next_shift:
-        st.info(f"**Смена произойдет:** {next_shift['time']}")
-        st.info(f"🔵 **Новая AK:** {format_info(next_shift['ak'])}")
-        st.warning(f"🟡 **AmK:** {format_info(next_shift['amk'])}")
+        st.success(f"📅 **Следующая смена:** {next_shift['time']}")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"🔵 **Новая АК:**\n\n{format_info(next_shift['ak'])}")
+        with col2:
+            st.warning(f"🟡 **Новая АмК:**\n\n{format_info(next_shift['amk'])}")
+    else:
+        st.write("Поиск ближайшей ротации...")
 
 with tab2:
     st.subheader("Стратегический таймлайн")
