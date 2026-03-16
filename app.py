@@ -5,21 +5,10 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
-# 1. Системный конфиг
+# 1. Настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 
-st.markdown("""
-    <style>
-    .stTable { font-size: 16px !important; }
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 5px; }
-    .stTabs [aria-selected="true"] { background-color: #4CAF50 !important; color: white !important; }
-    </style>
-""", unsafe_allow_html=True)
-
-st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-
-# 2. ДВИЖОК
+# Движок расчетов
 @st.cache_resource
 def init_engine():
     return load.timescale(), load('de421.bsp')
@@ -43,7 +32,6 @@ def get_planet_data(t):
     for name, obj in planets.items():
         lon = (eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees - LAHIRI_AYANAMSA) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': round(lon % 30, 4), 'IsGandanta': check_gandanta(lon)})
-    
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     df.index += 1
     roles = ['AK', 'AmK', 'BK', 'MK', 'PK', 'GK', 'DK']
@@ -54,71 +42,65 @@ def get_planet_data(t):
 def format_info(row):
     nak = NAKSHATRAS[int(row['Lon'] / (360/27)) % 27]
     sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
-    prefix = "⚠️ Узел! " if row.get('IsGandanta') else ""
-    return f"{prefix}{row['Planet']} ({sign}, {nak})"
+    return f"{row['Planet']} ({sign}, {nak})"
 
-@st.cache_data(ttl=600)
-def get_next_rotation(now_dt):
-    t_c = ts.utc(now_dt.year, now_dt.month, now_dt.day, now_dt.hour-3, now_dt.minute)
-    df = get_planet_data(t_c)
-    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    for m in range(1, 1440, 2):
-        t_f = ts.utc(now_dt.year, now_dt.month, now_dt.day, now_dt.hour-3, now_dt.minute + m)
-        df_f = get_planet_data(t_f)
-        if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-            return m, (now_dt + timedelta(minutes=m)).strftime("%H:%M"), df_f.iloc[0], df_f.iloc[1]
-    return None
+# --- МЕНЮ В САЙДБАРЕ ---
+st.sidebar.title("Навигация")
+page = st.sidebar.radio("Выберите режим:", ["📊 Прямой эфир", "📅 План для Юли"])
 
-@st.cache_data(ttl=3600)
-def get_weekly_plan():
-    now_ref = datetime.utcnow() + timedelta(hours=3)
-    start_mon = now_ref - timedelta(days=now_ref.weekday())
-    start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
-    events, last_pair = [], ""
-    for h in range(0, 125):
-        base_time = start_mon + timedelta(hours=h)
-        t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
-        df_w = get_planet_data(t_w)
-        pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
-        if pair_key != last_pair:
-            events.append({
-                "Дата/Время": base_time.strftime("%d.%m %H:%M"),
-                "Пара AK / AmK": f"AK: {format_info(df_w.iloc[0])} | AmK: {format_info(df_w.iloc[1])}",
-                "Статус": "⚠️ Ганданта!" if (df_w.iloc[0]['IsGandanta'] or df_w.iloc[1]['IsGandanta']) else "✅"
-            })
-            last_pair = pair_key
-    return pd.DataFrame(events)
-
-# --- ИНТЕРФЕЙС ---
-tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
-
-with tab1:
-    # Запускаем автообновление ТОЛЬКО здесь
-    st_autorefresh(interval=1000, key="live_refresh")
+# --- СТРАНИЦА 1: ПРЯМОЙ ЭФИР ---
+if page == "📊 Прямой эфир":
+    st_autorefresh(interval=1000, key="live_tick")
+    st.header("📊 Прямой эфир (Real-time)")
     
     now = datetime.utcnow() + timedelta(hours=3)
     t_now = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
     df_current = get_planet_data(t_now)
     
-    st.write(f"### 🕒 Сочи (Live): **{now.strftime('%H:%M:%S')}**")
+    st.subheader(f"🕒 Время Сочи: {now.strftime('%H:%M:%S')}")
     st.table(df_current[['Role', 'Planet', 'Deg', 'Сила']])
     
     st.markdown("---")
-    st.subheader("🚀 Ближайшая ротация")
+    st.subheader("🚀 Ближайшая ротация (смена пары)")
     
-    rot_data = get_next_rotation(now.replace(second=0, microsecond=0))
-    if rot_data:
-        m, t_str, ak_new, amk_new = rot_data
-        st.success(f"📅 Смена через {m} мин: **{t_str}**")
-        c1, c2 = st.columns(2)
-        with c1: st.info(f"🔵 **Новая АК:**\n\n{format_info(ak_new)}")
-        with c2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(amk_new)}")
+    ak_now, amk_now = df_current.iloc[0]['Planet'], df_current.iloc[1]['Planet']
+    for m in range(1, 1440, 1):
+        t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
+        df_f = get_planet_data(t_f)
+        if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
+            st.success(f"📅 Смена через {m} мин: **{(now + timedelta(minutes=m)).strftime('%H:%M')}**")
+            c1, c2 = st.columns(2)
+            with c1: st.info(f"🔵 **Новая АК:**\n\n{format_info(df_f.iloc[0])}")
+            with c2: st.warning(f"🟡 **Новая АмК:**\n\n{format_info(df_f.iloc[1])}")
+            break
 
-with tab2:
-    # Здесь автообновление НЕ НУЖНО, чтобы не вешать расчет
-    st.subheader("Стратегический таймлайн")
-    with st.spinner("Загрузка плана..."):
-        df_weekly = get_weekly_plan()
-        st.table(df_weekly)
+# --- СТРАНИЦА 2: ПЛАН ДЛЯ ЮЛИ ---
+elif page == "📅 План для Юли":
+    st.header("📅 Стратегический план (Юля)")
+    st.info("Этот раздел рассчитывается один раз. Чтобы обновить данные, просто перезагрузите страницу.")
+    
+    @st.cache_data(ttl=86400) # Кеш на 24 часа
+    def generate_yulia_plan():
+        now_ref = datetime.utcnow() + timedelta(hours=3)
+        start_mon = now_ref - timedelta(days=now_ref.weekday())
+        start_mon = start_mon.replace(hour=2, minute=0, second=0)
+        events, last_pair = [], ""
+        for h in range(0, 125):
+            base_time = start_mon + timedelta(hours=h)
+            t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
+            df_w = get_planet_data(t_w)
+            pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
+            if pair_key != last_pair:
+                events.append({
+                    "Дата/Время": base_time.strftime("%d.%m %H:%M"),
+                    "Пара AK / AmK": f"AK: {format_info(df_w.iloc[0])} | AmK: {format_info(df_w.iloc[1])}",
+                    "Статус": "⚠️ Ганданта!" if (df_w.iloc[0]['IsGandanta'] or df_w.iloc[1]['IsGandanta']) else "✅ Норма"
+                })
+                last_pair = pair_key
+        return pd.DataFrame(events)
+
+    with st.spinner("Генерация плана на неделю..."):
+        df_yulia = generate_yulia_plan()
+        st.table(df_yulia)
     
     components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=60)
