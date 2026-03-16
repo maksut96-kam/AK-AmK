@@ -2,20 +2,22 @@ import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta
 import pandas as pd
-import time  # Вынес наверх для чистоты
+from streamlit_autorefresh import st_autorefresh # Это замена циклу while
 import streamlit.components.v1 as components
 
 # 1. Системные настройки
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: gray;'>v5.9.3 Stable Engine | XAU/USD | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.9.5 Stable | Сочи (UTC+3)</p>", unsafe_allow_html=True)
+
+# Обновляем страницу каждые 5 секунд (чтобы не перегружать сервер, но видеть актуальное время)
+st_autorefresh(interval=5000, key="datarefresh")
 
 # Константы
 LAHIRI_AYANAMSA = 24.2255
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 
-# 2. Движок и Кеширование
 @st.cache_resource
 def init_engine():
     return load.timescale(), load('de421.bsp')
@@ -40,72 +42,54 @@ def format_info(row):
     sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
     return f"{row['Planet']} ({sign}, {nak})"
 
-# 3. ФОНОВЫЙ РАСЧЕТ ПЛАНА (Кешируем на 1 час)
 @st.cache_data(ttl=3600)
 def build_weekly_plan_fast():
     now_ref = datetime.utcnow() + timedelta(hours=3)
     start_mon = now_ref - timedelta(days=now_ref.weekday())
     start_mon = start_mon.replace(hour=2, minute=0, second=0, microsecond=0)
-    
     events, last_pair = [], ""
     for h in range(0, 120):
         ct = start_mon + timedelta(hours=h)
         t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, ct.minute)
         df_w = get_planet_data(t_w)
-        ak_w, amk_w = df_w.iloc[0], df_w.iloc[1]
-        pair_key = f"{ak_w['Planet']}-{amk_w['Planet']}"
-        
+        pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
         if pair_key != last_pair:
             events.append({
                 "Время": ct.strftime("%d.%m %H:%M"),
-                "Пара AK / AmK": f"AK: {format_info(ak_w)}\nAmK: {format_info(amk_w)}",
-                "Прогноз Max/Юля": "________________"
+                "Пара AK / AmK": f"AK: {format_info(df_w.iloc[0])}\nAmK: {format_info(df_w.iloc[1])}",
+                "Прогноз": "________________"
             })
             last_pair = pair_key
     return pd.DataFrame(events)
 
-# Предварительный расчет
-weekly_data = build_weekly_plan_fast()
-
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
 
 with tab1:
-    placeholder = st.empty()
-    while True:
-        now = datetime.utcnow() + timedelta(hours=3)
-        t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
-        df = get_planet_data(t_c)
-        ak_now = df.iloc[0]
-        
-        # Поиск следующей смены (оптимизированный шаг 30 мин)
-        next_shift = None
-        for m in range(30, 2880, 30):
-            t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
-            df_f = get_planet_data(t_f)
-            if df_f.iloc[0]['Planet'] != ak_now['Planet']:
-                next_shift = {"time": (now + timedelta(minutes=m)).strftime("%d.%m %H:%M"), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}
-                break
-
-        with placeholder.container():
-            st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
-            df_v = df.copy()
-            df_v['Знак'] = df_v['Lon'].apply(lambda x: ZODIAC_SIGNS[int(x/30)])
-            df_v['Накшатра'] = df_v['Lon'].apply(lambda x: NAKSHATRAS[int(x/(360/27)) % 27])
-            st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Deg', 'Сила']])
-            
-            st.markdown("---")
-            st.subheader("🚀 Ближайшая ротация")
-            if next_shift:
-                st.info(f"**Смена произойдет:** {next_shift['time']}")
-                st.info(f"🔵 **Новая Атмакарака (AK):** {format_info(next_shift['ak'])}")
-                st.warning(f"🟡 **Аматьякарака (AmK):** {format_info(next_shift['amk'])}")
-        
-        time.sleep(1)
+    now = datetime.utcnow() + timedelta(hours=3)
+    t_c = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
+    df = get_planet_data(t_c)
+    
+    st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
+    df_v = df.copy()
+    df_v['Знак'] = df_v['Lon'].apply(lambda x: ZODIAC_SIGNS[int(x/30)])
+    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: NAKSHATRAS[int(x/(360/27)) % 27])
+    st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Deg', 'Сила']])
+    
+    st.markdown("---")
+    st.subheader("🚀 Ближайшая ротация")
+    ak_now = df.iloc[0]['Planet']
+    next_shift = None
+    for m in range(30, 1440, 30):
+        t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
+        df_f = get_planet_data(t_f)
+        if df_f.iloc[0]['Planet'] != ak_now:
+            next_shift = {"time": (now + timedelta(minutes=m)).strftime("%d.%m %H:%M"), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}
+            break
+    
+    if next_shift:
+        st.info(f"**Смена произойдет:** {next_shift['time']}")
+        st.info(f"🔵 **Новая AK:** {format_info(next_shift['ak'])}")
+        st.warning(f"🟡 **AmK:** {format_info(next_shift['amk'])}")
 
 with tab2:
-    st.subheader("Стратегический таймлайн")
-    if not weekly_data.empty:
-        st.table(weekly_data)
-        components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=60)
-    else:
-        st.write("Сбор данных... Обновите страницу через секунду.")
+    st.subheader("
