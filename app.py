@@ -2,109 +2,123 @@ import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta
 import pandas as pd
-from streamlit_autorefresh import st_autorefresh
+import time
 import streamlit.components.v1 as components
 
-# 1. Настройки
+# 1. Настройка и заголовок
 st.set_page_config(page_title="Max Pro-Trader CC", layout="wide")
-
-st.markdown("""
-    <style>
-    .stTable { font-size: 16px !important; }
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 5px; }
-    .stTabs [aria-selected="true"] { background-color: #4CAF50 !important; color: white !important; }
-    </style>
-""", unsafe_allow_html=True)
-
 st.markdown("<h1 style='text-align: center;'>Max Pro-Trader Coordination center</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>v5.1 Stable | Цель: XAU/USD | Owner: Max</p>", unsafe_allow_html=True)
 
-# 2. Движок
-@st.cache_resource
-def init_engine():
-    return load.timescale(), load('de421.bsp')
-
-ts, eph = init_engine()
+# Константы
 LAHIRI_AYANAMSA = 24.2255
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
-NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 
-def check_gandanta(lon):
-    threshold = 3.333
-    for junction in [0, 120, 240, 360]:
-        if abs(lon - junction) <= threshold: return True
-    return False
+# Полная база стратегий для Золота (27 Накшатр)
+GOLD_STRATEGIES = {
+    "Ашвини": "🔥 Импульс. Быстрый вход, золото может идти без ретеста.",
+    "Бхарани": "⏳ Давление. Ожидайте накопления перед мощным выходом.",
+    "Криттика": "🔪 Прорыв. Агрессивная работа по уровням.",
+    "Рохини": "📈 Бычий тренд. Стабильный рост и ликвидность.",
+    "Мригашира": "🔍 Разведка. Колебания цены, поиск направления.",
+    "Аридра": "⛈ Хаос. Паника, резкие 'шпильки' на новостях.",
+    "Пунарвасу": "🔄 Отскок. Возврат к средним значениям после движения.",
+    "Пушья": "💎 Надежность. Сильный тренд, время для крупных позиций.",
+    "Ашлеша": "🐍 Ловушка. Ложные пробои, маркетмейкеры снимают стопы.",
+    "Магха": "🏛 Сила. Влияние институциональных объемов.",
+    "Пурва-пх": "⏸ Пауза. Флет, затишье перед бурей.",
+    "Уттара-пх": "✅ Уверенность. Продолжение текущего тренда.",
+    "Хаста": "🛠 Техничность. Идеальная отработка уровней Фибоначчи.",
+    "Читра": "📐 Структура. Формирование четких графических паттернов.",
+    "Свати": "💨 Ветер. Высокая волатильность, неопределенность.",
+    "Вишакха": "🎯 Цель. Рынок определился с вектором на ближайшие часы.",
+    "Анурадха": "🛡 Поддержка. Скрытый набор позиций крупным игроком.",
+    "Джьештха": "⚠️ Пик. Критическая точка, возможен резкий разворот.",
+    "Мула": "🧨 Крах. Подрыв уровней, риск глубокого обвала.",
+    "Пурва-аш": "🌅 Оптимизм. Рост ожиданий, золото в фазе накопления.",
+    "Уттара-аш": "🏆 Победа. Завершение формирования тренда.",
+    "Шравана": "👂 Инсайд. Движения на слухах и закрытой информации.",
+    "Дхаништха": "🥁 Импульс. Ритмичные вливания объемов в стакан.",
+    "Шатабхиша": "🔮 Манипуляция. Скрытые действия против толпы.",
+    "Пурва-бх": "🧨 Риск. Высокое напряжение, готовность к срыву.",
+    "Уттара-бх": "🌊 Глубина. Медленный, но мощный поток ликвидности.",
+    "Ревати": "🔚 Финал. Завершение цикла, фиксация прибыли."
+}
 
-def get_planet_data(t):
+def get_nakshatra(lon):
+    idx = int(lon / (360/27)) % 27
+    names = list(GOLD_STRATEGIES.keys())
+    return names[idx]
+
+def get_planet_data(t, eph):
     planets = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 
                'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     res = []
     for name, obj in planets.items():
         lon = (eph['earth'].at(t).observe(obj).ecliptic_latlon()[1].degrees - LAHIRI_AYANAMSA) % 360
-        res.append({'Planet': name, 'Lon': lon, 'Deg': round(lon % 30, 4), 'IsGandanta': check_gandanta(lon)})
+        res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     df.index += 1
-    roles = ['AK', 'AmK', 'BK', 'MK', 'PK', 'GK', 'DK']
-    df['Role'] = [roles[i] + (" ⚠️ Узел" if df.iloc[i]['IsGandanta'] else "") for i in range(len(roles))]
+    df['Role'] = ['AK', 'AmK', 'BK', 'MK', 'PK', 'GK', 'DK']
     return df
 
-def format_info(row):
-    nak = NAKSHATRAS[int(row['Lon'] / (360/27)) % 27]
-    sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
-    return f"{row['Planet']} ({sign}, {nak})"
-
-# --- ИНТЕРФЕЙС ---
-st_autorefresh(interval=1000, key="global_refresh")
-
-tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План для Юли"])
+# Вкладки интерфейса
+tab1, tab2 = st.tabs(["📊 Прямой эфир (Real-time)", "📅 Координация с Юлей (Неделя)"])
 
 with tab1:
-    now = datetime.utcnow() + timedelta(hours=3)
-    t_now = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute, now.second)
-    df = get_planet_data(t_now)
+    placeholder = st.empty()
+    ts = load.timescale()
+    eph = load('de421.bsp')
     
-    st.subheader(f"🕒 Время Сочи: {now.strftime('%H:%M:%S')}")
-    st.table(df[['Role', 'Planet', 'Deg']])
-    
-    st.markdown("---")
-    st.subheader("🚀 Ближайшая ротация")
-    
-    # Считаем ротацию (без кеша, чтобы не было "затыка")
-    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    for m in range(1, 1440):
-        t_f = ts.utc(now.year, now.month, now.day, now.hour-3, now.minute + m)
-        df_f = get_planet_data(t_f)
-        if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-            st.success(f"📅 Смена через {m} мин: **{(now + timedelta(minutes=m)).strftime('%H:%M')}**")
-            c1, c2 = st.columns(2)
-            with c1: st.info(f"🔵 АК: {format_info(df_f.iloc[0])}")
-            with c2: st.warning(f"🟡 AmK: {format_info(df_f.iloc[1])}")
-            break
+    while True:
+        now = datetime.utcnow() + timedelta(hours=3)
+        t_now = ts.utc(now.year, now.month, now.day, now.hour, now.minute, now.second)
+        df = get_planet_data(t_now, eph)
+        ak, amk = df.iloc[0], df.iloc[1]
+        ak_nak = get_nakshatra(ak['Lon'])
+        
+        with placeholder.container():
+            st.write(f"### 🕒 Сочи: {now.strftime('%H:%M:%S')}")
+            
+            # Таблица
+            df_view = df.copy()
+            df_view['Знак'] = df_view['Lon'].apply(lambda x: ZODIAC_SIGNS[int(x/30)])
+            df_view['Накшатра'] = df_view['Lon'].apply(get_nakshatra)
+            st.table(df_view[['Role', 'Planet', 'Знак', 'Накшатра', 'Deg']])
+            
+            # Аналитика
+            st.subheader("🎙 Голос Звезд: Анализ XAU/USD")
+            st.info(f"**Атмакарака (Психология):** {ak['Planet']} в {ak_nak}. \n\n**Стратегия:** {GOLD_STRATEGIES[ak_nak]}")
+            st.warning(f"**Аматьякарака (Инструменты):** {amk['Planet']} помогает реализовать цели через энергию {get_nakshatra(amk['Lon'])}.")
+            
+        time.sleep(1)
 
 with tab2:
-    st.header("📅 План на неделю")
-    # Чтобы не грузить систему каждую секунду во время Эфира, план кешируется
-    @st.cache_data(ttl=3600)
-    def generate_plan():
-        now_ref = datetime.utcnow() + timedelta(hours=3)
-        start_mon = now_ref - timedelta(days=now_ref.weekday())
-        start_mon = start_mon.replace(hour=0, minute=0, second=0)
-        events, last_pair = [], ""
-        for h in range(0, 144): # 6 дней
-            base_time = start_mon + timedelta(hours=h)
-            t_w = ts.utc(base_time.year, base_time.month, base_time.day, base_time.hour-3, 0)
-            df_w = get_planet_data(t_w)
-            pair_key = f"{df_w.iloc[0]['Planet']}-{df_w.iloc[1]['Planet']}"
-            if pair_key != last_pair:
-                events.append({
-                    "Дата/Время": base_time.strftime("%d.%m %H:00"),
-                    "АК": format_info(df_w.iloc[0]),
-                    "AmK": format_info(df_w.iloc[1]),
-                    "Ганданта": "⚠️" if (df_w.iloc[0]['IsGandanta'] or df_w.iloc[1]['IsGandanta']) else "✅"
-                })
-                last_pair = pair_key
-        return pd.DataFrame(events)
-
-    df_yulia = generate_plan()
-    st.table(df_yulia)
-    components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px;'>🖨 ПЕЧАТЬ</button>")
+    st.subheader("Еженедельный план координации")
+    ts_w, eph_w = load.timescale(), load('de421.bsp')
+    base = datetime.utcnow() + timedelta(hours=3)
+    
+    weekly_data = []
+    for i in range(7):
+        d = base + timedelta(days=i)
+        tw = ts_w.utc(d.year, d.month, d.day, 12, 0)
+        dfw = get_planet_data(tw, eph_w)
+        akw, amkw = dfw.iloc[0], dfw.iloc[1]
+        nakw = get_nakshatra(akw['Lon'])
+        
+        weekly_data.append({
+            "Дата": d.strftime("%d.%m"),
+            "Пара AK/AmK": f"{akw['Planet']} / {amkw['Planet']}",
+            "Накшатра AK": nakw,
+            "Торговый контекст": GOLD_STRATEGIES[nakw],
+            "Прогноз Max/Юля": "________________"
+        })
+    
+    st.table(pd.DataFrame(weekly_data).set_index(pd.Index(range(1, 8))))
+    
+    components.html("""
+        <script>function printPage() { window.print(); }</script>
+        <button onclick="printPage()" style="width:100%; height:50px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">
+            🖨 ПЕЧАТЬ ПЛАНА (CTRL+P)
+        </button>
+    """, height=70)
