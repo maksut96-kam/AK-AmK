@@ -1,96 +1,49 @@
 import streamlit as st
-from flatlib import const
-from flatlib.chart import Chart
-from flatlib.datetime import Datetime
-from flatlib.geopos import Geopos
-import pandas as pd
+from skyfield.api import load, Topos
 from datetime import datetime, timedelta
+import pandas as pd
 
-# Настройки страницы
-st.set_page_config(page_title="AstroKarak Control", layout="wide", page_icon="🪐")
+st.set_page_config(page_title="Planetary Cycles Sochi", layout="wide")
 
-# Словарь иконок для наглядности
-PLANET_ICONS = {
-    'Sun': '☀️ Sun',
-    'Moon': '🌙 Moon',
-    'Mars': '🔴 Mars',
-    'Mercury': '☿️ Merc',
-    'Jupiter': '🤌 Jup',
-    'Venus': '♀️ Venus',
-    'Saturn': '🪐 Sat'
-}
+st.title("🛰 Расчет планетных циклов (v2.0)")
+st.write("Метод: Skyfield (Pure Python) — Стабильная сборка")
 
-def get_karakas(dt_obj, lat, lon):
-    d_str = dt_obj.strftime('%Y/%m/%d')
-    t_str = dt_obj.strftime('%H:%M')
-    dt = Datetime(d_str, t_str, '+00:00')
-    pos = Geopos(lat, lon)
-    # Используем Lahiri Ayanamsa по умолчанию
-    chart = Chart(dt, pos, ID=const.LIST_SEVEN_PLANETS, ayanamsa=const.AYAN_LAHIRI)
+# Настройки времени для Сочи
+UTC_OFFSET = 3 
+
+def get_planet_positions():
+    ts = load.timescale()
+    eph = load('de421.bsp')
+    planets = {
+        'Sun': eph['sun'],
+        'Moon': eph['moon'],
+        'Mars': eph['mars'],
+        'Mercury': eph['mercury'],
+        'Jupiter': eph['jupiter_barycenter'],
+        'Venus': eph['venus'],
+        'Saturn': eph['saturn_barycenter']
+    }
     
-    planets = []
-    for p_id in const.LIST_SEVEN_PLANETS:
-        p = chart.get(p_id)
-        planets.append({'Planet': p_id, 'Degrees': round(p.lon % 30, 4)})
+    now = datetime.now()
+    results = []
     
-    # Сортировка: самая высокая степень — Атмакарака
-    sorted_p = sorted(planets, key=lambda x: x['Degrees'], reverse=True)
-    return sorted_p[0], sorted_p[1]
+    for i in range(7):
+        check_date = now + timedelta(days=i)
+        t = ts.utc(check_date.year, check_date.month, check_date.day)
+        
+        day_data = {"Дата": check_date.strftime("%d.%m.%Y")}
+        for name, obj in planets.items():
+            astrometric = eph['earth'].at(t).observe(obj)
+            lat, lon, distance = astrometric.ecliptic_latlon()
+            day_data[name] = round(lon.degrees, 2)
+        results.append(day_data)
+        
+    return pd.DataFrame(results)
 
-# --- ИНТЕРФЕЙС ---
-st.title("🛰️ AstroKarak Control Panel v1.0")
-
-with st.sidebar:
-    st.header("Настройки системы")
-    lat = st.number_input("Широта", value=55.75)
-    lon = st.number_input("Долгота", value=37.62)
-    st.info("Данные рассчитываются на 00:00 UTC для каждой даты.")
-
-# Текущий расчет
-now = datetime.now()
-ak_now, amk_now = get_karakas(now, lat, lon)
-
-# Главные индикаторы (Metrics)
-col1, col2 = st.columns(2)
-col1.metric("Atmakaraka (AK)", PLANET_ICONS.get(ak_now['Planet'], ak_now['Planet']), f"{ak_now['Degrees']}°")
-col2.metric("Amatyakaraka (AmK)", PLANET_ICONS.get(amk_now['Planet'], amk_now['Planet']), f"{amk_now['Degrees']}°")
-
-st.divider()
-
-# Таблица на неделю
-st.subheader("📅 Прогноз смены позиций (7 дней)")
-
-data = []
-prev_ak, prev_amk = None, None
-
-for i in range(8):
-    date_check = now + timedelta(days=i)
-    ak, amk = get_karakas(date_check, lat, lon)
-    
-    # Пометка изменений (Change Detection)
-    ak_display = PLANET_ICONS.get(ak['Planet'], ak['Planet'])
-    amk_display = PLANET_ICONS.get(amk['Planet'], amk['Planet'])
-    
-    status = ""
-    if prev_ak and ak['Planet'] != prev_ak: status += "🔄 AK CHANGED "
-    if prev_amk and amk['Planet'] != prev_amk: status += "🔄 AmK CHANGED"
-    
-    data.append({
-        "Дата": date_check.strftime('%d.%m (%a)'),
-        "Atmakaraka": ak_display,
-        "AK Deg": ak['Degrees'],
-        "Amatyakaraka": amk_display,
-        "AmK Deg": amk['Degrees'],
-        "Событие": status
-    })
-    prev_ak, prev_amk = ak['Planet'], amk['Planet']
-
-df = pd.DataFrame(data)
-
-# Стилизация таблицы: подсвечиваем строки со сменой
-def highlight_changes(row):
-    return ['background-color: #1e3d33' if row['Событие'] != "" else '' for _ in row]
-
-st.table(df)
-
-st.caption("Система: 7 планет. Айанамша: Лахири. Расчет в реальном времени.")
+try:
+    df = get_planet_positions()
+    st.success(f"Часовой пояс: UTC+{UTC_OFFSET} (Сочи)")
+    st.table(df)
+    st.info("Это базовые координаты. Как только этот код 'взлетит', я добавлю расчет Карак (Атмакарака и др.).")
+except Exception as e:
+    st.error(f"Ошибка расчета: {e}")
