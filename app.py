@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import streamlit.components.v1 as components
 import math
-import os  # Исправлено: добавлен импорт для работы с файловой системой
+import os
 
 # 1. Системные настройки
 st.set_page_config(page_title="Julia Assistant Astro", layout="wide")
@@ -26,7 +26,6 @@ P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercu
 Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
 
 def get_dynamic_ayanamsa(t):
-    # T - столетия с эпохи J2000.0 на основе шкалы TT (Terrestrial Time)
     T = (t.tt - 2451545.0) / 36525.0
     return 23.856235 + (2.30142 * T) + (0.000139 * T**2)
 
@@ -108,11 +107,20 @@ components.html("""
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План на неделю"])
 
 with tab1:
-    now = datetime.utcnow()
-    t_now = ts.utc(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    # 2. КНОПКА ОБНОВЛЕНИЯ И ЖИВОЕ ВРЕМЯ
+    col_upd1, col_upd2 = st.columns([5, 1])
+    with col_upd2:
+        btn_refresh = st.button("🔄 Обновить")
+    
+    now_utc = datetime.utcnow()
+    sochi_now = now_utc + timedelta(hours=3)
+    
+    t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     df, ayan_val = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
     delta_t = t_now.delta_t
+
+    st.markdown(f"**📍 Данные построены на:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
 
     st.markdown(f"""
     <div style="background: #0D1B2A; border-left: 5px solid #1B263B; padding: 15px; border-radius: 10px; color: #E0E1DD; margin-bottom: 15px;">
@@ -123,43 +131,51 @@ with tab1:
 
     with st.expander(f"🔮 Айанамша Лахири: {format_deg_to_min(ayan_val)}", expanded=True):
         st.write(f"**Значение ΔT (Delta T):** {delta_t:.4f} сек.")
-        st.caption("""
-            **Служебная информация:** Расчет производится по шкале Terrestrial Time (t.tt). 
-            В отличие от гражданского времени (UTC), TT является равномерной шкалой небесной механики. 
-            ΔT — это разница между равномерным временем и временем, привязанным к вращению Земли. 
-            Это позволяет вычислить Айанамшу Лахири с учетом точной прецессии на текущую долю секунды.
-        """)
+        st.caption("Шкала TT (Terrestrial Time) используется для исключения погрешностей вращения Земли при расчете прецессии Лахири.")
     
+    # Таблица прямого эфира
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
-    
-    # Нумерация с 1
     df_v.index = range(1, len(df_v) + 1)
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
 
     st.markdown("---")
-    st.subheader("🔄 Мониторинг ротаций")
-    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     
+    # 1. ОФОРМЛЕНИЕ МОНИТОРИНГА РОТАЦИЙ
+    st.subheader("🔄 Мониторинг ротаций (Текущие и Смены)")
+    
+    # Визуализация текущих АК и AmK
+    c_cur1, c_cur2 = st.columns(2)
+    with c_cur1:
+        st.metric("💎 Текущая АК (Атма-карака)", get_full_info(df.iloc[0]))
+    with c_cur2:
+        st.metric("🥈 Текущая AmK (Аматья-карака)", get_full_info(df.iloc[1]))
+    
+    st.write("") # Отступ
+    
+    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     c1, c2 = st.columns(2)
-    for col, direct, label in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая", "➡️ Следующая"]):
+    for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая смена", "➡️ Следующая смена"], ["#415A77", "#778DA9"]):
         with col:
-            st.write(f"**{label}:**")
+            st.markdown(f"<h4 style='color:{color};'>{label}</h4>", unsafe_allow_html=True)
+            found = False
             for m in range(10, 2880, 10):
-                target = now + timedelta(minutes=m*direct)
+                target = now_utc + timedelta(minutes=m*direct)
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
                 df_t, _ = get_planet_data(t_t)
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
-                    st.write(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}")
-                    st.caption(f"AmK: {get_full_info(df_t.iloc[1])}")
+                    st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+                    st.write(f"**АК:** {get_full_info(df_t.iloc[0])}")
+                    st.write(f"**AmK:** {get_full_info(df_t.iloc[1])}")
+                    found = True
                     break
+            if not found: st.info("В ближайшие 48ч смен не найдено")
 
 with tab2:
     st.header("Таймлайн на неделю")
-    if st.button('Сгенерировать план'):
+    if st.button('🗓 Сгенерировать план'):
         ref = datetime.utcnow() + timedelta(hours=3)
         start = ref - timedelta(days=ref.weekday()); start = start.replace(hour=0, minute=0)
         events, last_pair = [], ""
