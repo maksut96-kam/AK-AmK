@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import streamlit.components.v1 as components
 import math
+import os  # Исправлено: добавлен импорт для работы с файловой системой
 
 # 1. Системные настройки
 st.set_page_config(page_title="Julia Assistant Astro", layout="wide")
@@ -25,6 +26,7 @@ P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercu
 Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
 
 def get_dynamic_ayanamsa(t):
+    # T - столетия с эпохи J2000.0 на основе шкалы TT (Terrestrial Time)
     T = (t.tt - 2451545.0) / 36525.0
     return 23.856235 + (2.30142 * T) + (0.000139 * T**2)
 
@@ -71,26 +73,27 @@ def get_full_info(row):
 
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
 with col_l2:
-    if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
+    if os.path.exists("logo.png"): 
+        st.image("logo.png", use_container_width=True)
 
-# ТЕМНЫЙ ДИНАМИЧЕСКИЙ ГРАДИЕНТ (Доп 3)
+# ТЕМНЫЙ ДИНАМИЧЕСКИЙ ГРАДИЕНТ
 st.markdown("""
 <style>
     @keyframes dark-glow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     .julia-title {
         text-align: center; margin-top: -10px; margin-bottom: 25px; font-weight: 800; font-size: 3.2em;
-        background: linear-gradient(270deg, #1A237E, #4B0082, #006064, #311B92);
+        background: linear-gradient(270deg, #0D1B2A, #1B263B, #415A77, #0D1B2A);
         background-size: 400% 400%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        animation: dark-glow 12s ease infinite;
+        animation: dark-glow 10s ease infinite;
     }
 </style>
 <h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
 
 components.html("""
-    <div style="background: linear-gradient(90deg, #0d0d1a, #1a1a2e); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #311B92;">
-        <h2 id="clock" style="margin:0; color:#9575CD; letter-spacing: 2px;">Загрузка...</h2>
-        <p style="margin:0; color:#5C6BC0; font-size: 0.8em;">Sochi Astro-Coordination Time (UTC+3)</p>
+    <div style="background: linear-gradient(90deg, #050510, #0a0a20); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #1B263B;">
+        <h2 id="clock" style="margin:0; color:#415A77; letter-spacing: 2px;">Загрузка...</h2>
+        <p style="margin:0; color:#778DA9; font-size: 0.8em; text-transform: uppercase;">Sochi Astro-Coordination Time (UTC+3)</p>
     </div>
     <script>
         function updateClock() {
@@ -109,25 +112,22 @@ with tab1:
     t_now = ts.utc(now.year, now.month, now.day, now.hour, now.minute, now.second)
     df, ayan_val = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
-    
-    # Расчет Дельты Т (Доп 1)
     delta_t = t_now.delta_t
 
     st.markdown(f"""
-    <div style="background: #1a1a2e; border-left: 5px solid #4B0082; padding: 15px; border-radius: 10px; color: #E0E0E0; margin-bottom: 15px;">
-        <h3 style="margin:0; color: #9575CD;">{l_icon} Лунный цикл</h3>
+    <div style="background: #0D1B2A; border-left: 5px solid #1B263B; padding: 15px; border-radius: 10px; color: #E0E1DD; margin-bottom: 15px;">
+        <h3 style="margin:0; color: #778DA9;">{l_icon} Лунный цикл</h3>
         <p style="margin:5px 0;"><b>Титхи:</b> {tithi} сутки | <b>Статус:</b> {l_status}</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Виджет Айанамши со служебной инфой (Доп 1)
     with st.expander(f"🔮 Айанамша Лахири: {format_deg_to_min(ayan_val)}", expanded=True):
-        st.write(f"**Значение ΔT:** {delta_t:.4f} сек.")
+        st.write(f"**Значение ΔT (Delta T):** {delta_t:.4f} сек.")
         st.caption("""
-            **Служебная информация:** Айанамша рассчитывается на базе шкалы Terrestrial Time (t.tt). 
-            В отличие от UTC, шкала TT является равномерной и используется в небесной механике для устранения погрешностей, 
-            связанных с замедлением вращения Земли. 
-            Формула: прецессия Лахири от эпохи J2000.0, скорректированная на текущее положение земной оси.
+            **Служебная информация:** Расчет производится по шкале Terrestrial Time (t.tt). 
+            В отличие от гражданского времени (UTC), TT является равномерной шкалой небесной механики. 
+            ΔT — это разница между равномерным временем и временем, привязанным к вращению Земли. 
+            Это позволяет вычислить Айанамшу Лахири с учетом точной прецессии на текущую долю секунды.
         """)
     
     df_v = df.copy()
@@ -135,7 +135,7 @@ with tab1:
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
     
-    # Нумерация с 1 (Доп 2)
+    # Нумерация с 1
     df_v.index = range(1, len(df_v) + 1)
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
 
