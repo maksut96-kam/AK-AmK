@@ -139,7 +139,7 @@ with tab1:
         Переменная **$T$** — это столетия с эпохи J2000.0. Для точности нам нужно значение **t.tt**, которое дает «чистую» шкалу без погрешностей вращения Земли.
 
         ### 3. Как это работает в твоем коде?
-        Когда мы пишем `T = (t.tt - 2451545.0) / 36525.0`, мы используем «сверхточные космические часы». Без шкалы TT расчет был бы менее точным (погрешность около 70 секунд), что критично для координат планет в долгосроке.
+        Когда мы пишем `T = (t.tt - 2451545.0) / 36525.0`, мы используем «сверхточные космические часы».
         """)
     
     df_v = df.copy()
@@ -174,16 +174,20 @@ with tab2:
     st.header("📅 Поиск точных периодов АК/AmK")
     st.write("Настройте временной интервал (точность расчета — 1 минута).")
     
+    # Использование session_state для стабильности выбора
+    if 'start_dt' not in st.session_state: st.session_state.start_dt = datetime.now()
+    if 'end_dt' not in st.session_state: st.session_state.end_dt = datetime.now() + timedelta(days=3)
+
     col_date1, col_date2 = st.columns(2)
     with col_date1:
-        start_date = st.date_input("С (дата)", datetime.now().date())
-        start_time = st.time_input("С (время)", datetime.now().time())
+        s_d = st.date_input("С (дата)", st.session_state.start_dt.date(), key="s_date")
+        s_t = st.time_input("С (время)", st.session_state.start_dt.time(), key="s_time", step=60)
     with col_date2:
-        end_date = st.date_input("ПО (дата)", (datetime.now() + timedelta(days=3)).date())
-        end_time = st.time_input("ПО (время)", datetime.now().time())
+        e_d = st.date_input("ПО (дата)", st.session_state.end_dt.date(), key="e_date")
+        e_t = st.time_input("ПО (время)", st.session_state.end_dt.time(), key="e_time", step=60)
 
-    dt_start_local = datetime.combine(start_date, start_time)
-    dt_end_local = datetime.combine(end_date, end_time)
+    dt_start_local = datetime.combine(s_d, s_t)
+    dt_end_local = datetime.combine(e_d, e_t)
 
     if st.button('🚀 Рассчитать таблицу переходов'):
         if dt_start_local >= dt_end_local:
