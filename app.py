@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import streamlit.components.v1 as components
 import math
+import os
 
 # 1. Системные настройки
 st.set_page_config(page_title="Julia Assistant Astro", layout="wide")
@@ -20,6 +21,7 @@ ts, eph = init_engine()
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 
+# Управители накшатр
 NAK_LORDS = [
     "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий",
     "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий",
@@ -39,7 +41,8 @@ Z_ICONS = {
 
 def get_dynamic_ayanamsa(t):
     T = (t.tt - 2451545.0) / 36525.0
-    return 23.856235 + (2.30142 * T) + (0.000139 * T**2)
+    ayan = 23.856235 + (2.30142 * T) + (0.000139 * T**2)
+    return ayan
 
 def format_deg_to_min(deg_float):
     d = int(deg_float)
@@ -50,38 +53,52 @@ def format_deg_to_min(deg_float):
 def get_planet_data(t):
     current_ayan = get_dynamic_ayanamsa(t)
     earth = eph['earth']
+    
     planets_objects = {
         'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 
         'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 
         'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']
     }
+    
     res = []
+    # Основные 7 планет
     for name, obj in planets_objects.items():
         lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
     
-    lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
+    # Раху (Mean Rahu - расчет через положение Луны)
+    lat, lon, distance = earth.at(t).observe(eph['moon']).ecliptic_latlon()
     ra_lon = (lon.degrees - current_ayan + 180) % 360 
+    # В Джйотише для Чара-карак градус Раху часто инвертируют (30 - градус)
     res.append({'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': 30 - (ra_lon % 30)}) 
     
+    # Сортировка для Чара-карак (AK, AmK и т.д.)
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'PK', 'GK', 'DK']
     df['Role'] = roles[:len(df)]
     
+    # Кету (справочно)
     ketu_lon = (ra_lon + 180) % 360
     ketu_row = pd.DataFrame([{'Planet': 'Ketu', 'Lon': ketu_lon, 'Deg': ketu_lon % 30, 'Role': '-'}])
     df = pd.concat([df, ketu_row], ignore_index=True)
+    
     return df, current_ayan
 
 def get_lunar_info(t):
     earth = eph['earth']
     s_lon = earth.at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees
     m_lon = earth.at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees
+    
     diff = (m_lon - s_lon) % 360
-    tithi = math.ceil(diff / 12) or 1
-    icon = ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(diff/45) % 8]
+    tithi_num = math.ceil(diff / 12)
+    if tithi_num <= 0: tithi_num = 1
+    
+    # Иконки фаз
+    icons = ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"]
+    phase_icon = icons[int(diff/45) % 8]
+    
     status = "Растущая (Шукла)" if diff < 180 else "Убывающая (Кришна)"
-    return tithi, status, icon
+    return tithi_num, status, phase_icon
 
 def get_full_info(row):
     nak_idx = int(row['Lon'] / (360/27)) % 27
@@ -94,17 +111,23 @@ def get_full_info(row):
 # --- ИНТЕРФЕЙС ---
 
 # Добавление ЛОГОТИПА
-logo_url = "http://googleusercontent.com/image_generation_content/0"
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
 with col_l2:
-    st.image(logo_url, use_container_width=True)
+    try:
+        # Пытаемся загрузить logo.png из корня репозитория
+        st.image("logo.png", use_container_width=True)
+    except FileNotFoundError:
+        st.warning("⚠️ Файл 'logo.png' не найден в репозитории. Пожалуйста, переименуйте ваш файл Gemini...png в logo.png на GitHub.")
+    except Exception as e:
+        st.error(f"Ошибка при загрузке логотипа: {e}")
 
 st.markdown("<h1 style='text-align: center; color: #6A5ACD; margin-top: -30px;'>Julia Assistant Astro Coordination Center</h1>", unsafe_allow_html=True)
 
+# Часы Сочи через HTML/JS
 components.html("""
-    <div style="background: linear-gradient(90deg, #1a1a2e, #16213e); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #6A5ACD;">
-        <h2 id="clock" style="margin:0; color:#E0E0E0; letter-spacing: 2px;">Загрузка...</h2>
-        <p style="margin:0; color:#888; font-size: 0.9em;">Sochi Astro-Coordination Time (UTC+3)</p>
+    <div style="background: linear-gradient(90deg, #1a1a2e, #16213e); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #6A5ACD; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+        <h2 id="clock" style="margin:0; color:#E0E0E0; letter-spacing: 2px; font-weight: bold;">Загрузка...</h2>
+        <p style="margin:0; color:#AAA; font-size: 0.9em; text-transform: uppercase; margin-top: 5px;">Sochi Astro-Coordination Time (UTC+3)</p>
     </div>
     <script>
         function updateClock() {
@@ -115,7 +138,7 @@ components.html("""
         }
         setInterval(updateClock, 1000); updateClock();
     </script>
-""", height=110)
+""", height=115)
 
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План на неделю"])
 
@@ -125,15 +148,17 @@ with tab1:
     df, ayan_val = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
 
+    # Виджет Луны
     st.markdown(f"""
     <div style="background: #fdfbff; border-left: 5px solid #6A5ACD; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-        <h3 style="margin:0; color: #4B0082;">{l_icon} Лунный цикл</h3>
-        <p style="font-size: 1.1em; margin: 5px 0;"><b>Титхи:</b> {tithi} сутки | <b>Статус:</b> {l_status}</p>
+        <h3 style="margin:0; color: #4B0082;">{l_icon} Статус Луны</h3>
+        <p style="font-size: 1.1em; margin: 5px 0;"><b>Титхи (Лун.сутки):</b> {tithi} | <b>Фаза:</b> {l_status}</p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.info(f"ℹ️ **Айанамша Лахири:** {format_deg_to_min(ayan_val)}")
+    st.info(f"🔮 **Айанамша Лахири (динамическая):** {format_deg_to_min(ayan_val)}")
     
+    # Основная таблица
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
     
@@ -144,12 +169,22 @@ with tab1:
     df_v['Накшатра (Лорд)'] = df_v['Lon'].apply(format_nak)
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
     
+    # Цветовая схема для таблицы (в стиле Венеры в Рыбах)
+    st.markdown("""
+        <style>
+            table.dataframe { border-collapse: collapse; border: 1px solid #6A5ACD; color: #333; }
+            table.dataframe thead th { background: linear-gradient(180deg, #f3f0ff, #e0e0ff); border-bottom: 2px solid #6A5ACD; text-align: left; }
+            table.dataframe tbody tr:nth-child(even) { background-color: #f8f8ff; }
+            table.dataframe td { padding: 8px; border: 1px solid #e0e0e0; }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра (Лорд)', 'Градус']])
 
     st.markdown("---")
-    st.subheader("🚀 Мониторинг ротаций (АК / AmK)")
+    st.subheader("🔄 Мониторинг ротаций (АК / AmK)")
     
-    # ИСПРАВЛЕННАЯ СТРОКА (NameError fix)
+    # fix NameError (ak_now, amk_now defined based on current time)
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     
     col1, col2 = st.columns(2)
@@ -157,10 +192,12 @@ with tab1:
     with col1:
         st.write("⬅️ **Предыдущая смена:**")
         found_prev = False
+        # Проверка каждые 10 минут на протяжении 48 часов (2880 минут)
         for m in range(1, 2880, 10):
             past_time = now - timedelta(minutes=m)
             t_p = ts.utc(past_time.year, past_time.month, past_time.day, past_time.hour, past_time.minute)
             df_p, _ = get_planet_data(t_p)
+            # Сравниваем АК и AmK
             if df_p.iloc[0]['Planet'] != ak_now or df_p.iloc[1]['Planet'] != amk_now:
                 st.warning(f"📅 {(past_time + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
                 st.write(f"**АК:** {get_full_info(df_p.iloc[0])}")
@@ -171,10 +208,12 @@ with tab1:
     with col2:
         st.write("➡️ **Следующая смена:**")
         found_next = False
+        # Проверка каждые 10 минут на протяжении 48 часов (2880 минут)
         for m in range(1, 2880, 10):
             future_time = now + timedelta(minutes=m)
             t_f = ts.utc(future_time.year, future_time.month, future_time.day, future_time.hour, future_time.minute)
             df_f, _ = get_planet_data(t_f)
+            # Сравниваем АК и AmK
             if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
                 st.success(f"📅 {(future_time + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
                 st.write(f"**АК:** {get_full_info(df_f.iloc[0])}")
