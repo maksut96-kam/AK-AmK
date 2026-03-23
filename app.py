@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import pandas as pd
 import streamlit.components.v1 as components
 import math
-import os
 
 # 1. Системные настройки
 st.set_page_config(page_title="Julia Assistant Astro", layout="wide")
@@ -20,43 +19,23 @@ ts, eph = init_engine()
 # --- Константы и Словари ---
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
+NAK_LORDS = ["Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"] * 3
 
-# Управители накшатр (в порядке от Ашвини до Ревати)
-NAK_LORDS = [
-    "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий",
-    "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий",
-    "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"
-]
-
-P_ICONS = {
-    'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 
-    'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 
-    'Saturn': '🪐 Sat', 'Rahu': '🐲 Rahu', 'Ketu': '🐍 Ketu'
-}
-Z_ICONS = {
-    "Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", 
-    "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", 
-    "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"
-}
+P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat', 'Rahu': '🐲 Rahu', 'Ketu': '🐍 Ketu'}
+Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
 
 def get_dynamic_ayanamsa(t):
     T = (t.tt - 2451545.0) / 36525.0
     return 23.856235 + (2.30142 * T) + (0.000139 * T**2)
 
 def format_deg_to_min(deg_float):
-    d = int(deg_float)
-    m = int((deg_float - d) * 60)
-    s = round((((deg_float - d) * 60) - m) * 60, 1)
+    d = int(deg_float); m = int((deg_float - d) * 60); s = round((((deg_float - d) * 60) - m) * 60, 2)
     return f"{d}° {m}' {s}\""
 
 def get_planet_data(t):
     current_ayan = get_dynamic_ayanamsa(t)
     earth = eph['earth']
-    planets_objects = {
-        'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 
-        'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 
-        'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']
-    }
+    planets_objects = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     res = []
     for name, obj in planets_objects.items():
         lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
@@ -69,10 +48,8 @@ def get_planet_data(t):
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'PK', 'GK', 'DK']
     df['Role'] = roles[:len(df)]
-    
     ketu_lon = (ra_lon + 180) % 360
-    ketu_row = pd.DataFrame([{'Planet': 'Ketu', 'Lon': ketu_lon, 'Deg': ketu_lon % 30, 'Role': '-'}])
-    df = pd.concat([df, ketu_row], ignore_index=True)
+    df = pd.concat([df, pd.DataFrame([{'Planet': 'Ketu', 'Lon': ketu_lon, 'Deg': ketu_lon % 30, 'Role': '-'}])], ignore_index=True)
     return df, current_ayan
 
 def get_lunar_info(t):
@@ -80,74 +57,50 @@ def get_lunar_info(t):
     s_lon = earth.at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees
     m_lon = earth.at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees
     diff = (m_lon - s_lon) % 360
-    tithi_num = math.ceil(diff / 12) or 1
-    phase_icon = ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(diff/45) % 8]
-    status = "Растущая (Шукла Пакша)" if diff < 180 else "Убывающая (Кришна Пакша)"
-    return tithi_num, status, phase_icon
+    tithi = math.ceil(diff / 12) or 1
+    icon = ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(diff/45) % 8]
+    status = "Растущая (Шукла)" if diff < 180 else "Убывающая (Кришна)"
+    return tithi, status, icon
 
 def get_full_info(row):
     nak_idx = int(row['Lon'] / (360/27)) % 27
-    sign_name = ZODIAC_SIGNS[int(row['Lon'] / 30)]
-    p = row['Planet']
-    nak_name = NAKSHATRAS[nak_idx]
-    nak_lord = NAK_LORDS[nak_idx]
-    return f"{P_ICONS.get(p, p)} | {Z_ICONS.get(sign_name, sign_name)} | ☸️ {nak_name} ({nak_lord})"
+    sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
+    return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} | ☸️ {NAKSHATRAS[nak_idx]} ({NAK_LORDS[nak_idx]})"
 
 # --- ИНТЕРФЕЙС ---
 
-# Добавление ЛОГОТИПА
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
 with col_l2:
-    try:
-        # Пытаемся загрузить logo.png из корня репозитория
-        # Важно: В Streamlit Cloud это должно быть именно "logo.png" (маленькими буквами)
-        st.image("logo.png", use_container_width=True)
-    except FileNotFoundError:
-        st.warning("⚠️ Файл 'logo.png' не найден в репозитории. Пожалуйста, убедитесь, что ваш переименованный файл лежит в корне GitHub.")
-    except Exception as e:
-        st.error(f"Ошибка при загрузке логотипа: {e}")
+    if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
 
-# ОБНОВЛЕННЫЙ СТИЛЬ ЗАГОЛОВКА: Динамический переливающийся градиент (Доп 3)
+# ТЕМНЫЙ ДИНАМИЧЕСКИЙ ГРАДИЕНТ (Доп 3)
 st.markdown("""
 <style>
-    @keyframes gradient-shine {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
+    @keyframes dark-glow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     .julia-title {
-        text-align: center;
-        margin-top: -15px;
-        margin-bottom: 30px;
-        font-weight: bold;
-        font-size: 3em;
-        /* Переливающийся градиент: Фиолетовый -> Бирюзовый -> Жемчужный */
-        background: linear-gradient(270deg, #6A5ACD, #40E0D0, #E0FFFF, #6A5ACD);
-        background-size: 800% 800%;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: gradient-shine 15s ease infinite;
+        text-align: center; margin-top: -10px; margin-bottom: 25px; font-weight: 800; font-size: 3.2em;
+        background: linear-gradient(270deg, #1A237E, #4B0082, #006064, #311B92);
+        background-size: 400% 400%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        animation: dark-glow 12s ease infinite;
     }
 </style>
 <h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
 
-# Часы Сочи через HTML/JS
 components.html("""
-    <div style="background: linear-gradient(90deg, #1a1a2e, #16213e); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #6A5ACD; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-        <h2 id="clock" style="margin:0; color:#E0E0E0; letter-spacing: 2px; font-weight: bold;">Загрузка...</h2>
-        <p style="margin:0; color:#AAA; font-size: 0.9em; text-transform: uppercase; margin-top: 5px;">Sochi Astro-Coordination Time (UTC+3)</p>
+    <div style="background: linear-gradient(90deg, #0d0d1a, #1a1a2e); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #311B92;">
+        <h2 id="clock" style="margin:0; color:#9575CD; letter-spacing: 2px;">Загрузка...</h2>
+        <p style="margin:0; color:#5C6BC0; font-size: 0.8em;">Sochi Astro-Coordination Time (UTC+3)</p>
     </div>
     <script>
         function updateClock() {
-            let d = new Date();
-            let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+            let d = new Date(); let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
             let sochi = new Date(utc + (3600000 * 3));
             document.getElementById('clock').innerHTML = sochi.toLocaleTimeString('ru-RU');
         }
         setInterval(updateClock, 1000); updateClock();
     </script>
-""", height=115)
+""", height=110)
 
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План на неделю"])
 
@@ -156,142 +109,68 @@ with tab1:
     t_now = ts.utc(now.year, now.month, now.day, now.hour, now.minute, now.second)
     df, ayan_val = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
+    
+    # Расчет Дельты Т (Доп 1)
+    delta_t = t_now.delta_t
 
-    # Виджет Луны
     st.markdown(f"""
-    <div style="background: #fdfbff; border-left: 5px solid #6A5ACD; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-        <h3 style="margin:0; color: #4B0082;">{l_icon} Статус Луны</h3>
-        <p style="font-size: 1.1em; margin: 5px 0;"><b>Титхи (Лун.сутки):</b> {tithi} | <b>Фаза:</b> {l_status}</p>
+    <div style="background: #1a1a2e; border-left: 5px solid #4B0082; padding: 15px; border-radius: 10px; color: #E0E0E0; margin-bottom: 15px;">
+        <h3 style="margin:0; color: #9575CD;">{l_icon} Лунный цикл</h3>
+        <p style="margin:5px 0;"><b>Титхи:</b> {tithi} сутки | <b>Статус:</b> {l_status}</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Виджет Айанамши (Доп 1: Служебная информация)
-    st.markdown(f"""
-        <style>
-            .ayan-box {{
-                background-color: #f0f8ff; /* AliceBlue */
-                border-left: 5px solid #6A5ACD;
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 10px;
-            }}
-            .ayan-title {{
-                color: #4B0082;
-                margin-top: 0;
-            }}
-            .ayan-value {{
-                font-size: 1.2em;
-                font-weight: bold;
-                color: #333;
-            }}
-            .ayan-service {{
-                font-size: 0.9em;
-                color: #666;
-                margin-top: 5px;
-            }}
-        </style>
-        <div class="ayan-box">
-            <h4 class="ayan-title">🔮 Айанамша Лахири (динамическая):</h4>
-            <span class="ayan-value">{format_deg_to_min(ayan_val)}</span>
-            <div class="ayan-service">Расчет: прецессия от эпохи J2000.0 (стандарт Лахири) с коррекцией на текущую эпоху t.tt</div>
-        </div>
-    """, unsafe_allow_html=True)
+    # Виджет Айанамши со служебной инфой (Доп 1)
+    with st.expander(f"🔮 Айанамша Лахири: {format_deg_to_min(ayan_val)}", expanded=True):
+        st.write(f"**Значение ΔT:** {delta_t:.4f} сек.")
+        st.caption("""
+            **Служебная информация:** Айанамша рассчитывается на базе шкалы Terrestrial Time (t.tt). 
+            В отличие от UTC, шкала TT является равномерной и используется в небесной механике для устранения погрешностей, 
+            связанных с замедлением вращения Земли. 
+            Формула: прецессия Лахири от эпохи J2000.0, скорректированная на текущее положение земной оси.
+        """)
     
-    # Основная таблица
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
-    
-    def format_nak(lon):
-        idx = int(lon / (360/27)) % 27
-        return f"{NAKSHATRAS[idx]} ({NAK_LORDS[idx]})"
-    
-    df_v['Накшатра (Лорд)'] = df_v['Lon'].apply(format_nak)
+    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
     
-    # ПРИМЕНЕНИЕ НУМЕРАЦИИ С 1 (Доп 2)
-    df_v.index = df_v.index + 1
-    
-    # Цветовая схема для таблицы (в стиле Венеры в Рыбах)
-    st.markdown("""
-        <style>
-            table.dataframe { border-collapse: collapse; border: 1px solid #6A5ACD; color: #333; width: 100%; }
-            table.dataframe thead th { background: linear-gradient(180deg, #f3f0ff, #e0e0ff); border-bottom: 2px solid #6A5ACD; text-align: left; }
-            table.dataframe tbody tr:nth-child(even) { background-color: #f8f8ff; }
-            table.dataframe td { padding: 8px; border: 1px solid #e0e0e0; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Используем st.dataframe для лучшего форматирования, чем st.table
-    st.dataframe(df_v[['Role', 'Planet', 'Знак', 'Накшатра (Лорд)', 'Градус']], use_container_width=True)
+    # Нумерация с 1 (Доп 2)
+    df_v.index = range(1, len(df_v) + 1)
+    st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
 
     st.markdown("---")
-    st.subheader("🔄 Мониторинг ротаций (АК / AmK)")
-    
-    # ИСПРАВЛЕННАЯ СТРОКА (fix NameError from previous step)
+    st.subheader("🔄 Мониторинг ротаций")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.write("⬅️ **Предыдущая смена:**")
-        found_prev = False
-        # Проверка каждые 10 минут на протяжении 48 часов (2880 минут)
-        for m in range(1, 2880, 10):
-            past_time = now - timedelta(minutes=m)
-            t_p = ts.utc(past_time.year, past_time.month, past_time.day, past_time.hour, past_time.minute)
-            df_p, _ = get_planet_data(t_p)
-            if df_p.iloc[0]['Planet'] != ak_now or df_p.iloc[1]['Planet'] != amk_now:
-                st.warning(f"📅 {(past_time + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                st.write(f"**АК:** {get_full_info(df_p.iloc[0])}")
-                st.write(f"**AmK:** {get_full_info(df_p.iloc[1])}")
-                found_prev = True; break
-        if not found_prev: st.write("Не найдено")
-
-    with col2:
-        st.write("➡️ **Следующая смена:**")
-        found_next = False
-        for m in range(1, 2880, 10):
-            future_time = now + timedelta(minutes=m)
-            t_f = ts.utc(future_time.year, future_time.month, future_time.day, future_time.hour, future_time.minute)
-            df_f, _ = get_planet_data(t_f)
-            if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-                st.success(f"📅 {(future_time + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                st.write(f"**АК:** {get_full_info(df_f.iloc[0])}")
-                st.write(f"**AmK:** {get_full_info(df_f.iloc[1])}")
-                found_next = True; break
-        if not found_next: st.write("Не найдено")
-
-    st.markdown("---")
-    st.info("💎 **Текущий активный период:**")
-    c_ak, c_amk = st.columns(2)
-    c_ak.metric("Текущая АК", get_full_info(df.iloc[0]))
-    c_amk.metric("Текущая AmK", get_full_info(df.iloc[1]))
+    c1, c2 = st.columns(2)
+    for col, direct, label in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая", "➡️ Следующая"]):
+        with col:
+            st.write(f"**{label}:**")
+            for m in range(10, 2880, 10):
+                target = now + timedelta(minutes=m*direct)
+                t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
+                df_t, _ = get_planet_data(t_t)
+                if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
+                    st.write(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}")
+                    st.caption(f"AmK: {get_full_info(df_t.iloc[1])}")
+                    break
 
 with tab2:
     st.header("Таймлайн на неделю")
-    @st.cache_data(ttl=3600)
-    def generate_plan():
+    if st.button('Сгенерировать план'):
         ref = datetime.utcnow() + timedelta(hours=3)
         start = ref - timedelta(days=ref.weekday()); start = start.replace(hour=0, minute=0)
         events, last_pair = [], ""
-        # Проверка каждый час на протяжении недели
-        for h in range(0, 168, 1):
+        for h in range(168):
             ct = start + timedelta(hours=h)
             t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, 0)
             df_w, _ = get_planet_data(t_w)
             pair = f"{df_w.iloc[0]['Planet']}/{df_w.iloc[1]['Planet']}"
             if pair != last_pair:
-                events.append({"Дата/Время": ct.strftime("%d.%m %H:00"), "АК": get_full_info(df_w.iloc[0]), "AmK": get_full_info(df_w.iloc[1])})
+                events.append({"Дата": ct.strftime("%d.%m %H:00"), "АК": get_full_info(df_w.iloc[0]), "AmK": get_full_info(df_w.iloc[1])})
                 last_pair = pair
-        return pd.DataFrame(events)
-
-    if st.button('Сгенерировать план'):
-        df_plan = generate_plan()
-        # Применение нумерации с 1 для плана
-        df_plan.index = df_plan.index + 1
-        st.dataframe(df_plan, use_container_width=True)
-        components.html("""
-        <script>function pr(){window.print();}</script>
-        <button onclick='pr()' style='width:100%; height:45px; background:linear-gradient(270deg, #6A5ACD, #40E0D0, #E0FFFF, #6A5ACD); background-size: 800% 800%; animation:gradient-shine 15s ease infinite; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size: 1.1em;'>🖨 ПЕЧАТЬ ПЛАНА</button>
-        <style>@keyframes gradient-shine { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }</style>
-        """, height=60)
+        df_p = pd.DataFrame(events)
+        df_p.index = range(1, len(df_p) + 1)
+        st.table(df_p)
