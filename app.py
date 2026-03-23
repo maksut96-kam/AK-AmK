@@ -20,6 +20,13 @@ ts, eph = init_engine()
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 
+# Управители накшатр (в порядке от Ашвини до Ревати)
+NAK_LORDS = [
+    "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий",
+    "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий",
+    "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"
+]
+
 P_ICONS = {
     'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 
     'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 
@@ -54,7 +61,6 @@ def get_planet_data(t):
         lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
     
-    # Раху (инвертированный градус для карак)
     lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
     ra_lon = (lon.degrees - current_ayan + 180) % 360 
     res.append({'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': 30 - (ra_lon % 30)}) 
@@ -82,7 +88,9 @@ def get_full_info(row):
     nak_idx = int(row['Lon'] / (360/27)) % 27
     sign_name = ZODIAC_SIGNS[int(row['Lon'] / 30)]
     p = row['Planet']
-    return f"{P_ICONS.get(p, p)} | {Z_ICONS.get(sign_name, sign_name)} | ☸️ {NAKSHATRAS[nak_idx]}"
+    nak_name = NAKSHATRAS[nak_idx]
+    nak_lord = NAK_LORDS[nak_idx]
+    return f"{P_ICONS.get(p, p)} | {Z_ICONS.get(sign_name, sign_name)} | ☸️ {nak_name} ({nak_lord})"
 
 # --- ИНТЕРФЕЙС ---
 st.markdown("<h1 style='text-align: center; color: #6A5ACD;'>✨ Julia Assistant Astro Coordination Center ✨</h1>", unsafe_allow_html=True)
@@ -122,9 +130,9 @@ with tab1:
     
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
-    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: NAKSHATRAS[int(x/(360/27)) % 27])
+    df_v['Накшатра (Лорд)'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27)) % 27]} ({NA_LORDS := NAK_LORDS[int(x/(360/27)) % 27]})")
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
-    st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
+    st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра (Лорд)', 'Градус']])
 
     st.markdown("---")
     st.subheader("🚀 Мониторинг ротаций (АК / AmK)")
