@@ -20,7 +20,6 @@ ts, eph = init_engine()
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 
-# Управители накшатр (в порядке от Ашвини до Ревати)
 NAK_LORDS = [
     "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий",
     "Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий",
@@ -93,12 +92,19 @@ def get_full_info(row):
     return f"{P_ICONS.get(p, p)} | {Z_ICONS.get(sign_name, sign_name)} | ☸️ {nak_name} ({nak_lord})"
 
 # --- ИНТЕРФЕЙС ---
-st.markdown("<h1 style='text-align: center; color: #6A5ACD;'>✨ Julia Assistant Astro Coordination Center ✨</h1>", unsafe_allow_html=True)
+
+# Добавление ЛОГОТИПА
+logo_url = "http://googleusercontent.com/image_generation_content/0"
+col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
+with col_l2:
+    st.image(logo_url, use_container_width=True)
+
+st.markdown("<h1 style='text-align: center; color: #6A5ACD; margin-top: -30px;'>Julia Assistant Astro Coordination Center</h1>", unsafe_allow_html=True)
 
 components.html("""
-    <div style="background: linear-gradient(90deg, #e0eafc, #cfdef3); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif;">
-        <h2 id="clock" style="margin:0; color:#4B0082;">Загрузка...</h2>
-        <p style="margin:0; color:#555;">Sochi Time (UTC+3)</p>
+    <div style="background: linear-gradient(90deg, #1a1a2e, #16213e); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #6A5ACD;">
+        <h2 id="clock" style="margin:0; color:#E0E0E0; letter-spacing: 2px;">Загрузка...</h2>
+        <p style="margin:0; color:#888; font-size: 0.9em;">Sochi Astro-Coordination Time (UTC+3)</p>
     </div>
     <script>
         function updateClock() {
@@ -120,8 +126,8 @@ with tab1:
     tithi, l_status, l_icon = get_lunar_info(t_now)
 
     st.markdown(f"""
-    <div style="background: #fffafa; border-left: 5px solid #6A5ACD; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-        <h3 style="margin:0;">{l_icon} Лунный цикл</h3>
+    <div style="background: #fdfbff; border-left: 5px solid #6A5ACD; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+        <h3 style="margin:0; color: #4B0082;">{l_icon} Лунный цикл</h3>
         <p style="font-size: 1.1em; margin: 5px 0;"><b>Титхи:</b> {tithi} сутки | <b>Статус:</b> {l_status}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -130,68 +136,17 @@ with tab1:
     
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
-    df_v['Накшатра (Лорд)'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27)) % 27]} ({NA_LORDS := NAK_LORDS[int(x/(360/27)) % 27]})")
+    
+    def format_nak(lon):
+        idx = int(lon / (360/27)) % 27
+        return f"{NAKSHATRAS[idx]} ({NAK_LORDS[idx]})"
+    
+    df_v['Накшатра (Лорд)'] = df_v['Lon'].apply(format_nak)
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
+    
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра (Лорд)', 'Градус']])
 
     st.markdown("---")
     st.subheader("🚀 Мониторинг ротаций (АК / AmK)")
     
-    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.write("⬅️ **Предыдущая смена:**")
-        found_prev = False
-        for m in range(1, 2880, 10):
-            past_time = now - timedelta(minutes=m)
-            t_p = ts.utc(past_time.year, past_time.month, past_time.day, past_time.hour, past_time.minute)
-            df_p, _ = get_planet_data(t_p)
-            if df_p.iloc[0]['Planet'] != ak_now or df_p.iloc[1]['Planet'] != amk_now:
-                st.warning(f"📅 {(past_time + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                st.write(f"**АК:** {get_full_info(df_p.iloc[0])}")
-                st.write(f"**AmK:** {get_full_info(df_p.iloc[1])}")
-                found_prev = True; break
-        if not found_prev: st.write("Не найдено")
-
-    with col2:
-        st.write("➡️ **Следующая смена:**")
-        found_next = False
-        for m in range(1, 2880, 10):
-            future_time = now + timedelta(minutes=m)
-            t_f = ts.utc(future_time.year, future_time.month, future_time.day, future_time.hour, future_time.minute)
-            df_f, _ = get_planet_data(t_f)
-            if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
-                st.success(f"📅 {(future_time + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                st.write(f"**АК:** {get_full_info(df_f.iloc[0])}")
-                st.write(f"**AmK:** {get_full_info(df_f.iloc[1])}")
-                found_next = True; break
-        if not found_next: st.write("Не найдено")
-
-    st.markdown("---")
-    st.info("💎 **Текущий активный период:**")
-    c_ak, c_amk = st.columns(2)
-    c_ak.metric("Текущая АК", get_full_info(df.iloc[0]))
-    c_amk.metric("Текущая AmK", get_full_info(df.iloc[1]))
-
-with tab2:
-    st.header("Таймлайн на неделю")
-    @st.cache_data(ttl=3600)
-    def generate_plan():
-        ref = datetime.utcnow() + timedelta(hours=3)
-        start = ref - timedelta(days=ref.weekday()); start = start.replace(hour=0, minute=0)
-        events, last_pair = [], ""
-        for h in range(0, 168, 1):
-            ct = start + timedelta(hours=h)
-            t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, 0)
-            df_w, _ = get_planet_data(t_w)
-            pair = f"{df_w.iloc[0]['Planet']}/{df_w.iloc[1]['Planet']}"
-            if pair != last_pair:
-                events.append({"Дата/Время": ct.strftime("%d.%m %H:00"), "АК": get_full_info(df_w.iloc[0]), "AmK": get_full_info(df_w.iloc[1])})
-                last_pair = pair
-        return pd.DataFrame(events)
-
-    if st.button('Сгенерировать план'):
-        df_plan = generate_plan(); df_plan.index += 1
-        st.table(df_plan)
-        components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#4CAF50; color:white; border:none; border-radius:10px; cursor:pointer;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=60)
+    ak_now, am
