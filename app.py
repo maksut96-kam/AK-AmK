@@ -85,6 +85,7 @@ st.markdown("""
         background-size: 400% 400%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         animation: dark-glow 10s ease infinite;
     }
+    .stMetric { background: #0D1B2A; border: 1px solid #1B263B; padding: 15px; border-radius: 10px; }
 </style>
 <h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
@@ -107,20 +108,18 @@ components.html("""
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План на неделю"])
 
 with tab1:
-    # 2. КНОПКА ОБНОВЛЕНИЯ И ЖИВОЕ ВРЕМЯ
     col_upd1, col_upd2 = st.columns([5, 1])
     with col_upd2:
-        btn_refresh = st.button("🔄 Обновить")
+        btn_refresh = st.button("🔄 Обновить данные")
     
     now_utc = datetime.utcnow()
     sochi_now = now_utc + timedelta(hours=3)
-    
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     df, ayan_val = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
     delta_t = t_now.delta_t
 
-    st.markdown(f"**📍 Данные построены на:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
+    st.markdown(f"**📍 Расчет на момент:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
 
     st.markdown(f"""
     <div style="background: #0D1B2A; border-left: 5px solid #1B263B; padding: 15px; border-radius: 10px; color: #E0E1DD; margin-bottom: 15px;">
@@ -129,11 +128,32 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander(f"🔮 Айанамша Лахири: {format_deg_to_min(ayan_val)}", expanded=True):
-        st.write(f"**Значение ΔT (Delta T):** {delta_t:.4f} сек.")
-        st.caption("Шкала TT (Terrestrial Time) используется для исключения погрешностей вращения Земли при расчете прецессии Лахири.")
+    with st.expander(f"🔮 Айанамша Лахири: {format_deg_to_min(ayan_val)} (Служебная информация)", expanded=False):
+        st.write(f"**Текущее значение ΔT (Delta T):** {delta_t:.4f} сек.")
+        st.markdown("""
+        ---
+        ### 1. Что это физически?
+        В обычной жизни мы используем **UTC** (всемирное координированное время). Но UTC — штука «грязная»: оно привязано к вращению Земли, которое замедляется, и в него периодически добавляют «високосные секунды».  
+        **TT (Terrestrial Time)** — это идеализированное, равномерное время. Оно не зависит от капризов вращения планеты и используется как основной аргумент в математических эфемеридах (таблицах положений планет).
+
+        ### 2. Почему это важно для Лахири?
+        Айанамша — это угол между точкой весеннего равноденствия (тропический зодиак) и точкой начала неподвижного зодиака (сидерический зодиак). Этот угол постоянно меняется из-за прецессии земной оси.  
+        В формуле, которую мы прописали в коде:  
+        $$23.856235 + (2.30142 \cdot T) + (0.000139 \cdot T^2)$$  
+        Переменная **$T$** — это количество столетий, прошедших с эпохи J2000.0.  
+        Чтобы найти это $T$, нам нужно знать точный момент времени.  
+        Именно значение **t.tt** дает ту самую «чистую» временную шкалу, которая позволяет вычислить положение земной оси в пространстве без погрешностей, вызванных неравномерным вращением Земли.
+
+        ### 3. Как это работает в твоем коде?
+        Когда мы пишем `T = (t.tt - 2451545.0) / 36525.0`:  
+        - **t.tt** — это текущий момент, выраженный в Юлианских датах по шкале Terrestrial Time.  
+        - **2451545.0** — это Юлианская дата начала эпохи J2000.0 (1 января 2000 года, полдень).  
+        - **36525.0** — количество дней в юлианском столетии.  
+
+        **Простыми словами:** t.tt — это «сверхточные космические часы», по которым мы определяем, на какой мизерный микрон сдвинулась Айанамша Лахири именно в ту секунду, когда вы открыли приложение. Без этого «TT» расчет был бы менее точным (разница составляла бы около 70 секунд времени, что в долгосрочной перспективе дает погрешность в координатах планет).  
+        Это своего рода **«золотой стандарт»** современной вычислительной астрологии.
+        """)
     
-    # Таблица прямого эфира
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
@@ -142,9 +162,7 @@ with tab1:
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
 
     st.markdown("---")
-    
-    # 1. ОФОРМЛЕНИЕ МОНИТОРИНГА РОТАЦИЙ
-    st.subheader("🔄 Мониторинг ротаций (Текущие и Смены)")
+    st.subheader("🔄 Мониторинг ротаций")
     
     # Визуализация текущих АК и AmK
     c_cur1, c_cur2 = st.columns(2)
@@ -152,9 +170,7 @@ with tab1:
         st.metric("💎 Текущая АК (Атма-карака)", get_full_info(df.iloc[0]))
     with c_cur2:
         st.metric("🥈 Текущая AmK (Аматья-карака)", get_full_info(df.iloc[1]))
-    
-    st.write("") # Отступ
-    
+
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     c1, c2 = st.columns(2)
     for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая смена", "➡️ Следующая смена"], ["#415A77", "#778DA9"]):
@@ -171,7 +187,7 @@ with tab1:
                     st.write(f"**AmK:** {get_full_info(df_t.iloc[1])}")
                     found = True
                     break
-            if not found: st.info("В ближайшие 48ч смен не найдено")
+            if not found: st.info("Смен в ближайшие 48ч не найдено")
 
 with tab2:
     st.header("Таймлайн на неделю")
