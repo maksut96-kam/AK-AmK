@@ -75,7 +75,6 @@ with col_l2:
     if os.path.exists("logo.png"): 
         st.image("logo.png", use_container_width=True)
 
-# ТЕМНЫЙ ДИНАМИЧЕСКИЙ ГРАДИЕНТ (Заголовок)
 st.markdown("""
 <style>
     @keyframes dark-glow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -85,7 +84,6 @@ st.markdown("""
         background-size: 400% 400%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         animation: dark-glow 10s ease infinite;
     }
-    /* Убрали фон из stMetric здесь */
 </style>
 <h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
@@ -105,12 +103,12 @@ components.html("""
     </script>
 """, height=110)
 
-tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 План на неделю"])
+tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Таймлайн"])
 
 with tab1:
     col_upd1, col_upd2 = st.columns([5, 1])
     with col_upd2:
-        btn_refresh = st.button("🔄 Обновить данные")
+        if st.button("🔄 Обновить данные"): st.rerun()
     
     now_utc = datetime.utcnow()
     sochi_now = now_utc + timedelta(hours=3)
@@ -133,25 +131,15 @@ with tab1:
         st.markdown("""
         ---
         ### 1. Что это физически?
-        В обычной жизни мы используем **UTC** (всемирное координированное время). Но UTC — штука «грязная»: оно привязано к вращению Земли, которое замедляется, и в него периодически добавляют «високосные секунды».  
-        **TT (Terrestrial Time)** — это идеализированное, равномерное время. Оно не зависит от капризов вращения планеты и используется как основной аргумент в математических эфемеридах (таблицах положений планет).
+        **TT (Terrestrial Time)** — это идеализированное, равномерное время. Оно не зависит от капризов вращения планеты и используется как основной аргумент в математических эфемеридах.
 
         ### 2. Почему это важно для Лахири?
-        Айанамша — это угол между точкой весеннего равноденствия (тропический зодиак) и точкой начала неподвижного зодиака (сидерический зодиак). Этот угол постоянно меняется из-за прецессии земной оси.  
-        В формуле, которую мы прописали в коде:  
+        Айанамша — это угол между точкой весеннего равноденствия и точкой начала неподвижного зодиака. Он меняется из-за прецессии. Формула:  
         $$23.856235 + (2.30142 \cdot T) + (0.000139 \cdot T^2)$$  
-        Переменная **$T$** — это количество столетий, прошедших с эпохи J2000.0.  
-        Чтобы найти это $T$, нам нужно знать точный момент времени.  
-        Именно значение **t.tt** дает ту самую «чистую» временную шкалу, которая позволяет вычислить положение земной оси в пространстве без погрешностей, вызванных неравномерным вращением Земли.
+        Переменная **$T$** — это столетия с эпохи J2000.0. Для точности нам нужно значение **t.tt**, которое дает «чистую» шкалу без погрешностей вращения Земли.
 
         ### 3. Как это работает в твоем коде?
-        Когда мы пишем `T = (t.tt - 2451545.0) / 36525.0`:  
-        - **t.tt** — это текущий момент, выраженный в Юлианских датах по шкале Terrestrial Time.  
-        - **2451545.0** — это Юлианская дата начала эпохи J2000.0 (1 января 2000 года, полдень).  
-        - **36525.0** — количество дней в юлианском столетии.  
-
-        **Простыми словами:** t.tt — это «сверхточные космические часы», по которым мы определяем, на какой мизерный микрон сдвинулась Айанамша Лахири именно в ту секунду, когда вы открыли приложение. Без этого «TT» расчет был бы менее точным (разница составляла бы около 70 секунд времени, что в долгосрочной перспективе дает погрешность в координатах планет).  
-        Это своего рода **«золотой стандарт»** современной вычислительной астрологии.
+        Когда мы пишем `T = (t.tt - 2451545.0) / 36525.0`, мы используем «сверхточные космические часы». Без шкалы TT расчет был бы менее точным (погрешность около 70 секунд), что критично для координат планет в долгосроке.
         """)
     
     df_v = df.copy()
@@ -163,46 +151,67 @@ with tab1:
 
     st.markdown("---")
     st.subheader("🔄 Мониторинг ротаций")
-    
-    # Визуализация текущих АК и AmK (без принудительного фона)
     c_cur1, c_cur2 = st.columns(2)
-    with c_cur1:
-        st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
-    with c_cur2:
-        st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
+    with c_cur1: st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
+    with c_cur2: st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
 
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     c1, c2 = st.columns(2)
     for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая смена", "➡️ Следующая смена"], ["#415A77", "#778DA9"]):
         with col:
-            st.markdown(f"<h4 style='color:{color}; border-bottom: 1px solid #eee; padding-bottom:5px;'>{label}</h4>", unsafe_allow_html=True)
-            found = False
+            st.markdown(f"<h4 style='color:{color}; border-bottom: 1px solid #eee;'>{label}</h4>", unsafe_allow_html=True)
             for m in range(10, 2880, 10):
                 target = now_utc + timedelta(minutes=m*direct)
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
                 df_t, _ = get_planet_data(t_t)
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
                     st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                    st.write(f"**АК:** {get_full_info(df_t.iloc[0])}")
-                    st.write(f"**AmK:** {get_full_info(df_t.iloc[1])}")
-                    found = True
+                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}")
+                    st.caption(f"AmK: {get_full_info(df_t.iloc[1])}")
                     break
-            if not found: st.info("Смен в ближайшие 48ч не найдено")
 
 with tab2:
-    st.header("Таймлайн на неделю")
-    if st.button('🗓 Сгенерировать план'):
-        ref = datetime.utcnow() + timedelta(hours=3)
-        start = ref - timedelta(days=ref.weekday()); start = start.replace(hour=0, minute=0)
-        events, last_pair = [], ""
-        for h in range(168):
-            ct = start + timedelta(hours=h)
-            t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, 0)
-            df_w, _ = get_planet_data(t_w)
-            pair = f"{df_w.iloc[0]['Planet']}/{df_w.iloc[1]['Planet']}"
-            if pair != last_pair:
-                events.append({"Дата": ct.strftime("%d.%m %H:00"), "АК": get_full_info(df_w.iloc[0]), "AmK": get_full_info(df_w.iloc[1])})
-                last_pair = pair
-        df_p = pd.DataFrame(events)
-        df_p.index = range(1, len(df_p) + 1)
-        st.table(df_p)
+    st.header("📅 Поиск точных периодов АК/AmK")
+    st.write("Настройте временной интервал (точность расчета — 1 минута).")
+    
+    col_date1, col_date2 = st.columns(2)
+    with col_date1:
+        start_date = st.date_input("С (дата)", datetime.now().date())
+        start_time = st.time_input("С (время)", datetime.now().time())
+    with col_date2:
+        end_date = st.date_input("ПО (дата)", (datetime.now() + timedelta(days=3)).date())
+        end_time = st.time_input("ПО (время)", datetime.now().time())
+
+    dt_start_local = datetime.combine(start_date, start_time)
+    dt_end_local = datetime.combine(end_date, end_time)
+
+    if st.button('🚀 Рассчитать таблицу переходов'):
+        if dt_start_local >= dt_end_local:
+            st.error("Дата начала должна быть раньше даты конца.")
+        else:
+            with st.spinner('Сканируем небесную сферу поминутно...'):
+                curr_utc = dt_start_local - timedelta(hours=3)
+                end_utc = dt_end_local - timedelta(hours=3)
+                events = []
+                
+                t_init = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
+                df_init, _ = get_planet_data(t_init)
+                last_pair = f"{df_init.iloc[0]['Planet']}/{df_init.iloc[1]['Planet']}"
+                
+                events.append({"Время (Сочи)": dt_start_local.strftime("%d.%m.%Y %H:%M"), "АК": get_full_info(df_init.iloc[0]), "AmK": get_full_info(df_init.iloc[1]), "Событие": "Начало отсчета"})
+
+                temp_utc = curr_utc
+                while temp_utc < end_utc:
+                    temp_utc += timedelta(minutes=1)
+                    t_step = ts.utc(temp_utc.year, temp_utc.month, temp_utc.day, temp_utc.hour, temp_utc.minute)
+                    df_step, _ = get_planet_data(t_step)
+                    new_pair = f"{df_step.iloc[0]['Planet']}/{df_step.iloc[1]['Planet']}"
+                    
+                    if new_pair != last_pair:
+                        events.append({"Время (Сочи)": (temp_utc + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "АК": get_full_info(df_step.iloc[0]), "AmK": get_full_info(df_step.iloc[1]), "Событие": "🔃 Смена ролей"})
+                        last_pair = new_pair
+                
+                df_res = pd.DataFrame(events)
+                df_res.index = range(1, len(df_res) + 1)
+                st.table(df_res)
+                st.download_button("💾 Скачать CSV", df_res.to_csv(index=False).encode('utf-8-sig'), "astro_schedule.csv")
