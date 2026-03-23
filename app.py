@@ -72,8 +72,8 @@ def get_full_info(row):
 def create_printable_html(df, title_period):
     rows_html = ""
     for _, row in df.iterrows():
-        rows_html += f"<tr><td style='border:1px solid #ddd;padding:10px;font-weight:bold;'>{row['Время (Сочи)']}</td><td style='border:1px solid #ddd;padding:10px;'><b>АК:</b> {row['АК']}<br><b>AmK:</b> {row['AmK']}</td><td style='border:1px solid #ddd;padding:10px;color:#eee;vertical-align:bottom;'>____________________</td></tr>"
-    return f"<html><body style='font-family:sans-serif;color:#333;padding:20px;'><div style='text-align:center;border-bottom:2px solid #1B263B;padding-bottom:10px;margin-bottom:20px;'><h1>Астрологический План</h1><p>Интервал: {title_period} | Сочи (UTC+3)</p></div><table style='width:100%;border-collapse:collapse;'><thead><tr style='background:#f8f9fa;'><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Дата и время</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Конфигурация</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Заметки</th></tr></thead><tbody>{rows_html}</tbody></table></body></html>"
+        rows_html += f"<tr><td style='border:1px solid #ddd;padding:12px;font-weight:bold;width:25%;'>{row['Время (Сочи)']}</td><td style='border:1px solid #ddd;padding:12px;'><b>АК:</b> {row['АК']}<br><b>AmK:</b> {row['AmK']}</td><td style='border:1px solid #ddd;padding:12px;color:#eee;vertical-align:bottom;width:30%;'>____________________</td></tr>"
+    return f"<html><body style='font-family:sans-serif;color:#333;padding:20px;'><div style='text-align:center;border-bottom:2px solid #1B263B;padding-bottom:10px;margin-bottom:20px;'><h1>Julia Assistant Astro Coordination Center</h1><p>План периодов: {title_period} | Сочи (UTC+3)</p></div><table style='width:100%;border-collapse:collapse;'><thead><tr style='background:#f8f9fa;'><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Дата и время</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Конфигурация (АК/AmK)</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Заметки</th></tr></thead><tbody>{rows_html}</tbody></table></body></html>"
 
 # --- ИНТЕРФЕЙС ---
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
@@ -85,7 +85,7 @@ st.markdown("""
     @keyframes dark-glow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     .julia-title { text-align: center; margin-top: -10px; margin-bottom: 25px; font-weight: 800; font-size: 3.2em; background: linear-gradient(270deg, #0D1B2A, #1B263B, #415A77, #0D1B2A); background-size: 400% 400%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: dark-glow 10s ease infinite; }
 </style>
-<h1 class="julia-title">Julia Assistant Astro</h1>
+<h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
 
 components.html("""
@@ -122,8 +122,17 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander(f"🔮 Айанамша Лахири: {format_deg_to_min(ayan_val)} (Инфо)", expanded=False):
-        st.write(f"**Delta T:** {delta_t:.4f} сек. | Используется шкала t.tt для точности Лахири.")
+    with st.expander(f"🔮 Айанамша Лахири: {format_deg_to_min(ayan_val)} (Служебная информация)", expanded=False):
+        st.write(f"**Текущее значение ΔT (Delta T):** {delta_t:.4f} сек.")
+        st.markdown("""
+        ---
+        ### 1. Что это физически?
+        **TT (Terrestrial Time)** — это идеализированное, равномерное время. Оно не зависит от капризов вращения планеты и используется как основной аргумент в математических эфемеридах.
+        ### 2. Почему это важно для Лахири?
+        Айанамша меняется из-за прецессии. Формула:  
+        $$23.856235 + (2.30142 \cdot T) + (0.000139 \cdot T^2)$$  
+        Для точности нам нужно значение **t.tt**, которое дает «чистую» шкалу без погрешностей вращения Земли.
+        """)
 
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
@@ -154,17 +163,17 @@ with tab1:
                     break
 
 with tab2:
-    st.header("📅 Высокоточный планировщик")
+    st.header("📅 Высокоточный планировщик (1940-2050)")
     if 's_dt' not in st.session_state: st.session_state.s_dt = datetime.now()
     if 'e_dt' not in st.session_state: st.session_state.e_dt = datetime.now() + timedelta(days=2)
 
     c1, c2 = st.columns(2)
     with c1:
-        sd = st.date_input("С (дата)", st.session_state.s_dt.date(), min_value=datetime(1940, 1, 1), max_value=datetime(2050, 12, 31), key="sd_i")
-        st_t = st.time_input("С (время)", st.session_state.s_dt.time(), step=60, key="st_i")
+        sd = st.date_input("С (дата)", st.session_state.s_dt.date(), min_value=datetime(1940, 1, 1), max_value=datetime(2050, 12, 31), key="sd_tl")
+        st_t = st.time_input("С (время)", st.session_state.s_dt.time(), step=60, key="st_tl")
     with c2:
-        ed = st.date_input("ПО (дата)", st.session_state.e_dt.date(), min_value=datetime(1940, 1, 1), max_value=datetime(2050, 12, 31), key="ed_i")
-        et_t = st.time_input("ПО (время)", st.session_state.e_dt.time(), step=60, key="et_i")
+        ed = st.date_input("ПО (дата)", st.session_state.e_dt.date(), min_value=datetime(1940, 1, 1), max_value=datetime(2050, 12, 31), key="ed_tl")
+        et_t = st.time_input("ПО (время)", st.session_state.e_dt.time(), step=60, key="et_tl")
 
     dt_s, dt_e = datetime.combine(sd, st_t), datetime.combine(ed, et_t)
 
