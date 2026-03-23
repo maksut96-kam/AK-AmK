@@ -75,7 +75,7 @@ with col_l2:
     if os.path.exists("logo.png"): 
         st.image("logo.png", use_container_width=True)
 
-# ТЕМНЫЙ ДИНАМИЧЕСКИЙ ГРАДИЕНТ
+# ТЕМНЫЙ ДИНАМИЧЕСКИЙ ГРАДИЕНТ (Заголовок)
 st.markdown("""
 <style>
     @keyframes dark-glow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -85,7 +85,7 @@ st.markdown("""
         background-size: 400% 400%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         animation: dark-glow 10s ease infinite;
     }
-    .stMetric { background: #0D1B2A; border: 1px solid #1B263B; padding: 15px; border-radius: 10px; }
+    /* Убрали фон из stMetric здесь */
 </style>
 <h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
@@ -122,8 +122,8 @@ with tab1:
     st.markdown(f"**📍 Расчет на момент:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
 
     st.markdown(f"""
-    <div style="background: #0D1B2A; border-left: 5px solid #1B263B; padding: 15px; border-radius: 10px; color: #E0E1DD; margin-bottom: 15px;">
-        <h3 style="margin:0; color: #778DA9;">{l_icon} Лунный цикл</h3>
+    <div style="background: #f8f9fa; border-left: 5px solid #1B263B; padding: 15px; border-radius: 10px; color: #333; margin-bottom: 15px; border: 1px solid #dee2e6;">
+        <h3 style="margin:0; color: #1B263B;">{l_icon} Лунный цикл</h3>
         <p style="margin:5px 0;"><b>Титхи:</b> {tithi} сутки | <b>Статус:</b> {l_status}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -164,18 +164,18 @@ with tab1:
     st.markdown("---")
     st.subheader("🔄 Мониторинг ротаций")
     
-    # Визуализация текущих АК и AmK
+    # Визуализация текущих АК и AmK (без принудительного фона)
     c_cur1, c_cur2 = st.columns(2)
     with c_cur1:
-        st.metric("💎 Текущая АК (Атма-карака)", get_full_info(df.iloc[0]))
+        st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
     with c_cur2:
-        st.metric("🥈 Текущая AmK (Аматья-карака)", get_full_info(df.iloc[1]))
+        st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
 
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     c1, c2 = st.columns(2)
     for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая смена", "➡️ Следующая смена"], ["#415A77", "#778DA9"]):
         with col:
-            st.markdown(f"<h4 style='color:{color};'>{label}</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='color:{color}; border-bottom: 1px solid #eee; padding-bottom:5px;'>{label}</h4>", unsafe_allow_html=True)
             found = False
             for m in range(10, 2880, 10):
                 target = now_utc + timedelta(minutes=m*direct)
