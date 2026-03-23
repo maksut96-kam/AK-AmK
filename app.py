@@ -149,4 +149,63 @@ with tab1:
     st.markdown("---")
     st.subheader("🚀 Мониторинг ротаций (АК / AmK)")
     
-    ak_now, am
+    # ИСПРАВЛЕННАЯ СТРОКА (NameError fix)
+    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
+    
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.write("⬅️ **Предыдущая смена:**")
+        found_prev = False
+        for m in range(1, 2880, 10):
+            past_time = now - timedelta(minutes=m)
+            t_p = ts.utc(past_time.year, past_time.month, past_time.day, past_time.hour, past_time.minute)
+            df_p, _ = get_planet_data(t_p)
+            if df_p.iloc[0]['Planet'] != ak_now or df_p.iloc[1]['Planet'] != amk_now:
+                st.warning(f"📅 {(past_time + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+                st.write(f"**АК:** {get_full_info(df_p.iloc[0])}")
+                st.write(f"**AmK:** {get_full_info(df_p.iloc[1])}")
+                found_prev = True; break
+        if not found_prev: st.write("Не найдено")
+
+    with col2:
+        st.write("➡️ **Следующая смена:**")
+        found_next = False
+        for m in range(1, 2880, 10):
+            future_time = now + timedelta(minutes=m)
+            t_f = ts.utc(future_time.year, future_time.month, future_time.day, future_time.hour, future_time.minute)
+            df_f, _ = get_planet_data(t_f)
+            if df_f.iloc[0]['Planet'] != ak_now or df_f.iloc[1]['Planet'] != amk_now:
+                st.success(f"📅 {(future_time + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+                st.write(f"**АК:** {get_full_info(df_f.iloc[0])}")
+                st.write(f"**AmK:** {get_full_info(df_f.iloc[1])}")
+                found_next = True; break
+        if not found_next: st.write("Не найдено")
+
+    st.markdown("---")
+    st.info("💎 **Текущий активный период:**")
+    c_ak, c_amk = st.columns(2)
+    c_ak.metric("Текущая АК", get_full_info(df.iloc[0]))
+    c_amk.metric("Текущая AmK", get_full_info(df.iloc[1]))
+
+with tab2:
+    st.header("Таймлайн на неделю")
+    @st.cache_data(ttl=3600)
+    def generate_plan():
+        ref = datetime.utcnow() + timedelta(hours=3)
+        start = ref - timedelta(days=ref.weekday()); start = start.replace(hour=0, minute=0)
+        events, last_pair = [], ""
+        for h in range(0, 168, 1):
+            ct = start + timedelta(hours=h)
+            t_w = ts.utc(ct.year, ct.month, ct.day, ct.hour-3, 0)
+            df_w, _ = get_planet_data(t_w)
+            pair = f"{df_w.iloc[0]['Planet']}/{df_w.iloc[1]['Planet']}"
+            if pair != last_pair:
+                events.append({"Дата/Время": ct.strftime("%d.%m %H:00"), "АК": get_full_info(df_w.iloc[0]), "AmK": get_full_info(df_w.iloc[1])})
+                last_pair = pair
+        return pd.DataFrame(events)
+
+    if st.button('Сгенерировать план'):
+        df_plan = generate_plan(); df_plan.index += 1
+        st.table(df_plan)
+        components.html("<script>function pr(){window.print();}</script><button onclick='pr()' style='width:100%; height:45px; background:#6A5ACD; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;'>🖨 ПЕЧАТЬ ПЛАНА</button>", height=60)
