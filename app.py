@@ -80,9 +80,9 @@ def get_lunar_info(t):
 
 def get_full_info(row):
     nak_idx = int(row['Lon'] / (360/27)) % 27
-    sign_idx = int(row['Lon'] / 30)
+    sign_name = ZODIAC_SIGNS[int(row['Lon'] / 30)]
     p = row['Planet']
-    return f"{P_ICONS.get(p, p)} | {Z_ICONS[sign_idx]} | ☸️ {NAKSHATRAS[nak_idx]}"
+    return f"{P_ICONS.get(p, p)} | {Z_ICONS.get(sign_name, sign_name)} | ☸️ {NAKSHATRAS[nak_idx]}"
 
 # --- ИНТЕРФЕЙС ---
 st.markdown("<h1 style='text-align: center; color: #6A5ACD;'>✨ Julia Assistant Astro Coordination Center ✨</h1>", unsafe_allow_html=True)
@@ -111,7 +111,6 @@ with tab1:
     df, ayan_val = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
 
-    # Красивый виджет Луны
     st.markdown(f"""
     <div style="background: #fffafa; border-left: 5px solid #6A5ACD; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
         <h3 style="margin:0;">{l_icon} Лунный цикл</h3>
@@ -122,7 +121,7 @@ with tab1:
     st.info(f"ℹ️ **Айанамша Лахири:** {format_deg_to_min(ayan_val)}")
     
     df_v = df.copy()
-    df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[int(x/30)])
+    df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: NAKSHATRAS[int(x/(360/27)) % 27])
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
@@ -145,7 +144,7 @@ with tab1:
                 st.write(f"**АК:** {get_full_info(df_p.iloc[0])}")
                 st.write(f"**AmK:** {get_full_info(df_p.iloc[1])}")
                 found_prev = True; break
-        if not found_prev: st.write("Не найдено в пределах 48ч")
+        if not found_prev: st.write("Не найдено")
 
     with col2:
         st.write("➡️ **Следующая смена:**")
@@ -159,7 +158,7 @@ with tab1:
                 st.write(f"**АК:** {get_full_info(df_f.iloc[0])}")
                 st.write(f"**AmK:** {get_full_info(df_f.iloc[1])}")
                 found_next = True; break
-        if not found_next: st.write("Не найдено в пределах 48ч")
+        if not found_next: st.write("Не найдено")
 
     st.markdown("---")
     st.info("💎 **Текущий активный период:**")
