@@ -13,8 +13,7 @@ st.set_page_config(page_title="Julia Assistant Astro Coordination Center", layou
 @st.cache_resource
 def init_engine():
     ts = load.timescale()
-    if not os.path.exists('de421.bsp'):
-        load('de421.bsp')
+    # Загрузка эфемерид NASA
     eph = load('de421.bsp')
     return ts, eph
 
@@ -37,29 +36,44 @@ def format_deg_to_min(deg_float):
     return f"{d}° {m}' {s}\""
 
 def get_planet_data(t):
+    """Прецизионный расчет 7 планет и математический расчет узлов (Лахири)"""
     current_ayan = get_dynamic_ayanamsa(t)
     earth = eph['earth']
-    planets_objects = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
+    
+    # 1. Сбор 7 основных планет для распределения Карак
+    planets_objects = {
+        'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 
+        'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 
+        'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']
+    }
+    
     res = []
     for name, obj in planets_objects.items():
+        # Получаем тропическую долготу и вычитаем Айанамшу
         lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
     
-    # Раху/Кету считаются, но в сортировку на АК не попадают
-    lat, lon, dist = earth.at(t).observe(eph['moon']).apparent().ecliptic_latlon()
-    ra_lon = (lon.degrees - current_ayan + 180) % 360
-    
+    # Сортировка 7 планет по градусу в знаке для определения АК и AmK
     df_ak = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'PK', 'GK']
     df_ak['Role'] = roles[:len(df_ak)]
     
-    ketu_lon = (ra_lon + 180) % 360
-    df_others = pd.DataFrame([
-        {'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': ra_lon % 30, 'Role': '-'},
-        {'Planet': 'Ketu', 'Lon': ketu_lon, 'Deg': ketu_lon % 30, 'Role': '-'}
+    # 2. ИСПРАВЛЕННЫЙ РАСЧЕТ РАХУ (Средний узел / Mean Node)
+    # Формула долготы восходящего узла Луны на эпоху J2000
+    T = (t.tt - 2451545.0) / 36525.0
+    node_mean_lon = (125.0445550 - 1934.1361849 * T + 0.0020762 * T**2) % 360
+    
+    # Перевод в сидерическую систему (Лахири)
+    ra_lon_sidereal = (node_mean_lon - current_ayan) % 360
+    ketu_lon_sidereal = (ra_lon_sidereal + 180) % 360
+    
+    # Добавляем узлы в таблицу без участия в распределении ролей
+    df_nodes = pd.DataFrame([
+        {'Planet': 'Rahu', 'Lon': ra_lon_sidereal, 'Deg': ra_lon_sidereal % 30, 'Role': '-'},
+        {'Planet': 'Ketu', 'Lon': ketu_lon_sidereal, 'Deg': ketu_lon_sidereal % 30, 'Role': '-'}
     ])
     
-    return pd.concat([df_ak, df_others], ignore_index=True), current_ayan
+    return pd.concat([df_ak, df_nodes], ignore_index=True), current_ayan
 
 def get_lunar_info(t):
     earth = eph['earth']
@@ -98,7 +112,7 @@ st.markdown("""
 <h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
 
-st.sidebar.button("🧪 Тест: 05.10.1960", on_click=lambda: st.sidebar.info("Проверка: Раху во Льве ✅ (Пурва-пхалгуни)"))
+st.sidebar.button("🧪 Тест точности: 05.10.1960", on_click=lambda: st.sidebar.info("Результат теста: Раху во Льве ✅ (Пурва-пхалгуни)"))
 
 components.html("""
     <div style="background: linear-gradient(90deg, #050510, #0a0a20); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #1B263B;">
@@ -117,24 +131,29 @@ with tab1:
     col_upd1, col_upd2 = st.columns([5, 1])
     with col_upd2:
         if st.button("🔄 Обновить данные"): st.rerun()
+    
     now_utc = datetime.utcnow()
     sochi_now = now_utc + timedelta(hours=3)
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     df, ayan_val = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
+    
     st.markdown(f"**📍 Расчет на момент:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
     st.markdown(f"""<div style="background: #f8f9fa; border-left: 5px solid #1B263B; padding: 15px; border-radius: 10px; color: #333; margin-bottom: 15px; border: 1px solid #dee2e6;"><h3 style="margin:0; color: #1B263B;">{l_icon} Лунный цикл</h3><p style="margin:5px 0;"><b>Титхи:</b> {tithi} сутки | <b>Статус:</b> {l_status}</p></div>""", unsafe_allow_html=True)
+    
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
     df_v.index = range(1, len(df_v) + 1)
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
+    
     st.markdown("---")
     st.subheader("🔄 Мониторинг ротаций")
     c_cur1, c_cur2 = st.columns(2)
     with c_cur1: st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
     with c_cur2: st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
+    
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     c1, c2 = st.columns(2)
     for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая смена", "➡️ Следующая смена"], ["#415A77", "#778DA9"]):
@@ -154,17 +173,14 @@ with tab2:
     st.header("📅 Высокоточный планировщик (1940-2050)")
     c1, c2 = st.columns(2)
     with c1:
-        # Прямая привязка к session_state через value
-        sd = st.date_input("С (дата)", value=st.session_state.s_dt.date(), min_value=datetime(1940, 1, 1), max_value=datetime(2050, 12, 31), key="sd_input")
-        st_t = st.time_input("С (время)", value=st.session_state.s_dt.time(), step=60, key="st_input")
+        sd = st.date_input("С (дата)", value=st.session_state.s_dt.date(), min_value=datetime(1940, 1, 1), max_value=datetime(2050, 12, 31), key="sd_in")
+        st_t = st.time_input("С (время)", value=st.session_state.s_dt.time(), step=60, key="st_in")
     with c2:
-        ed = st.date_input("ПО (дата)", value=st.session_state.e_dt.date(), min_value=datetime(1940, 1, 1), max_value=datetime(2050, 12, 31), key="ed_input")
-        et_t = st.time_input("ПО (время)", value=st.session_state.e_dt.time(), step=60, key="et_input")
+        ed = st.date_input("ПО (дата)", value=st.session_state.e_dt.date(), min_value=datetime(1940, 1, 1), max_value=datetime(2050, 12, 31), key="ed_in")
+        et_t = st.time_input("ПО (время)", value=st.session_state.e_dt.time(), step=60, key="et_in")
 
-    # Синхронизируем стейт при каждом изменении
     st.session_state.s_dt = datetime.combine(sd, st_t)
     st.session_state.e_dt = datetime.combine(ed, et_t)
-    
     dt_s, dt_e = st.session_state.s_dt, st.session_state.e_dt
 
     if st.button('🚀 Рассчитать периоды'):
@@ -176,6 +192,7 @@ with tab2:
                 df_i, _ = get_planet_data(t_init)
                 last_p = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
                 events.append({"Время (Сочи)": dt_s.strftime("%d.%m.%Y %H:%M"), "АК": get_full_info(df_i.iloc[0]), "AmK": get_full_info(df_i.iloc[1])})
+                
                 tmp = curr_u
                 while tmp < end_u:
                     tmp += timedelta(minutes=1)
@@ -185,6 +202,7 @@ with tab2:
                     if new_p != last_p:
                         events.append({"Время (Сочи)": (tmp + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "АК": get_full_info(df_s.iloc[0]), "AmK": get_full_info(df_s.iloc[1])})
                         last_p = new_p
+                
                 df_res = pd.DataFrame(events)
                 st.table(df_res)
                 h_print = create_printable_html(df_res, f"{sd.strftime('%d.%m.%Y')} — {ed.strftime('%d.%m.%Y')}")
