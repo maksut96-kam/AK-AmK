@@ -1,9 +1,9 @@
 # ============================================================
-# ⛔ БЛОК 1: ФУНДАМЕНТ И ИМПОРТЫ (DO NOT TOUCH)
+# ⛔ БЛОК 1: ФУНДАМЕНТ И ИМПОРТЫ
 # ============================================================
 import streamlit as st
 from skyfield.api import load
-from datetime import datetime, timedelta, time  # Добавлено 'time' для планировщика
+from datetime import datetime, timedelta, time
 import pandas as pd
 import streamlit.components.v1 as components
 import math
@@ -20,14 +20,14 @@ def init_engine():
 
 ts, eph = init_engine()
 
-# --- СЛОВАРИ И КОНСТАНТЫ ---
+# --- СЛОВАРИ ---
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 NAK_LORDS = ["Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"] * 3
 P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat'}
 Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
 
-# --- ФУНКЦИИ ФОРМАТИРОВАНИЯ ---
+# --- ФУНКЦИИ ВСПОРЯДКА ---
 def format_deg_to_min(deg_float):
     d = int(deg_float); m = int((deg_float - d) * 60); s = round((((deg_float - d) * 60) - m) * 60, 2)
     return f"{d}° {m}' {s}\""
@@ -40,13 +40,12 @@ def get_full_info(row):
 def create_printable_html(df, title_period):
     rows_html = ""
     for _, row in df.iterrows():
-        rows_html += f"<tr><td style='border:1px solid #ddd;padding:12px;font-weight:bold;width:25%;'>{row['Время (Сочи)']}</td><td style='border:1px solid #ddd;padding:12px;'><b>АК:</b> {row['АК']}<br><b>AmK:</b> {row['AmK']}</td><td style='border:1px solid #ddd;padding:12px;color:#eee;vertical-align:bottom;width:30%;'>____________________</td></tr>"
-    return f"<html><body style='font-family:sans-serif;color:#333;padding:20px;'><div style='text-align:center;border-bottom:2px solid #1B263B;padding-bottom:10px;margin-bottom:20px;'><h1>Julia Assistant Astro Coordination Center</h1><p>План периодов: {title_period} | Сочи (UTC+3)</p></div><table style='width:100%;border-collapse:collapse;'><thead><tr style='background:#f8f9fa;'><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Дата и время</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Конфигурация (АК/AmK)</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Заметки</th></tr></thead><tbody>{rows_html}</tbody></table></body></html>"
+        rows_html += f"<tr><td style='border:1px solid #ddd;padding:12px;font-weight:bold;'>{row['Время (Сочи)']}</td><td style='border:1px solid #ddd;padding:12px;'><b>АК:</b> {row['АК']}<br><b>AmK:</b> {row['AmK']}</td><td style='border:1px solid #ddd;padding:12px;color:#eee;'>____________________</td></tr>"
+    return f"<html><body style='font-family:sans-serif;'><div style='text-align:center;'><h1>Julia Assistant Astro</h1><p>Период: {title_period}</p></div><table style='width:100%;border-collapse:collapse;'>{rows_html}</table></body></html>"
 
 # ============================================================
-# 🧮 БЛОК 3: МАТЕМАТИЧЕСКОЕ ЯДРО (РАСЧЕТЫ)
+# 🧮 БЛОК 3: МАТЕМАТИЧЕСКОЕ ЯДРО
 # ============================================================
-
 def get_dynamic_ayanamsa(t):
     T = (t.tt - 2451545.0) / 36525.0
     return 23.856235 + (2.30142 * T) + (0.000139 * T**2)
@@ -64,19 +63,13 @@ def get_lunar_info(t):
 def get_planet_data(t):
     current_ayan = get_dynamic_ayanamsa(t)
     earth = eph['earth']
-    planets_objects = {
-        'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 
-        'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 
-        'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']
-    }
+    planets_objects = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     res = []
     for name, obj in planets_objects.items():
         lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
-    
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     df['Role'] = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK'][:len(df)]
-    
     lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
     ra_lon = (lon.degrees - current_ayan + 180) % 360 
     ra_deg = 30 - (ra_lon % 30) 
@@ -102,19 +95,15 @@ def get_xau_storms(dt_start, days=45):
     return unique[:5]
 
 # ============================================================
-# 🖥️ БЛОК 4: ИНТЕРФЕЙСНЫЕ МОДУЛИ (ОТОБРАЖЕНИЕ)
+# 🖥️ БЛОК 4: ИНТЕРФЕЙСНЫЕ МОДУЛИ
 # ============================================================
-
-# --- 4.1 Модуль Раху ---
 def render_rahu_module(ra_deg, now_dt):
-    if ra_deg < 2 or ra_deg > 28: label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок крайне иррационален."
-    elif ra_deg < 5 or ra_deg > 25: label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны ложные сквизы."
+    if ra_deg < 2 or ra_deg > 28: label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок иррационален."
+    elif ra_deg < 5 or ra_deg > 25: label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Сквизы."
     else: label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
-
     st.markdown(f"""<div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44;">
         <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {label}</h3>
-        <p style="margin:5px 0;">{desc} (Текущий градус: <b>{ra_deg:.2f}°</b>)</p></div>""", unsafe_allow_html=True)
-
+        <p style="margin:5px 0;">{desc} (Градус: <b>{ra_deg:.2f}°</b>)</p></div>""", unsafe_allow_html=True)
     st.subheader("📡 Радар аномалий XAUUSD")
     c1, c2 = st.columns([1, 2])
     with c1:
@@ -123,25 +112,21 @@ def render_rahu_module(ra_deg, now_dt):
     with c2:
         storms = get_xau_storms(now_dt)
         if storms:
-            for s in storms: st.warning(f"**{s['Дата']}** — {s['Тип']} (Угол {s['Угол']})")
+            for s in storms: st.warning(f"**{s['Дата']}** — {s['Тип']} ({s['Угол']})")
         else: st.success("✅ Критических помех не обнаружено.")
 
-# --- 4.2 Модуль Луны ---
 def render_lunar_module(tithi, status, icon):
     st.markdown(f"### {icon} Лунный цикл: {tithi} сутки")
     st.info(f"Текущая фаза: **{status}**")
 
-# --- 4.3 Модуль Таблицы Карак ---
 def render_karakas_table(df):
     st.subheader("📊 Таблица Чара-карак")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS.get(ZODIAC_SIGNS[int(x/30)], "Неизв"))
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
-    df_v.index = range(1, len(df_v) + 1)
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
 
-# --- 4.4 Модуль Мониторинга ротаций ---
 def render_rotation_monitor(df, now_utc):
     st.subheader("🔄 Мониторинг ротаций")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
@@ -149,23 +134,20 @@ def render_rotation_monitor(df, now_utc):
     with c_m1: st.metric("💎 Текущая АК", get_full_info(df.iloc[0]))
     with c_m2: st.metric("🥈 Текущая AmK", get_full_info(df.iloc[1]))
     cols = st.columns(2)
-    settings = [(-1, "⬅️ Предыдущая смена", "#415A77"), (1, "➡️ Следующая смена", "#778DA9")]
-    for idx, (direct, label, color) in enumerate(settings):
+    for idx, (direct, label, color) in enumerate([(-1, "⬅️ Предыдущая", "#415A77"), (1, "➡️ Следующая", "#778DA9")]):
         with cols[idx]:
-            st.markdown(f"<h4 style='color:{color}; border-bottom:1px solid #eee;'>{label}</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='color:{color};'>{label}</h4>", unsafe_allow_html=True)
             for m in range(10, 2880, 10):
                 target = now_utc + timedelta(minutes=m*direct)
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
                 df_t, _, _ = get_planet_data(t_t)
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
                     st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}\n\nAmK: {get_full_info(df_t.iloc[1])}")
                     break
 
 # ============================================================
-# 🚀 СБОРКА ИНТЕРФЕЙС (ГЛАВНЫЙ ЦИКЛ)
+# 🚀 ГЛАВНЫЙ ЦИКЛ (MAIN)
 # ============================================================
-
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Планировщик"])
 
 with tab1:
@@ -174,7 +156,7 @@ with tab1:
     df, ra_lon, ra_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
 
-    # ВЫЗОВ МОДУЛЕЙ
+    # ВЫЗОВ МОДУЛЕЙ ПО ПОРЯДКУ
     render_rahu_module(ra_deg, now_utc)
     st.markdown("---")
     render_lunar_module(tithi, l_status, l_icon)
@@ -184,7 +166,7 @@ with tab1:
     render_rotation_monitor(df, now_utc)
 
 with tab2:
-    st.header("📅 Высокоточный планировщик ротаций")
+    st.header("📅 Высокоточный планировщик")
     c_p1, c_p2 = st.columns(2)
     with c_p1:
         d_s = st.date_input("Дата начала", value=datetime.now(), key="ds_p")
@@ -193,27 +175,22 @@ with tab2:
         d_e = st.date_input("Дата конца", value=datetime.now() + timedelta(days=3), key="de_p")
         t_e = st.time_input("Время конца", value=time(23, 59), key="te_p")
 
-    if st.button('🚀 Рассчитать и подготовить бланк'):
-        dt_start = datetime.combine(d_s, t_s)
-        dt_end = datetime.combine(d_e, t_e)
-        if dt_start < dt_end:
-            with st.spinner('Анализ циклов...'):
-                curr_utc, end_utc = dt_start - timedelta(hours=3), dt_end - timedelta(hours=3)
-                events = []
-                t_init = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
-                df_i, _, _ = get_planet_data(t_init)
-                last_pair = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
-                events.append({"Время (Сочи)": dt_start.strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_i.iloc[0]), "🥈 AmK": get_full_info(df_i.iloc[1])})
-                temp_time = curr_utc
-                while temp_time < end_utc:
-                    temp_time += timedelta(minutes=1)
-                    t_step = ts.utc(temp_time.year, temp_time.month, temp_time.day, temp_time.hour, temp_time.minute)
-                    df_step, _, _ = get_planet_data(t_step)
-                    new_pair = f"{df_step.iloc[0]['Planet']}/{df_step.iloc[1]['Planet']}"
-                    if new_pair != last_pair:
-                        events.append({"Время (Сочи)": (temp_time + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_step.iloc[0]), "🥈 AmK": get_full_info(df_step.iloc[1])})
-                        last_pair = new_pair
-                st.table(pd.DataFrame(events))
-                html_code = create_printable_html(pd.DataFrame(events), f"{d_s} - {d_e}")
-                b64 = base64.b64encode(html_code.encode()).decode()
-                st.markdown(f'<a href="data:text/html;base64,{b64}" download="astro_plan.html"><button style="width:100%; padding:10px; background-color:#1B263B; color:white; border:none; border-radius:5px;">📥 Скачать бланк для печати</button></a>', unsafe_allow_html=True)
+    if st.button('🚀 Рассчитать'):
+        dt_start, dt_end = datetime.combine(d_s, t_s), datetime.combine(d_e, t_e)
+        curr_utc, end_utc = dt_start - timedelta(hours=3), dt_end - timedelta(hours=3)
+        events = []
+        t_init = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
+        df_i, _, _ = get_planet_data(t_init)
+        last_pair = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
+        events.append({"Время (Сочи)": dt_start.strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_i.iloc[0]), "🥈 AmK": get_full_info(df_i.iloc[1])})
+        
+        temp_time = curr_utc
+        while temp_time < end_utc:
+            temp_time += timedelta(minutes=1)
+            t_step = ts.utc(temp_time.year, temp_time.month, temp_time.day, temp_time.hour, temp_time.minute)
+            df_step, _, _ = get_planet_data(t_step)
+            new_pair = f"{df_step.iloc[0]['Planet']}/{df_step.iloc[1]['Planet']}"
+            if new_pair != last_pair:
+                events.append({"Время (Сочи)": (temp_time + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_step.iloc[0]), "🥈 AmK": get_full_info(df_step.iloc[1])})
+                last_pair = new_pair
+        st.table(pd.DataFrame(events))
