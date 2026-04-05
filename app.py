@@ -77,9 +77,6 @@ def get_xau_storms(dt_start, days=45):
             unique.append(s); seen.add(s["Дата"])
     return unique[:5]
 
-def get_full_info(row):
-    sign = ZODIAC_SIGNS[int(row['Lon']/30)]
-    return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 NAK_SYMBOLS = {
     "Ашвини": "🐎", "Бхарани": "♈", "Криттика": "🔪", "Рохини": "🛒", "Мригашира": "🦌",
     "Аридра": "💧", "Пунарвасу": "🏹", "Пушья": "🐄", "Ашлеша": "🐍", "Магха": "🏰",
@@ -89,7 +86,6 @@ NAK_SYMBOLS = {
     "Уттара-бх": "👑", "Ревати": "🐟"
 }
 
-# Функция для красивого вывода полной инфо о планете
 def get_extended_info(row):
     sign_idx = int(row['Lon']/30)
     sign = ZODIAC_SIGNS[sign_idx]
@@ -133,7 +129,7 @@ st.iframe("""
 """, height=110)
 
 # ============================================================
-# ⛔ БЛОК 4: ОПЕРАТИВНЫЙ МОНИТОРИНГ (ПОЛНАЯ ВЕРСИЯ)
+# ⛔ БЛОК 4: ОПЕРАТИВНЫЙ МОНИТОРИНГ
 # ============================================================
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Планировщик"])
 
@@ -143,68 +139,55 @@ with tab1:
     df, ra_lon, ra_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_data(t_now)
     
-    # --- 1. ПОЛНЫЙ МОНИТОР РАХУ ---
+    # 1. ПОЛНЫЙ МОНИТОР РАХУ
     if ra_deg < 2 or ra_deg > 28: label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок крайне иррационален."
-    elif ra_deg < 5 or ra_deg > 25: label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны резкие сквизы."
-    else: label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ работает в штатном режиме."
+    elif ra_deg < 5 or ra_deg > 25: label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны сквизы."
+    else: label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
 
-    st.markdown(f"""
-        <div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44;">
-            <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {label}</h3>
-            <p style="margin:5px 0; color:#E0E1DD;">{desc} (Текущий градус: <b>{ra_deg:.2f}°</b>)</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44;">
+        <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {label}</h3>
+        <p style="margin:5px 0;">{desc} (Текущий градус: <b>{ra_deg:.2f}°</b>)</p></div>""", unsafe_allow_html=True)
     
-    # Радар давления (XAUUSD)
     c_r1, c_r2 = st.columns([1, 2])
     with c_r1:
         score = 100-(ra_deg*5) if ra_deg<10 else (ra_deg-20)*10 if ra_deg>20 else 5
-        st.write("**Давление Раху:**")
-        st.progress(min(max(int(score), 5), 100))
+        st.write("**Давление Раху:**"); st.progress(min(max(int(score), 5), 100))
     with c_r2:
         storms = get_xau_storms(now_utc)
-        if storms:
-            for s in storms: st.warning(f"**{s['Дата']}** — {s['Тип']} (Угол {s['Угол']})")
+        for s in storms: st.warning(f"**{s['Дата']}** — {s['Тип']} ({s['Угол']})")
 
     st.markdown("---")
 
-    # --- 2. БЛОК ЛУНЫ ---
-    col_l1, col_l2 = st.columns([1, 2])
-    with col_l1:
-        st.markdown(f"<h2 style='margin:0;'>{l_icon}</h2>", unsafe_allow_html=True)
-    with col_l2:
-        st.markdown(f"**Лунные сутки:** {tithi}")
-        st.info(f"Фаза: **{l_status}**")
+    # 2. БЛОК ЛУНЫ
+    st.markdown(f"### {l_icon} Лунный цикл: {tithi} сутки")
+    st.info(f"Текущая фаза: **{l_status}**")
 
     st.markdown("---")
 
-    # --- 3. ТЕКУЩИЕ РОТАЦИИ (АК И АМК) ---
-    st.subheader("🔄 Текущая конфигурация АК / AmK")
-    
-    ak_info = prepare_card_data(df.iloc[0])
-    amk_info = prepare_card_data(df.iloc[1])
+    # 3. КАРТОЧКИ АК И АМК
+    st.subheader("🔄 Текущая конфигурация ротаций")
+    ak_row = get_extended_info(df.iloc[0]) # Исправленное имя функции
+    amk_row = get_extended_info(df.iloc[1]) # Исправленное имя функции
     
     c_ak, c_amk = st.columns(2)
     with c_ak:
         st.markdown(f"""<div style="background:#0D1B2A; padding:20px; border-radius:10px; border-top: 4px solid #415A77; min-height:160px;">
-            <small style="color:#415A77; font-weight:bold; letter-spacing:1.2px;">💎 ATMAKARAKA (АК)</small><br>
-            <b style="font-size:1.6em; color:white;">{ak_info['name']}</b><br>
-            <code style="font-size:1.1em; color:#778DA9;">{ak_info['pos']}</code><br>
-            <div style="margin-top:10px; font-size:1em; color:#A9D6E5;">{ak_info['nak']}</div>
+            <small style="color:#415A77;">💎 ATMAKARAKA (АК)</small><br>
+            <b style="font-size:1.5em;">{ak_row['full_name']}</b><br>
+            <code>{ak_row['position']}</code><br>
+            <div style="font-size:0.9em; color:#A9D6E5; margin-top:8px;">{ak_row['nakshatra']}</div>
         </div>""", unsafe_allow_html=True)
-
     with c_amk:
         st.markdown(f"""<div style="background:#0D1B2A; padding:20px; border-radius:10px; border-top: 4px solid #778DA9; min-height:160px;">
-            <small style="color:#778DA9; font-weight:bold; letter-spacing:1.2px;">🥈 AMATYAKARAKA (AmK)</small><br>
-            <b style="font-size:1.6em; color:white;">{amk_info['name']}</b><br>
-            <code style="font-size:1.1em; color:#778DA9;">{amk_info['pos']}</code><br>
-            <div style="margin-top:10px; font-size:1em; color:#A9D6E5;">{amk_info['nak']}</div>
+            <small style="color:#778DA9;">🥈 AMATYAKARAKA (AmK)</small><br>
+            <b style="font-size:1.5em;">{amk_row['full_name']}</b><br>
+            <code>{amk_row['position']}</code><br>
+            <div style="font-size:0.9em; color:#A9D6E5; margin-top:8px;">{amk_row['nakshatra']}</div>
         </div>""", unsafe_allow_html=True)
 
-    # Визуальная шкала прогресса
+    # Шкала прогресса
     ak_n = df.iloc[0]['Planet']
     s_t, e_t = now_utc, now_utc
-    # Ищем границы
     for m in range(0, 2880, 10):
         t_c = ts.utc((now_utc - timedelta(minutes=m)).year, (now_utc - timedelta(minutes=m)).month, (now_utc - timedelta(minutes=m)).day, (now_utc - timedelta(minutes=m)).hour, (now_utc - timedelta(minutes=m)).minute)
         if get_planet_data(t_c)[0].iloc[0]['Planet'] != ak_n: s_t = now_utc - timedelta(minutes=m); break
@@ -216,18 +199,9 @@ with tab1:
     curr = (now_utc - s_t).total_seconds()
     val = min(max(curr/total, 0.0), 1.0) if total > 0 else 0.5
     
-    st.markdown(f"<p style='text-align:center; font-size:0.9em; margin:20px 0 -10px 0; color:#E0E1DD;'>Завершено: {int(val*100)}% текущей пары</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align:center; font-size:0.8em; margin:15px 0 -10px 0;'>Завершено: {int(val*100)}%</p>", unsafe_allow_html=True)
     st.progress(val)
-    st.caption(f"🏁 Старт: {(s_t + timedelta(hours=3)).strftime('%d.%m %H:%M')} | 🔚 Финиш: {(e_t + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-
-    st.markdown("---")
-    
-    # 4. ПОЛНАЯ ТАБЛИЦА (КОМПАКТНО ВНИЗУ)
-    with st.expander("📊 Посмотреть все 7 Чара-карак"):
-        df_v = df.copy()
-        df_v['Знак/Градус'] = df_v.apply(lambda r: f"{Z_ICONS[ZODIAC_SIGNS[int(r['Lon']/30)]]} {r['Deg']:.2f}°", axis=1)
-        df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAK_SYMBOLS.get(NAKSHATRAS[int(x/(360/27))%27], '✨')} {NAKSHATRAS[int(x/(360/27))%27]}")
-        st.dataframe(df_v[['Role', 'Planet', 'Знак/Градус', 'Накшатра']], width='stretch', hide_index=True)
+    st.caption(f"Начало: {(s_t + timedelta(hours=3)).strftime('%d.%m %H:%M')} | Конец: {(e_t + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
 # ============================================================
 # ⛔ БЛОК 5: ПЛАНИРОВЩИК (ВЫСОКОТОЧНЫЙ РАСЧЕТ)
 # ============================================================
