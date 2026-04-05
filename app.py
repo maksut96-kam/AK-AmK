@@ -109,11 +109,11 @@ def get_extended_info(row):
     return {
         "role_ru": ROLE_RU.get(row['Role'], row['Role']),
         "planet_full": P_FULL_NAMES.get(row['Planet'], row['Planet']),
-        "sign_full": f"{Z_ICONS.get(sign_name, '')} {sign_name}",
+        "sign_only": sign_name, # Только название: "Водолей"
+        "sign_icon": Z_ICONS.get(sign_name, ""), # Только иконка: "♒"
         "degree": f"{row['Deg']:.4f}°",
         "nak_full": f"{nak_name} ({NAK_LORDS[nak_idx]})",
         "nak_sym": NAK_SYMBOLS_DETAILED.get(nak_name, "✨")
-    }
 # ============================================================
 # ⛔ БЛОК 3: ШАПКА, ЛОГОТИП И ЧАСЫ
 # ============================================================
