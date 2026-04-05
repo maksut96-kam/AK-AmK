@@ -81,47 +81,41 @@ components.html("""
     </script>
 """, height=110)
 
-# ============================================================
-# ✅ БЛОК 3: EDITABLE AREA (РАСЧЕТЫ И ЛОГИКА)
-# ============================================================
-def get_planet_data(t):
-    current_ayan = get_dynamic_ayanamsa(t)
+# Вставь это в БЛОК 3. Добавлена функция поиска штормов для XAUUSD.
+def get_xau_storms(t_start, days=45):
+    storms = []
     earth = eph['earth']
-    planets_objects = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
-    res = []
-    for name, obj in planets_objects.items():
-        lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
-        res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
-    df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
-    roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
-    df['Role'] = roles[:len(df)]
+    # Берем текущую айанамшу для точности
+    ayan = get_dynamic_ayanamsa(t_start)
     
-    lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
-    ra_lon = (lon.degrees - current_ayan + 180) % 360 
-    ra_deg = 30 - (ra_lon % 30) 
-    return df, current_ayan, ra_lon, ra_deg
-
-def get_rahu_status(ra_deg):
-    if ra_deg < 2 or ra_deg > 28:
-        return "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты/Сандхи. Максимальный риск манипуляций."
-    elif ra_deg < 5 or ra_deg > 25:
-        return "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Рынок нестабилен. Эмоции доминируют над логикой."
-    else:
-        return "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ и уровни работают штатно."
-
-def get_rahu_forecast(start_t, days=30):
-    """Сканирует будущее на предмет смены статуса Раху"""
-    forecast = []
-    last_status = None
-    for d in range(days):
-        check_t = start_t + timedelta(days=d)
-        sky_t = ts.utc(check_t.year, check_t.month, check_t.day)
-        _, _, _, r_deg = get_planet_data(sky_t)
-        status, color, _ = get_rahu_status(r_deg)
-        if status != last_status:
-            forecast.append({"Дата": check_t.strftime("%d.%m.%Y"), "Статус": status, "color": color})
-            last_status = status
-    return forecast
+    for i in range(days):
+        check_date = t_start + timedelta(days=i)
+        t = ts.utc(check_date.year, check_date.month, check_date.day)
+        
+        # Позиция Солнца (Золото)
+        sun_lon = (earth.at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees - ayan) % 360
+        # Позиция Раху
+        _, _, ra_lon, ra_deg = get_planet_data(t)
+        
+        # Разность долгот
+        diff = abs(sun_lon - ra_lon) % 360
+        # Критические углы: 0 (соединение), 90 (квадрат), 180 (оппозиция)
+        for p in [0, 90, 180, 270]:
+            if abs(diff - p) < 3: # Орбис 3 градуса (зона влияния)
+                storms.append({
+                    "Дата": check_date.strftime("%d.%m"),
+                    "Тип": "⚠️ ШТОРМ" if p in [0, 180] else "⚡️ ВОЛАТИЛЬНОСТЬ",
+                    "Угол": f"{int(p)}°"
+                })
+                break
+    # Убираем дубликаты дат
+    seen = set()
+    unique_storms = []
+    for s in storms:
+        if s["Дата"] not in seen:
+            unique_storms.append(s)
+            seen.add(s["Дата"])
+    return unique_storms[:5] # Только ближайшие 5 событий
     
 # ============================================================
 # ✅ БЛОК 4: EDITABLE AREA (ВКЛАДКИ И ОТОБРАЖЕНИЕ)
@@ -133,55 +127,96 @@ with tab1:
     sochi_now = now_utc + timedelta(hours=3)
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     
-    # Получаем текущие данные
     df, ayan_val, rahu_lon, rahu_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
     
     st.markdown(f"**📍 Расчет на момент:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
 
-    # --- ВИДЖЕТ РАХУ ---
+    # --- НОВЫЙ РАДАР РАХУ ВМЕСТО ГРАФИКА ---
     ra_label, ra_color, ra_desc = get_rahu_status(rahu_deg)
+    
     st.markdown(f"""
-    <div style="background: {ra_color}22; border-left: 5px solid {ra_color}; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid {ra_color}44;">
+    <div style="background: {ra_color}22; border-left: 5px solid {ra_color}; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid {ra_color}44;">
         <h3 style="margin:0; color: {ra_color};">🐲 Монитор Раху: {ra_label}</h3>
-        <p style="margin:5px 0; font-size: 1.1em; color: #1B263B;">{ra_desc}</p>
-        <p style="margin:0; color: #d63384; font-weight: bold; font-size: 0.95em;">
-            ⚠️ Внимание: когда линия на графике ниже приближается к 0° (граница знака), 
-            в ближайшие дни золото может выдать любой финт, не поддающийся логике.
-        </p>
+        <p style="margin:5px 0;">{ra_desc} (Градус: {rahu_deg:.2f}°)</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- ИСПРАВЛЕННЫЙ ГРАФИК (БЕЗ ГРЕБЕНКИ) ---
-    st.subheader("📈 Тренд волатильности (Градус Раху в знаке)")
+    st.subheader("📡 Радар аномалий XAUUSD (Влияние на Золото)")
+    col_r1, col_r2 = st.columns([1, 2])
     
-    # Создаем чистый список данных для графика
-    chart_list = []
-    # Идем строго по порядку от -15 дней до +45 дней
-    for i in range(-15, 45):
-        target_date = now_utc + timedelta(days=i)
-        # Берем полдень для стабильности показаний
-        t_check = ts.utc(target_date.year, target_date.month, target_date.day, 12, 0)
-        _, _, _, r_deg = get_planet_data(t_check)
-        
-        chart_list.append({
-            "Дата_сорт": target_date, # Для правильной сортировки
-            "Дата": target_date.strftime("%d.%m"), 
-            "Градус Раху": round(r_deg, 2)
-        })
-    
-    # Превращаем в DataFrame и гарантируем порядок
-    df_chart = pd.DataFrame(chart_list).sort_values("Дата_сорт")
-    
-    # Отрисовка
-    st.line_chart(df_chart.set_index("Дата")["Градус Раху"], height=300)
-    st.caption("Раху движется ретроградно. Плавное снижение к 0° означает приближение к зоне турбулентности.")
+    with col_r1:
+        # Прогресс-бар "Давления" Раху
+        # Если Раху у границ знака (0 или 30), давление растет
+        risk_score = 100 - (rahu_deg * 5) if rahu_deg < 10 else (rahu_deg - 20) * 10 if rahu_deg > 20 else 5
+        st.write("**Фоновое давление:**")
+        st.progress(min(max(int(risk_score), 5), 100))
+        st.caption("Близость к 'Ганданте' (0° или 30°)")
 
-    # Календарь режимов
-    with st.expander("📅 Календарь смены режимов рынка (60 дней)"):
-        f_data = get_rahu_forecast(now_utc, 60)
-        for item in f_data:
-            st.markdown(f"**{item['Дата']}** — <span style='color:{item['color']}'>{item['Статус']}</span>", unsafe_allow_html=True)
+    with col_r2:
+        st.write("**Ближайшие дни 'Мутного Рынка':**")
+        storms = get_xau_storms(now_utc)
+        if storms:
+            for s in storms:
+                st.warning(f"**{s['Дата']}** — {s['Тип']} (Аспект {s['Угол']})")
+        else:
+            st.success("✅ В ближайшие 30 дней Раху не блокирует Солнце. Рынок техничен.")
 
+    st.info("💡 **Практическое применение:** В дни 'Шторма' Раху создает иллюзии. Золото может пробивать уровни на 100-200 пунктов и сразу возвращаться. Не торгуйте пробои, ждите подтверждения.")
+    
     st.markdown("---")
-    # Далее стандартная таблица АК/AmK и мониторинг...
+    
+    # Виджет Лунного цикла
+    st.markdown(f"### {l_icon} Лунный цикл: {tithi} сутки ({l_status})")
+
+    # Таблица Чара-карак
+    df_v = df.copy()
+    df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
+    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
+    df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
+    df_v.index = range(1, len(df_v) + 1)
+    st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
+
+    # Мониторинг ротаций
+    st.subheader("🔄 Мониторинг ротаций")
+    c_cur1, c_cur2 = st.columns(2)
+    with c_cur1: st.metric("💎 АК", get_full_info(df.iloc[0]))
+    with c_cur2: st.metric("🥈 AmK", get_full_info(df.iloc[1]))
+
+    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
+    c1, c2 = st.columns(2)
+    for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая", "➡️ Следующая"], ["#415A77", "#778DA9"]):
+        with col:
+            st.markdown(f"<h4 style='color:{color};'>{label}</h4>", unsafe_allow_html=True)
+            for m in range(10, 2880, 10):
+                target = now_utc + timedelta(minutes=m*direct)
+                t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
+                df_t, _, _, _ = get_planet_data(t_t)
+                if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
+                    st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+                    st.caption(f"АК: {get_full_info(df_t.iloc[0])} | AmK: {get_full_info(df_t.iloc[1])}")
+                    break
+
+with tab2:
+    # (Весь код планировщика из прошлого сообщения остается без изменений, 
+    #  просто убедись, что вызов функции там df_i, _, _, _ = get_planet_data(t_init))
+    st.header("📅 Высокоточный планировщик")
+    dt_s = datetime.combine(st.date_input("С", key="sd_tl"), st.time_input("С время", key="st_tl"))
+    dt_e = datetime.combine(st.date_input("ПО", key="ed_tl"), st.time_input("ПО время", key="et_tl"))
+    if st.button('🚀 Рассчитать бланк'):
+        with st.spinner('Синхронизация...'):
+            curr_u, end_u, events = dt_s - timedelta(hours=3), dt_e - timedelta(hours=3), []
+            t_init = ts.utc(curr_u.year, curr_u.month, curr_u.day, curr_u.hour, curr_u.minute)
+            df_i, _, _, _ = get_planet_data(t_init)
+            last_p = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
+            events.append({"Время (Сочи)": dt_s.strftime("%d.%m %H:%M"), "АК": get_full_info(df_i.iloc[0]), "AmK": get_full_info(df_i.iloc[1])})
+            tmp = curr_u
+            while tmp < end_u:
+                tmp += timedelta(minutes=1)
+                ts_step = ts.utc(tmp.year, tmp.month, tmp.day, tmp.hour, tmp.minute)
+                df_s, _, _, _ = get_planet_data(ts_step)
+                new_p = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
+                if new_p != last_p:
+                    events.append({"Время (Сочи)": (tmp + timedelta(hours=3)).strftime("%d.%m %H:%M"), "АК": get_full_info(df_s.iloc[0]), "AmK": get_full_info(df_s.iloc[1])})
+                    last_p = new_p
+            st.table(pd.DataFrame(events))
