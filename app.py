@@ -3,7 +3,7 @@
 # ============================================================
 import streamlit as st
 from skyfield.api import load
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time  # <--- ДОБАВЛЕНО 'time' ЗДЕСЬ
 import pandas as pd
 import streamlit.components.v1 as components
 import math
@@ -20,12 +20,14 @@ def init_engine():
 
 ts, eph = init_engine()
 
+# --- СЛОВАРИ И КОНСТАНТЫ ---
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 NAK_LORDS = ["Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"] * 3
 P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat'}
 Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
 
+# --- БАЗОВЫЕ ФУНКЦИИ РАСЧЕТА ---
 def get_dynamic_ayanamsa(t):
     T = (t.tt - 2451545.0) / 36525.0
     return 23.856235 + (2.30142 * T) + (0.000139 * T**2)
@@ -40,6 +42,7 @@ def get_lunar_info(t):
     m_lon = earth.at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees
     diff = (m_lon - s_lon) % 360
     tithi = math.ceil(diff / 12) or 1
+    # Исправленная логика иконок для твоего стиля
     icon = ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(diff/45) % 8]
     status = "Растущая (Шукла)" if diff < 180 else "Убывающая (Кришна)"
     return tithi, status, icon
@@ -49,12 +52,12 @@ def get_full_info(row):
     sign = ZODIAC_SIGNS[int(row['Lon'] / 30)]
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} | ☸️ {NAKSHATRAS[nak_idx]} ({NAK_LORDS[nak_idx]})"
 
+# --- ФУНКЦИЯ ПЕЧАТИ ---
 def create_printable_html(df, title_period):
     rows_html = ""
     for _, row in df.iterrows():
         rows_html += f"<tr><td style='border:1px solid #ddd;padding:12px;font-weight:bold;width:25%;'>{row['Время (Сочи)']}</td><td style='border:1px solid #ddd;padding:12px;'><b>АК:</b> {row['АК']}<br><b>AmK:</b> {row['AmK']}</td><td style='border:1px solid #ddd;padding:12px;color:#eee;vertical-align:bottom;width:30%;'>____________________</td></tr>"
     return f"<html><body style='font-family:sans-serif;color:#333;padding:20px;'><div style='text-align:center;border-bottom:2px solid #1B263B;padding-bottom:10px;margin-bottom:20px;'><h1>Julia Assistant Astro Coordination Center</h1><p>План периодов: {title_period} | Сочи (UTC+3)</p></div><table style='width:100%;border-collapse:collapse;'><thead><tr style='background:#f8f9fa;'><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Дата и время</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Конфигурация (АК/AmK)</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Заметки</th></tr></thead><tbody>{rows_html}</tbody></table></body></html>"
-
 # ============================================================
 # ⛔ БЛОК 2: DO NOT TOUCH (ШАПКА И ЛОГОТИП)
 # ============================================================
