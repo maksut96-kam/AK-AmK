@@ -77,27 +77,42 @@ def get_xau_storms(dt_start, days=45):
             unique.append(s); seen.add(s["Дата"])
     return unique[:5]
 
-NAK_SYMBOLS = {
-    "Ашвини": "🐎", "Бхарани": "♈", "Криттика": "🔪", "Рохини": "🛒", "Мригашира": "🦌",
-    "Аридра": "💧", "Пунарвасу": "🏹", "Пушья": "🐄", "Ашлеша": "🐍", "Магха": "🏰",
-    "Пурва-пх": "🛋️", "Уттара-пх": "🛌", "Хаста": "🖐️", "Читра": "💎", "Свати": "🌱",
-    "Вишакха": "⚖️", "Анурадха": "🌸", "Джьештха": "🛡️", "Мула": "🪵", "Пурва-аш": "🐘",
-    "Уттара-аш": "🐘", "Шравана": "👂", "Дхаништха": "🥁", "Шатабхиша": "⚪", "Пурва-бх": "⚔️",
-    "Уттара-бх": "👑", "Ревати": "🐟"
+# Дополненный справочник (название символа + эмодзи)
+NAK_SYMBOLS_DETAILED = {
+    "Ашвини": "Лошадь 🐎", "Бхарани": "Йони ♈", "Криттика": "Бритва 🔪", "Рохини": "Повозка 🛒", 
+    "Мригашира": "Олень 🦌", "Аридра": "Слеза 💧", "Пунарвасу": "Лук 🏹", "Пушья": "Вымя 🐄", 
+    "Ашлеша": "Змея 🐍", "Магха": "Трон 🏰", "Пурва-пх": "Гамак 🛋️", "Уттара-пх": "Кровать 🛌", 
+    "Хаста": "Кисть 🖐️", "Читра": "Алмаз 💎", "Свати": "Росток 🌱", "Вишакха": "Арка ⚖️", 
+    "Анурадха": "Цветок 🌸", "Джьештха": "Серьга 🛡️", "Мула": "Корень 🪵", "Пурва-аш": "Бивень 🐘", 
+    "Уттара-аш": "Бивень 🐘", "Шравана": "Ухо 👂", "Дхаништха": "Барабан 🥁", "Шатабхиша": "Круг ⚪", 
+    "Пурва-бх": "Мечи ⚔️", "Уттара-бх": "Близнецы 👑", "Ревати": "Рыба 🐟"
 }
 
-def get_extended_info(row):
+ROLE_RU = {
+    "AK": "АК (Атма-карака)", "AmK": "АмК (Аматья-карака)", "BK": "БК (Бхатри-карака)",
+    "MK": "МК (Матри-карака)", "PiK": "ПиК (Питри-карака)", "GK": "ГК (Гнати-карака)", "DK": "ДК (Дара-карака)"
+}
+
+# Полные названия планет
+P_FULL_NAMES = {
+    'Sun': '☀️ Солнце (Sun)', 'Moon': '🌙 Луна (Moon)', 'Mars': '🔴 Марс (Mars)', 
+    'Mercury': '☿️ Меркурий (Mercury)', 'Jupiter': '🔵 Юпитер (Jupiter)', 
+    'Venus': '♀️ Венера (Venus)', 'Saturn': '🪐 Сатурн (Saturn)'
+}
+
+def get_extended_info_v2(row):
     sign_idx = int(row['Lon']/30)
-    sign = ZODIAC_SIGNS[sign_idx]
+    sign_name = ZODIAC_SIGNS[sign_idx]
     nak_idx = int(row['Lon']/(360/27)) % 27
     nak_name = NAKSHATRAS[nak_idx]
-    nak_lord = NAK_LORDS[nak_idx]
-    symbol = NAK_SYMBOLS.get(nak_name, "✨")
     
     return {
-        "full_name": f"{P_ICONS.get(row['Planet'], row['Planet'])}",
-        "position": f"{Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°",
-        "nakshatra": f"{symbol} {nak_name} ({nak_lord})"
+        "role_ru": ROLE_RU.get(row['Role'], row['Role']),
+        "planet_full": P_FULL_NAMES.get(row['Planet'], row['Planet']),
+        "sign_full": f"{Z_ICONS.get(sign_name, '')} {sign_name}",
+        "degree": f"{row['Deg']:.4f}°",
+        "nak_full": f"{nak_name} ({NAK_LORDS[nak_idx]})",
+        "nak_sym": NAK_SYMBOLS_DETAILED.get(nak_name, "✨")
     }
 # ============================================================
 # ⛔ БЛОК 3: ШАПКА, ЛОГОТИП И ЧАСЫ
@@ -212,23 +227,44 @@ with tab1:
 
     st.markdown("---")
     
-   # --- 4. ПОЛНЫЙ СПИСОК КАРАК (ОБНОВЛЕННЫЙ) ---
-    with st.expander("📊 Посмотреть полный список всех 7 Чара-карак", expanded=False):
-        # Создаем расширенный набор данных для таблицы
-        full_karakas = []
+  # --- 4. ПОЛНЫЙ СПИСОК КАРАК (МАКСИМАЛЬНАЯ ДЕТАЛИЗАЦИЯ) ---
+    with st.expander("📊 ПОЛНЫЙ СПИСОК ЧАРА-КАРАК (УВЕЛИЧЕННЫЙ ШРИФТ)", expanded=True):
+        
+        # Генерируем строки таблицы
+        rows_html = ""
         for i, row in df.iterrows():
-            ext = get_extended_info(row) # Пользуемся нашей функцией из Блока 2
-            full_karakas.append({
-                "Роль": row['Role'],
-                "Планета": ext['full_name'],
-                "Положение": ext['position'],
-                "Накшатра": ext['nakshatra']
-            })
-        
-        # Выводим красивую таблицу
-        st.table(pd.DataFrame(full_karakas))
-        
-        st.caption("Примечание: АК (Атма-карака) — планета с самым высоким градусом, ДК (Дара-карака) — с самым низким.")
+            d = get_extended_info_v2(row)
+            rows_html += f"""
+            <tr style="border-bottom: 1px solid #415A77;">
+                <td style="padding:15px; font-weight:bold; color:#778DA9;">{d['role_ru']}</td>
+                <td style="padding:15px; font-size:1.2em;">{d['planet_full']}</td>
+                <td style="padding:15px;">{d['sign_full']}</td>
+                <td style="padding:15px; font-family:monospace; color:#A9D6E5;">{d['degree']}</td>
+                <td style="padding:15px;"><b>{d['nak_full']}</b></td>
+                <td style="padding:15px;">{d['nak_sym']}</td>
+            </tr>
+            """
+
+        # Собираем и выводим таблицу через HTML
+        st.markdown(f"""
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse: collapse; font-family: sans-serif; color: #E0E1DD; font-size: 1.1em;">
+                <thead>
+                    <tr style="background-color: #1B263B; text-align: left;">
+                        <th style="padding:15px;">Роль (Карака)</th>
+                        <th style="padding:15px;">Планета</th>
+                        <th style="padding:15px;">Знак Зодиака</th>
+                        <th style="padding:15px;">Градус</th>
+                        <th style="padding:15px;">Накшатра</th>
+                        <th style="padding:15px;">Символ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+        </div>
+        """, unsafe_allow_html=True)
 # ============================================================
 # ⛔ БЛОК 5: ПЛАНИРОВЩИК (ВЫСОКОТОЧНЫЙ РАСЧЕТ)
 # ============================================================
