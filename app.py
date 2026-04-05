@@ -86,7 +86,6 @@ components.html("""
 # ============================================================
 
 def get_dynamic_ayanamsa(t_skyfield):
-    # Исправлено: теперь функция ожидает именно объект времени Skyfield
     jd = t_skyfield.tt
     t_centuries = (jd - 2451545.0) / 36525
     return 23.85 + (50.3 / 3600) * t_centuries
@@ -131,18 +130,14 @@ def get_rahu_status(ra_deg):
         return "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ работает в стандартном режиме."
 
 def get_xau_storms(dt_start, days=45):
-    # Исправлено: Конвертируем datetime в Skyfield внутри функции
     storms = []
     earth = eph['earth']
-    
     for i in range(days):
         check_date = dt_start + timedelta(days=i)
         t_check = ts.utc(check_date.year, check_date.month, check_date.day)
         ayan = get_dynamic_ayanamsa(t_check)
-        
         sun_lon = (earth.at(t_check).observe(eph['sun']).ecliptic_latlon()[1].degrees - ayan) % 360
         _, _, ra_lon, _ = get_planet_data(t_check)
-        
         diff = abs(sun_lon - ra_lon) % 360
         for p in [0, 90, 180, 270]:
             if abs(diff - p) < 3:
@@ -200,7 +195,6 @@ with tab1:
     st.info("💡 В дни шторма Раху 'ломает' графики. Игнорируйте пробои уровней без сильного фундамента.")
     st.markdown("---")
     
-    # Таблица Чара-карак
     st.markdown(f"### {l_icon} Луна: {tithi} сутки ({l_status})")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
@@ -209,44 +203,47 @@ with tab1:
     df_v.index = range(1, len(df_v) + 1)
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
 
-    # Мониторинг ротаций
+    st.markdown("---")
     st.subheader("🔄 Мониторинг ротаций")
     c_cur1, c_cur2 = st.columns(2)
-    with c_cur1: st.metric("💎 АК", get_full_info(df.iloc[0]))
-    with c_cur2: st.metric("🥈 AmK", get_full_info(df.iloc[1]))
+    with c_cur1: st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
+    with c_cur2: st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
 
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     c1, c2 = st.columns(2)
-    for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая", "➡️ Следующая"], ["#415A77", "#778DA9"]):
+    for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая смена", "➡️ Следующая смена"], ["#415A77", "#778DA9"]):
         with col:
-            st.markdown(f"<h4 style='color:{color};'>{label}</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='color:{color}; border-bottom: 1px solid #eee;'>{label}</h4>", unsafe_allow_html=True)
             for m in range(10, 2880, 10):
                 target = now_utc + timedelta(minutes=m*direct)
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
                 df_t, _, _, _ = get_planet_data(t_t)
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
                     st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                    st.caption(f"АК: {get_full_info(df_t.iloc[0])} | AmK: {get_full_info(df_t.iloc[1])}")
+                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}")
+                    st.caption(f"AmK: {get_full_info(df_t.iloc[1])}")
                     break
 
 with tab2:
     st.header("📅 Высокоточный планировщик")
     dt_s = datetime.combine(st.date_input("С", key="sd_tl"), st.time_input("С время", key="st_tl"))
     dt_e = datetime.combine(st.date_input("ПО", key="ed_tl"), st.time_input("ПО время", key="et_tl"))
-    if st.button('🚀 Рассчитать'):
-        with st.spinner('Синхронизация...'):
-            curr_u, end_u, events = dt_s - timedelta(hours=3), dt_e - timedelta(hours=3), []
-            t_init = ts.utc(curr_u.year, curr_u.month, curr_u.day, curr_u.hour, curr_u.minute)
-            df_i, _, _, _ = get_planet_data(t_init)
-            last_p = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
-            events.append({"Время (Сочи)": dt_s.strftime("%d.%m %H:%M"), "АК": get_full_info(df_i.iloc[0]), "AmK": get_full_info(df_i.iloc[1])})
-            tmp = curr_u
-            while tmp < end_u:
-                tmp += timedelta(minutes=1)
-                ts_step = ts.utc(tmp.year, tmp.month, tmp.day, tmp.hour, tmp.minute)
-                df_s, _, _, _ = get_planet_data(ts_step)
-                new_p = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
-                if new_p != last_p:
-                    events.append({"Время (Сочи)": (tmp + timedelta(hours=3)).strftime("%d.%m %H:%M"), "АК": get_full_info(df_s.iloc[0]), "AmK": get_full_info(df_s.iloc[1])})
-                    last_p = new_p
-            st.table(pd.DataFrame(events))
+    if st.button('🚀 Рассчитать и подготовить бланк'):
+        if dt_s >= dt_e: st.error("Начало должно быть раньше конца.")
+        else:
+            with st.spinner('Минутный расчет...'):
+                curr_u, end_u, events = dt_s - timedelta(hours=3), dt_e - timedelta(hours=3), []
+                t_init = ts.utc(curr_u.year, curr_u.month, curr_u.day, curr_u.hour, curr_u.minute)
+                df_i, _, _, _ = get_planet_data(t_init)
+                last_p = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
+                events.append({"Время (Сочи)": dt_s.strftime("%d.%m.%Y %H:%M"), "АК": get_full_info(df_i.iloc[0]), "AmK": get_full_info(df_i.iloc[1])})
+                tmp = curr_u
+                while tmp < end_u:
+                    tmp += timedelta(minutes=1)
+                    ts_step = ts.utc(tmp.year, tmp.month, tmp.day, tmp.hour, tmp.minute)
+                    df_s, _, _, _ = get_planet_data(ts_step)
+                    new_p = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
+                    if new_p != last_p:
+                        events.append({"Время (Сочи)": (tmp + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "АК": get_full_info(df_s.iloc[0]), "AmK": get_full_info(df_s.iloc[1])})
+                        last_p = new_p
+                st.table(pd.DataFrame(events))
