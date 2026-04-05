@@ -129,7 +129,7 @@ st.iframe("""
 """, height=110)
 
 # ============================================================
-# ⛔ БЛОК 4: ОПЕРАТИВНЫЙ МОНИТОРИНГ
+# ⛔ БЛОК 4: МОНИТОРИНГ РОТАЦИЙ (ПОЛНАЯ ВЕРСИЯ)
 # ============================================================
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Планировщик"])
 
@@ -139,7 +139,7 @@ with tab1:
     df, ra_lon, ra_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_data(t_now)
     
-    # 1. ПОЛНЫЙ МОНИТОР РАХУ
+    # --- 1. МОНИТОР РАХУ (ПОЛНЫЙ) ---
     if ra_deg < 2 or ra_deg > 28: label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок крайне иррационален."
     elif ra_deg < 5 or ra_deg > 25: label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны сквизы."
     else: label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
@@ -158,50 +158,66 @@ with tab1:
 
     st.markdown("---")
 
-    # 2. БЛОК ЛУНЫ
+    # --- 2. БЛОК ЛУНЫ (ПОЛНЫЙ) ---
     st.markdown(f"### {l_icon} Лунный цикл: {tithi} сутки")
     st.info(f"Текущая фаза: **{l_status}**")
 
     st.markdown("---")
 
-    # 3. КАРТОЧКИ АК И АМК
-    st.subheader("🔄 Текущая конфигурация ротаций")
-    ak_row = get_extended_info(df.iloc[0]) # Исправленное имя функции
-    amk_row = get_extended_info(df.iloc[1]) # Исправленное имя функции
+    # --- 3. ТЕКУЩАЯ АК И АМК (ВЫДЕЛЕННЫЙ БЛОК) ---
+    st.subheader("🔄 Текущая АК и AmK")
     
-    c_ak, c_amk = st.columns(2)
-    with c_ak:
-        st.markdown(f"""<div style="background:#0D1B2A; padding:20px; border-radius:10px; border-top: 4px solid #415A77; min-height:160px;">
-            <small style="color:#415A77;">💎 ATMAKARAKA (АК)</small><br>
-            <b style="font-size:1.5em;">{ak_row['full_name']}</b><br>
-            <code>{ak_row['position']}</code><br>
-            <div style="font-size:0.9em; color:#A9D6E5; margin-top:8px;">{ak_row['nakshatra']}</div>
-        </div>""", unsafe_allow_html=True)
-    with c_amk:
-        st.markdown(f"""<div style="background:#0D1B2A; padding:20px; border-radius:10px; border-top: 4px solid #778DA9; min-height:160px;">
-            <small style="color:#778DA9;">🥈 AMATYAKARAKA (AmK)</small><br>
-            <b style="font-size:1.5em;">{amk_row['full_name']}</b><br>
-            <code>{amk_row['position']}</code><br>
-            <div style="font-size:0.9em; color:#A9D6E5; margin-top:8px;">{amk_row['nakshatra']}</div>
+    # Используем твою функцию из Блока 2
+    ak_data = get_extended_info(df.iloc[0]) 
+    amk_data = get_extended_info(df.iloc[1])
+    
+    col_ak, col_amk = st.columns(2)
+    with col_ak:
+        st.markdown(f"""<div style="background:#0D1B2A; padding:20px; border-radius:10px; border-top: 4px solid #415A77; min-height:170px;">
+            <small style="color:#415A77; font-weight:bold;">💎 ATMAKARAKA (АК)</small><br>
+            <b style="font-size:1.7em; color:white;">{ak_data['full_name']}</b><br>
+            <code style="font-size:1.1em; color:#778DA9;">{ak_data['position']}</code><br>
+            <div style="margin-top:10px; font-size:1em; color:#A9D6E5;">{ak_data['nakshatra']}</div>
         </div>""", unsafe_allow_html=True)
 
-    # Шкала прогресса
-    ak_n = df.iloc[0]['Planet']
+    with col_amk:
+        st.markdown(f"""<div style="background:#0D1B2A; padding:20px; border-radius:10px; border-top: 4px solid #778DA9; min-height:170px;">
+            <small style="color:#778DA9; font-weight:bold;">🥈 AMATYAKARAKA (AmK)</small><br>
+            <b style="font-size:1.7em; color:white;">{amk_data['full_name']}</b><br>
+            <code style="font-size:1.1em; color:#778DA9;">{amk_data['position']}</code><br>
+            <div style="margin-top:10px; font-size:1em; color:#A9D6E5;">{amk_data['nakshatra']}</div>
+        </div>""", unsafe_allow_html=True)
+
+    # Визуальная шкала прогресса ротации
+    ak_name_now = df.iloc[0]['Planet']
     s_t, e_t = now_utc, now_utc
     for m in range(0, 2880, 10):
-        t_c = ts.utc((now_utc - timedelta(minutes=m)).year, (now_utc - timedelta(minutes=m)).month, (now_utc - timedelta(minutes=m)).day, (now_utc - timedelta(minutes=m)).hour, (now_utc - timedelta(minutes=m)).minute)
-        if get_planet_data(t_c)[0].iloc[0]['Planet'] != ak_n: s_t = now_utc - timedelta(minutes=m); break
+        t_check = ts.utc((now_utc - timedelta(minutes=m)).year, (now_utc - timedelta(minutes=m)).month, (now_utc - timedelta(minutes=m)).day, (now_utc - timedelta(minutes=m)).hour, (now_utc - timedelta(minutes=m)).minute)
+        if get_planet_data(t_check)[0].iloc[0]['Planet'] != ak_name_now:
+            s_t = now_utc - timedelta(minutes=m)
+            break
     for m in range(0, 2880, 10):
-        t_c = ts.utc((now_utc + timedelta(minutes=m)).year, (now_utc + timedelta(minutes=m)).month, (now_utc + timedelta(minutes=m)).day, (now_utc + timedelta(minutes=m)).hour, (now_utc + timedelta(minutes=m)).minute)
-        if get_planet_data(t_c)[0].iloc[0]['Planet'] != ak_n: e_t = now_utc + timedelta(minutes=m); break
+        t_check = ts.utc((now_utc + timedelta(minutes=m)).year, (now_utc + timedelta(minutes=m)).month, (now_utc + timedelta(minutes=m)).day, (now_utc + timedelta(minutes=m)).hour, (now_utc + timedelta(minutes=m)).minute)
+        if get_planet_data(t_check)[0].iloc[0]['Planet'] != ak_name_now:
+            e_t = now_utc + timedelta(minutes=m)
+            break
 
-    total = (e_t - s_t).total_seconds()
-    curr = (now_utc - s_t).total_seconds()
-    val = min(max(curr/total, 0.0), 1.0) if total > 0 else 0.5
+    total_sec = (e_t - s_t).total_seconds()
+    elapsed_sec = (now_utc - s_t).total_seconds()
+    prog_pct = min(max(elapsed_sec / total_sec, 0.0), 1.0) if total_sec > 0 else 0.5
     
-    st.markdown(f"<p style='text-align:center; font-size:0.8em; margin:15px 0 -10px 0;'>Завершено: {int(val*100)}%</p>", unsafe_allow_html=True)
-    st.progress(val)
-    st.caption(f"Начало: {(s_t + timedelta(hours=3)).strftime('%d.%m %H:%M')} | Конец: {(e_t + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+    st.markdown(f"<p style='text-align:center; font-size:0.9em; margin:20px 0 -10px 0;'>Прогресс текущей ротации: {int(prog_pct*100)}%</p>", unsafe_allow_html=True)
+    st.progress(prog_pct)
+    st.caption(f"🏁 Старт: {(s_t + timedelta(hours=3)).strftime('%d.%m %H:%M')} | 🔚 Финиш: {(e_t + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+
+    st.markdown("---")
+    
+    # Полная таблица карак (скрыта в экспандер)
+    with st.expander("📊 Показать полный список карак"):
+        df_full = df.copy()
+        df_full['Координаты'] = df_full.apply(lambda r: f"{Z_ICONS[ZODIAC_SIGNS[int(r['Lon']/30)]]} {r['Deg']:.2f}°", axis=1)
+        df_full['Накшатра'] = df_full['Lon'].apply(lambda x: f"{NAK_SYMBOLS.get(NAKSHATRAS[int(x/(360/27))%27], '✨')} {NAKSHATRAS[int(x/(360/27))%27]}")
+        st.dataframe(df_full[['Role', 'Planet', 'Координаты', 'Накшатра']], width='stretch', hide_index=True)
 # ============================================================
 # ⛔ БЛОК 5: ПЛАНИРОВЩИК (ВЫСОКОТОЧНЫЙ РАСЧЕТ)
 # ============================================================
