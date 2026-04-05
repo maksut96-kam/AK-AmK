@@ -25,7 +25,7 @@ ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев"
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 NAK_LORDS = ["Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"] * 3
 P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat'}
-Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
+Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
 
 # ============================================================
 # ⛔ БЛОК 2: МАТЕМАТИЧЕСКОЕ ЯДРО (РАСЧЕТЫ И АСТРО-ЛОГИКА)
@@ -74,7 +74,8 @@ def get_xau_storms(dt_start, days=45):
     seen, unique = set(), []
     for s in storms:
         if s["Дата"] not in seen:
-            unique.append(s); seen.add(s["Дата"])
+            unique.append(s)
+            seen.add(s["Дата"])
     return unique[:5]
 
 def get_full_info(row):
@@ -87,7 +88,7 @@ def get_full_info(row):
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
 with col_l2:
     if os.path.exists("logo.png"):
-        st.image("logo.png", width='stretch')
+        st.image("logo.png", use_container_width=True)
 
 st.markdown("""
 <style>
@@ -99,7 +100,7 @@ st.markdown("""
 <h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
 
-st.iframe("""
+components.html("""
     <div style="background: linear-gradient(90deg, #050510, #0a0a20); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #1B263B;">
         <h2 id="clock" style="margin:0; color:#415A77; letter-spacing: 2px;">Загрузка...</h2>
         <p style="margin:0; color:#778DA9; font-size: 0.8em; text-transform: uppercase;">Sochi Astro-Coordination Time (UTC+3)</p>
@@ -122,9 +123,12 @@ with tab1:
     tithi, l_status, l_icon = get_lunar_data(t_now)
     
     # --- МОДУЛЬ РАХУ (ПОЛНЫЙ) ---
-    if ra_deg < 2 or ra_deg > 28: label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок крайне иррационален."
-    elif ra_deg < 5 or ra_deg > 25: label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны сквизы."
-    else: label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
+    if ra_deg < 2 or ra_deg > 28:
+        label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок крайне иррационален."
+    elif ra_deg < 5 or ra_deg > 25:
+        label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны сквизы."
+    else:
+        label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
 
     st.markdown(f"""<div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44;">
         <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {label}</h3>
@@ -133,13 +137,16 @@ with tab1:
     st.subheader("📡 Радар аномалий XAUUSD")
     c_r1, c_r2 = st.columns([1, 2])
     with c_r1:
-        score = 100-(ra_deg*5) if ra_deg<10 else (ra_deg-20)*10 if ra_deg>20 else 5
-        st.write("**Давление Раху:**"); st.progress(min(max(int(score), 5), 100))
+        score = 100 - (ra_deg*5) if ra_deg < 10 else (ra_deg-20)*10 if ra_deg > 20 else 5
+        st.write("**Давление Раху:**")
+        st.progress(min(max(int(score), 5), 100))
     with c_r2:
         storms = get_xau_storms(now_utc)
         if storms:
-            for s in storms: st.warning(f"**{s['Дата']}** — {s['Тип']} (Угол {s['Угол']})")
-        else: st.success("✅ Критических помех для золота не обнаружено.")
+            for s in storms:
+                st.warning(f"**{s['Дата']}** — {s['Тип']} (Угол {s['Угол']})")
+        else:
+            st.success("✅ Критических помех для золота не обнаружено.")
 
     st.markdown("---")
 
@@ -155,7 +162,7 @@ with tab1:
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
-    st.dataframe(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']], width='stretch', hide_index=True)
+    st.dataframe(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']], use_container_width=True, hide_index=True)
 
     st.divider()
 
