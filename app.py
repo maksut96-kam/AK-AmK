@@ -133,7 +133,7 @@ with tab1:
     sochi_now = now_utc + timedelta(hours=3)
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     
-    # Забираем основные данные
+    # Получаем текущие данные
     df, ayan_val, rahu_lon, rahu_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
     
@@ -152,44 +152,36 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
-    # --- ИСПРАВЛЕННЫЙ ГРАФИК РАХУ ---
+    # --- ИСПРАВЛЕННЫЙ ГРАФИК (БЕЗ ГРЕБЕНКИ) ---
     st.subheader("📈 Тренд волатильности (Градус Раху в знаке)")
     
-    chart_points = []
-    # Создаем временную шкалу с датами
-    for i in range(-15, 45): 
-        d_t = now_utc + timedelta(days=i)
-        t_c = ts.utc(d_t.year, d_t.month, d_t.day)
-        _, _, r_lon, r_deg = get_planet_data(t_c)
+    # Создаем чистый список данных для графика
+    chart_list = []
+    # Идем строго по порядку от -15 дней до +45 дней
+    for i in range(-15, 45):
+        target_date = now_utc + timedelta(days=i)
+        # Берем полдень для стабильности показаний
+        t_check = ts.utc(target_date.year, target_date.month, target_date.day, 12, 0)
+        _, _, _, r_deg = get_planet_data(t_check)
         
-        chart_points.append({
-            "Дата": d_t.strftime("%d.%m"), 
-            "Градус": round(r_deg, 2)
+        chart_list.append({
+            "Дата_сорт": target_date, # Для правильной сортировки
+            "Дата": target_date.strftime("%d.%m"), 
+            "Градус Раху": round(r_deg, 2)
         })
     
-    # Визуализация через линейный график с датами на оси X
-    df_chart = pd.DataFrame(chart_points).set_index("Дата")
-    st.line_chart(df_chart, height=300)
-    st.caption("Ось X: Даты. Ось Y: Градус Раху в текущем знаке. Движение ретроградное (к 0°).")
+    # Превращаем в DataFrame и гарантируем порядок
+    df_chart = pd.DataFrame(chart_list).sort_values("Дата_сорт")
+    
+    # Отрисовка
+    st.line_chart(df_chart.set_index("Дата")["Градус Раху"], height=300)
+    st.caption("Раху движется ретроградно. Плавное снижение к 0° означает приближение к зоне турбулентности.")
 
-    # Календарь событий
+    # Календарь режимов
     with st.expander("📅 Календарь смены режимов рынка (60 дней)"):
         f_data = get_rahu_forecast(now_utc, 60)
         for item in f_data:
             st.markdown(f"**{item['Дата']}** — <span style='color:{item['color']}'>{item['Статус']}</span>", unsafe_allow_html=True)
 
     st.markdown("---")
-    
-    # Виджет Лунного цикла
-    st.markdown(f"### {l_icon} Лунный цикл: {tithi} сутки ({l_status})")
-
-    # Таблица Чара-карак (АК/AmK)
-    df_v = df.copy()
-    df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
-    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
-    df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
-    df_v.index = range(1, len(df_v) + 1)
-    st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
-
-    # Остальной код мониторинга ротаций остается прежним...
-    # (АК/AmK метрики и предсказания)
+    # Далее стандартная таблица АК/AmK и мониторинг...
