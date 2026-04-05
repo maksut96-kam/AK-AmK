@@ -100,7 +100,7 @@ P_FULL_NAMES = {
     'Venus': '♀️ Венера (Venus)', 'Saturn': '🪐 Сатурн (Saturn)'
 }
 
-def get_extended_info_v2(row):
+def get_extended_info(row):
     sign_idx = int(row['Lon']/30)
     sign_name = ZODIAC_SIGNS[sign_idx]
     nak_idx = int(row['Lon']/(360/27)) % 27
