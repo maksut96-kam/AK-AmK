@@ -100,20 +100,20 @@ P_FULL_NAMES = {
     'Venus': '♀️ Венера (Venus)', 'Saturn': '🪐 Сатурн (Saturn)'
 }
 
+# Чистые списки без сокращений
+PURE_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
+PURE_ICONS = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"]
+
 def get_extended_info(row):
     sign_idx = int(row['Lon']/30)
-    sign_raw = ZODIAC_SIGNS[sign_idx] # Тут может быть "Водол Водолей"
     nak_idx = int(row['Lon']/(360/27)) % 27
     nak_name = NAKSHATRAS[nak_idx]
     
-    # Оставляем только последнее слово (само название знака)
-    sign_clean = sign_raw.split()[-1] 
-
     return {
         "role_ru": ROLE_RU.get(row['Role'], row['Role']),
         "planet_full": P_FULL_NAMES.get(row['Planet'], row['Planet']),
-        "sign_only": sign_clean,
-        "sign_icon": Z_ICONS.get(sign_raw, ""),
+        "sign_only": PURE_SIGNS[sign_idx],
+        "sign_icon": PURE_ICONS[sign_idx],
         "degree": f"{row['Deg']:.4f}°",
         "nak_full": f"{nak_name} ({NAK_LORDS[nak_idx]})",
         "nak_sym": NAK_SYMBOLS_DETAILED.get(nak_name, "✨")
