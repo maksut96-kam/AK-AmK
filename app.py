@@ -212,12 +212,23 @@ with tab1:
 
     st.markdown("---")
     
-    # Полная таблица карак (скрыта в экспандер)
-    with st.expander("📊 Показать полный список карак"):
-        df_full = df.copy()
-        df_full['Координаты'] = df_full.apply(lambda r: f"{Z_ICONS[ZODIAC_SIGNS[int(r['Lon']/30)]]} {r['Deg']:.2f}°", axis=1)
-        df_full['Накшатра'] = df_full['Lon'].apply(lambda x: f"{NAK_SYMBOLS.get(NAKSHATRAS[int(x/(360/27))%27], '✨')} {NAKSHATRAS[int(x/(360/27))%27]}")
-        st.dataframe(df_full[['Role', 'Planet', 'Координаты', 'Накшатра']], width='stretch', hide_index=True)
+   # --- 4. ПОЛНЫЙ СПИСОК КАРАК (ОБНОВЛЕННЫЙ) ---
+    with st.expander("📊 Посмотреть полный список всех 7 Чара-карак", expanded=False):
+        # Создаем расширенный набор данных для таблицы
+        full_karakas = []
+        for i, row in df.iterrows():
+            ext = get_extended_info(row) # Пользуемся нашей функцией из Блока 2
+            full_karakas.append({
+                "Роль": row['Role'],
+                "Планета": ext['full_name'],
+                "Положение": ext['position'],
+                "Накшатра": ext['nakshatra']
+            })
+        
+        # Выводим красивую таблицу
+        st.table(pd.DataFrame(full_karakas))
+        
+        st.caption("Примечание: АК (Атма-карака) — планета с самым высоким градусом, ДК (Дара-карака) — с самым низким.")
 # ============================================================
 # ⛔ БЛОК 5: ПЛАНИРОВЩИК (ВЫСОКОТОЧНЫЙ РАСЧЕТ)
 # ============================================================
