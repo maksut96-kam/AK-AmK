@@ -243,40 +243,35 @@ with tab1:
 
     st.markdown("---")
     
-# --- 4. ПОЛНЫЙ СПИСОК КАРАК (ИСПРАВЛЕННАЯ ВЕРСИЯ) ---
+# --- 4. ПОЛНЫЙ СПИСОК КАРАК (ФИНАЛЬНАЯ ЧИСТКА) ---
     with st.expander("📊 ПОЛНЫЙ СПИСОК ЧАРА-КАРАК", expanded=True):
         rows_html = ""
         for i, row in df.iterrows():
             d = get_extended_info(row)
-            # Чистим данные от возможных дублей (на случай если в словарях уже есть иконки)
-            planet_val = d['planet_full']
-            sign_val = d['sign_full']
             
             rows_html += f"""
-            <tr style="border-bottom: 1px solid #2D3E50; transition: background 0.3s;">
-                <td style="padding:16px; font-weight:600; color:#94A3B8; font-size:0.95em;">{d['role_ru']}</td>
-                <td style="padding:16px; font-size:1.2em; color:#FFFFFF; white-space:nowrap;">{planet_val}</td>
-                <td style="padding:16px; color:#E2E8F0;">{sign_val}</td>
-                <td style="padding:16px; font-family:'Roboto Mono', monospace; color:#38BDF8; font-weight:bold;">{d['degree']}</td>
-                <td style="padding:16px; color:#F1F5F9;">{d['nak_full']}</td>
-                <td style="padding:16px; color:#CBD5E1; font-style: italic;">{d['nak_sym']}</td>
+            <tr style="border-bottom: 1px solid #1E293B;">
+                <td style="padding:14px; color:#94A3B8; font-weight:600; font-size:0.9em;">{d['role_ru']}</td>
+                <td style="padding:14px; color:#FFFFFF; font-size:1.1em; white-space:nowrap;">{d['planet_full']}</td>
+                <td style="padding:14px; color:#E2E8F0;">
+                    <span style="margin-right:8px;">{d['sign_icon']}</span>{d['sign_only']}
+                </td>
+                <td style="padding:14px; font-family:'Roboto Mono', monospace; color:#38BDF8; font-weight:bold;">{d['degree']}</td>
+                <td style="padding:14px; color:#F1F5F9;">{d['nak_full']}</td>
+                <td style="padding:14px; color:#94A3B8; font-style:italic; font-size:0.95em;">{d['nak_sym']}</td>
             </tr>"""
 
         st.markdown(f"""
-        <style>
-            /* Убираем стандартные тени и отступы Streamlit для таблиц */
-            .main .stExpander div {{ border: none !important; }}
-        </style>
-        <div style="overflow-x:auto; background-color: #0F172A; border-radius: 12px; border: 1px solid #1E293B;">
-            <table style="width:100%; border-collapse: collapse; font-family: 'Inter', sans-serif;">
+        <div style="overflow-x:auto; background-color: #0F172A; border-radius: 10px; border: 1px solid #1E293B;">
+            <table style="width:100%; border-collapse: collapse; font-family: 'Inter', sans-serif; text-align: left;">
                 <thead>
-                    <tr style="background-color: #1E293B; text-align: left; border-bottom: 2px solid #334155;">
-                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Роль</th>
-                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Планета</th>
-                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Знак</th>
-                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Градус</th>
-                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Накшатра</th>
-                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Символ</th>
+                    <tr style="background-color: #1E293B; border-bottom: 2px solid #334155;">
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Роль</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Планета</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Знак</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Градус</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Накшатра</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Символ</th>
                     </tr>
                 </thead>
                 <tbody>
