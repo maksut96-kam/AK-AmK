@@ -90,17 +90,30 @@ def get_planet_data(t):
     planets_objects = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
     res = []
     
-    # Расчет только 7 классических планет
+    # 7 Классических планет для АК/AmK
     for name, obj in planets_objects.items():
         lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
     
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
-    
-    # Назначаем строго 7 ролей
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
     df['Role'] = roles[:len(df)]
-    return df, current_ayan
+    
+    # Отдельный расчет Раху (как теневой фактор)
+    lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
+    ra_lon = (lon.degrees - current_ayan + 180) % 360 
+    ra_deg = 30 - (ra_lon % 30) # Раху всегда движется ретроградно, смотрим его "пройденный" путь в знаке
+    
+    return df, current_ayan, ra_lon, ra_deg
+
+def get_rahu_status(ra_deg):
+    """Оценка вероятности рыночных манипуляций на основе положения Раху"""
+    if ra_deg < 2 or ra_deg > 28: # В начале или конце знака (Ганданта/Сандхи)
+        return "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Высокий риск ложных пробоев и сквизов на XAUUSD."
+    elif ra_deg < 5 or ra_deg > 25:
+        return "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Рынок эмоционален. Возможны иррациональные движения."
+    else:
+        return "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Влияние Раху минимально. Теханализ работает штатно."
 
 # ============================================================
 # ✅ БЛОК 4: EDITABLE AREA (ВКЛАДКИ И ОТОБРАЖЕНИЕ)
