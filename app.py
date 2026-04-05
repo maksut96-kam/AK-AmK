@@ -81,45 +81,85 @@ components.html("""
     </script>
 """, height=110)
 
-# Вставь это в БЛОК 3. Добавлена функция поиска штормов для XAUUSD.
+# ============================================================
+# ✅ БЛОК 3: ЛОГИКА РАСЧЕТОВ (ФУНКЦИИ)
+# ============================================================
+
+def get_dynamic_ayanamsa(t):
+    # Лахири (приблизительно 23.85° на 2000 год, прецессия ~50.3" в год)
+    jd = t.tt
+    t_centuries = (jd - 2451545.0) / 36525
+    return 23.85 + (50.3 / 3600) * t_centuries
+
+def get_lunar_info(t):
+    # Упрощенный расчет лунных суток (Титхи)
+    sun_lon = eph['earth'].at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees
+    moon_lon = eph['earth'].at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees
+    diff = (moon_lon - sun_lon) % 360
+    tithi = int(diff / 12) + 1
+    if diff < 180: return tithi, "Растущая (Шукла)", "🌙"
+    else: return tithi, "Убывающая (Кришна)", "🌘"
+
+def get_planet_data(t):
+    current_ayan = get_dynamic_ayanamsa(t)
+    earth = eph['earth']
+    planets_objects = {
+        'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 
+        'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 
+        'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']
+    }
+    res = []
+    for name, obj in planets_objects.items():
+        lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
+        res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
+    
+    df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
+    roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
+    df['Role'] = roles[:len(df)]
+    
+    # Расчет Раху (ретроградное движение)
+    lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
+    ra_lon = (lon.degrees - current_ayan + 180) % 360 
+    ra_deg = 30 - (ra_lon % 30) 
+    
+    return df, current_ayan, ra_lon, ra_deg
+
+def get_rahu_status(ra_deg):
+    if ra_deg < 2 or ra_deg > 28:
+        return "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок XAUUSD крайне иррационален."
+    elif ra_deg < 5 or ra_deg > 25:
+        return "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны ложные сквизы."
+    else:
+        return "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ работает в стандартном режиме."
+
 def get_xau_storms(t_start, days=45):
     storms = []
     earth = eph['earth']
-    # Берем текущую айанамшу для точности
     ayan = get_dynamic_ayanamsa(t_start)
-    
     for i in range(days):
         check_date = t_start + timedelta(days=i)
         t = ts.utc(check_date.year, check_date.month, check_date.day)
-        
-        # Позиция Солнца (Золото)
         sun_lon = (earth.at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees - ayan) % 360
-        # Позиция Раху
-        _, _, ra_lon, ra_deg = get_planet_data(t)
-        
-        # Разность долгот
+        _, _, ra_lon, _ = get_planet_data(t)
         diff = abs(sun_lon - ra_lon) % 360
-        # Критические углы: 0 (соединение), 90 (квадрат), 180 (оппозиция)
         for p in [0, 90, 180, 270]:
-            if abs(diff - p) < 3: # Орбис 3 градуса (зона влияния)
-                storms.append({
-                    "Дата": check_date.strftime("%d.%m"),
-                    "Тип": "⚠️ ШТОРМ" if p in [0, 180] else "⚡️ ВОЛАТИЛЬНОСТЬ",
-                    "Угол": f"{int(p)}°"
-                })
+            if abs(diff - p) < 3:
+                storms.append({"Дата": check_date.strftime("%d.%m"), "Тип": "⚠️ ШТОРМ" if p in [0, 180] else "⚡️ ВОЛАТИЛЬНОСТЬ", "Угол": f"{int(p)}°"})
                 break
-    # Убираем дубликаты дат
-    seen = set()
-    unique_storms = []
+    seen, unique_storms = set(), []
     for s in storms:
         if s["Дата"] not in seen:
-            unique_storms.append(s)
-            seen.add(s["Дата"])
-    return unique_storms[:5] # Только ближайшие 5 событий
-    
+            unique_storms.append(s); seen.add(s["Дата"])
+    return unique_storms[:5]
+
+def get_full_info(row):
+    sign = ZODIAC_SIGNS[int(row['Lon']/30)]
+    return f"{row['Planet']} ({Z_ICONS[sign]} {sign} {row['Deg']:.2f}°)"
+
 # ============================================================
-# ✅ БЛОК 4: EDITABLE AREA (ВКЛАДКИ И ОТОБРАЖЕНИЕ)
+# ✅ БЛОК 4: ИНТЕРФЕЙС И ВЫЗОВЫ
 # ============================================================
+
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Таймлайн"])
 
 with tab1:
@@ -127,14 +167,14 @@ with tab1:
     sochi_now = now_utc + timedelta(hours=3)
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     
+    # Вызов функции (теперь она определена выше!)
     df, ayan_val, rahu_lon, rahu_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
     
-    st.markdown(f"**📍 Расчет на момент:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
+    st.markdown(f"**📍 Момент расчета:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
 
-    # --- НОВЫЙ РАДАР РАХУ ВМЕСТО ГРАФИКА ---
+    # Виджет Раху
     ra_label, ra_color, ra_desc = get_rahu_status(rahu_deg)
-    
     st.markdown(f"""
     <div style="background: {ra_color}22; border-left: 5px solid {ra_color}; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid {ra_color}44;">
         <h3 style="margin:0; color: {ra_color};">🐲 Монитор Раху: {ra_label}</h3>
@@ -142,34 +182,25 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
-    st.subheader("📡 Радар аномалий XAUUSD (Влияние на Золото)")
+    st.subheader("📡 Радар аномалий XAUUSD")
     col_r1, col_r2 = st.columns([1, 2])
-    
     with col_r1:
-        # Прогресс-бар "Давления" Раху
-        # Если Раху у границ знака (0 или 30), давление растет
         risk_score = 100 - (rahu_deg * 5) if rahu_deg < 10 else (rahu_deg - 20) * 10 if rahu_deg > 20 else 5
-        st.write("**Фоновое давление:**")
+        st.write("**Давление Раху:**")
         st.progress(min(max(int(risk_score), 5), 100))
-        st.caption("Близость к 'Ганданте' (0° или 30°)")
-
+        st.caption("Близость к границам знаков")
     with col_r2:
-        st.write("**Ближайшие дни 'Мутного Рынка':**")
+        st.write("**Дни 'Мутного Рынка':**")
         storms = get_xau_storms(now_utc)
         if storms:
-            for s in storms:
-                st.warning(f"**{s['Дата']}** — {s['Тип']} (Аспект {s['Угол']})")
-        else:
-            st.success("✅ В ближайшие 30 дней Раху не блокирует Солнце. Рынок техничен.")
+            for s in storms: st.warning(f"**{s['Дата']}** — {s['Тип']} (Аспект {s['Угол']})")
+        else: st.success("✅ Критических помех для золота не обнаружено.")
 
-    st.info("💡 **Практическое применение:** В дни 'Шторма' Раху создает иллюзии. Золото может пробивать уровни на 100-200 пунктов и сразу возвращаться. Не торгуйте пробои, ждите подтверждения.")
-    
+    st.info("💡 В дни шторма Раху 'ломает' графики. Игнорируйте пробои уровней без сильного фундамента.")
     st.markdown("---")
     
-    # Виджет Лунного цикла
-    st.markdown(f"### {l_icon} Лунный цикл: {tithi} сутки ({l_status})")
-
     # Таблица Чара-карак
+    st.markdown(f"### {l_icon} Луна: {tithi} сутки ({l_status})")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
@@ -198,12 +229,10 @@ with tab1:
                     break
 
 with tab2:
-    # (Весь код планировщика из прошлого сообщения остается без изменений, 
-    #  просто убедись, что вызов функции там df_i, _, _, _ = get_planet_data(t_init))
     st.header("📅 Высокоточный планировщик")
     dt_s = datetime.combine(st.date_input("С", key="sd_tl"), st.time_input("С время", key="st_tl"))
     dt_e = datetime.combine(st.date_input("ПО", key="ed_tl"), st.time_input("ПО время", key="et_tl"))
-    if st.button('🚀 Рассчитать бланк'):
+    if st.button('🚀 Рассчитать'):
         with st.spinner('Синхронизация...'):
             curr_u, end_u, events = dt_s - timedelta(hours=3), dt_e - timedelta(hours=3), []
             t_init = ts.utc(curr_u.year, curr_u.month, curr_u.day, curr_u.hour, curr_u.minute)
