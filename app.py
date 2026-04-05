@@ -106,14 +106,18 @@ def get_extended_info(row):
     nak_idx = int(row['Lon']/(360/27)) % 27
     nak_name = NAKSHATRAS[nak_idx]
     
+    # Извлекаем ТОЛЬКО название знака без лишних символов
+    clean_sign_name = sign_name.split()[-1] if len(sign_name.split()) > 1 else sign_name
+
     return {
         "role_ru": ROLE_RU.get(row['Role'], row['Role']),
         "planet_full": P_FULL_NAMES.get(row['Planet'], row['Planet']),
-        "sign_only": sign_name, # Только название: "Водолей"
-        "sign_icon": Z_ICONS.get(sign_name, ""), # Только иконка: "♒"
+        "sign_only": clean_sign_name,
+        "sign_icon": Z_ICONS.get(sign_name, ""),
         "degree": f"{row['Deg']:.4f}°",
         "nak_full": f"{nak_name} ({NAK_LORDS[nak_idx]})",
         "nak_sym": NAK_SYMBOLS_DETAILED.get(nak_name, "✨")
+    }
 # ============================================================
 # ⛔ БЛОК 3: ШАПКА, ЛОГОТИП И ЧАСЫ
 # ============================================================
@@ -243,7 +247,7 @@ with tab1:
 
     st.markdown("---")
     
-# --- 4. ПОЛНЫЙ СПИСОК КАРАК (ФИНАЛЬНАЯ ЧИСТКА) ---
+# --- 4. ПОЛНЫЙ СПИСОК КАРАК (ФИНАЛЬНАЯ ВЕРСИЯ) ---
     with st.expander("📊 ПОЛНЫЙ СПИСОК ЧАРА-КАРАК", expanded=True):
         rows_html = ""
         for i, row in df.iterrows():
@@ -254,7 +258,7 @@ with tab1:
                 <td style="padding:14px; color:#94A3B8; font-weight:600; font-size:0.9em;">{d['role_ru']}</td>
                 <td style="padding:14px; color:#FFFFFF; font-size:1.1em; white-space:nowrap;">{d['planet_full']}</td>
                 <td style="padding:14px; color:#E2E8F0;">
-                    <span style="margin-right:8px;">{d['sign_icon']}</span>{d['sign_only']}
+                    <span style="margin-right:8px; opacity:0.8;">{d['sign_icon']}</span>{d['sign_only']}
                 </td>
                 <td style="padding:14px; font-family:'Roboto Mono', monospace; color:#38BDF8; font-weight:bold;">{d['degree']}</td>
                 <td style="padding:14px; color:#F1F5F9;">{d['nak_full']}</td>
@@ -262,16 +266,20 @@ with tab1:
             </tr>"""
 
         st.markdown(f"""
-        <div style="overflow-x:auto; background-color: #0F172A; border-radius: 10px; border: 1px solid #1E293B;">
+        <style>
+            /* Скрываем стандартные границы Streamlit для этого блока */
+            [data-testid="stExpander"] {{ border: none !important; box-shadow: none !important; }}
+        </style>
+        <div style="overflow-x:auto; background-color: #0F172A; border-radius: 12px; border: 1px solid #1E293B;">
             <table style="width:100%; border-collapse: collapse; font-family: 'Inter', sans-serif; text-align: left;">
                 <thead>
                     <tr style="background-color: #1E293B; border-bottom: 2px solid #334155;">
-                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Роль</th>
-                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Планета</th>
-                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Знак</th>
-                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Градус</th>
-                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Накшатра</th>
-                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase;">Символ</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase; letter-spacing:1px;">Роль</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase; letter-spacing:1px;">Планета</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase; letter-spacing:1px;">Знак</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase; letter-spacing:1px;">Градус</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase; letter-spacing:1px;">Накшатра</th>
+                        <th style="padding:16px; color:#64748B; font-size:0.8em; text-transform:uppercase; letter-spacing:1px;">Символ</th>
                     </tr>
                 </thead>
                 <tbody>
