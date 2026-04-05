@@ -243,34 +243,48 @@ with tab1:
 
     st.markdown("---")
     
-    # --- 3. ПОЛНЫЙ СПИСОК КАРАК (МАКСИМАЛЬНАЯ ДЕТАЛИЗАЦИЯ) ---
+# --- 4. ПОЛНЫЙ СПИСОК КАРАК (ИСПРАВЛЕННАЯ ВЕРСИЯ) ---
     with st.expander("📊 ПОЛНЫЙ СПИСОК ЧАРА-КАРАК", expanded=True):
         rows_html = ""
         for i, row in df.iterrows():
             d = get_extended_info(row)
+            # Чистим данные от возможных дублей (на случай если в словарях уже есть иконки)
+            planet_val = d['planet_full']
+            sign_val = d['sign_full']
+            
             rows_html += f"""
-            <tr style="border-bottom: 1px solid #415A77;">
-                <td style="padding:15px; font-weight:bold; color:#778DA9;">{d['role_ru']}</td>
-                <td style="padding:15px; font-size:1.2em; color:white;">{d['planet_full']}</td>
-                <td style="padding:15px;">{d['sign_full']}</td>
-                <td style="padding:15px; font-family:monospace; color:#A9D6E5;">{d['degree']}</td>
-                <td style="padding:15px;"><b>{d['nak_full']}</b></td>
-                <td style="padding:15px;">{d['nak_sym']}</td>
+            <tr style="border-bottom: 1px solid #2D3E50; transition: background 0.3s;">
+                <td style="padding:16px; font-weight:600; color:#94A3B8; font-size:0.95em;">{d['role_ru']}</td>
+                <td style="padding:16px; font-size:1.2em; color:#FFFFFF; white-space:nowrap;">{planet_val}</td>
+                <td style="padding:16px; color:#E2E8F0;">{sign_val}</td>
+                <td style="padding:16px; font-family:'Roboto Mono', monospace; color:#38BDF8; font-weight:bold;">{d['degree']}</td>
+                <td style="padding:16px; color:#F1F5F9;">{d['nak_full']}</td>
+                <td style="padding:16px; color:#CBD5E1; font-style: italic;">{d['nak_sym']}</td>
             </tr>"""
 
         st.markdown(f"""
-        <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse: collapse; font-family: sans-serif; color: #E0E1DD; font-size: 1.15em;">
+        <style>
+            /* Убираем стандартные тени и отступы Streamlit для таблиц */
+            .main .stExpander div {{ border: none !important; }}
+        </style>
+        <div style="overflow-x:auto; background-color: #0F172A; border-radius: 12px; border: 1px solid #1E293B;">
+            <table style="width:100%; border-collapse: collapse; font-family: 'Inter', sans-serif;">
                 <thead>
-                    <tr style="background-color: #1B263B; text-align: left;">
-                        <th style="padding:15px;">Роль</th><th style="padding:15px;">Планета</th>
-                        <th style="padding:15px;">Знак</th><th style="padding:15px;">Градус</th>
-                        <th style="padding:15px;">Накшатра</th><th style="padding:15px;">Символ</th>
+                    <tr style="background-color: #1E293B; text-align: left; border-bottom: 2px solid #334155;">
+                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Роль</th>
+                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Планета</th>
+                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Знак</th>
+                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Градус</th>
+                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Накшатра</th>
+                        <th style="padding:18px; color:#94A3B8; font-size:0.85em; text-transform:uppercase; letter-spacing:1px;">Символ</th>
                     </tr>
                 </thead>
-                <tbody>{rows_html}</tbody>
+                <tbody>
+                    {rows_html}
+                </tbody>
             </table>
-        </div>""", unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 # ============================================================
 # ⛔ БЛОК 5: ПЛАНИРОВЩИК (ВЫСОКОТОЧНЫЙ РАСЧЕТ)
 # ============================================================
