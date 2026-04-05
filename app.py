@@ -85,14 +85,13 @@ components.html("""
 # ✅ БЛОК 3: ЛОГИКА РАСЧЕТОВ (ФУНКЦИИ)
 # ============================================================
 
-def get_dynamic_ayanamsa(t):
-    # Лахири (приблизительно 23.85° на 2000 год, прецессия ~50.3" в год)
-    jd = t.tt
+def get_dynamic_ayanamsa(t_skyfield):
+    # Исправлено: теперь функция ожидает именно объект времени Skyfield
+    jd = t_skyfield.tt
     t_centuries = (jd - 2451545.0) / 36525
     return 23.85 + (50.3 / 3600) * t_centuries
 
 def get_lunar_info(t):
-    # Упрощенный расчет лунных суток (Титхи)
     sun_lon = eph['earth'].at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees
     moon_lon = eph['earth'].at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees
     diff = (moon_lon - sun_lon) % 360
@@ -117,7 +116,6 @@ def get_planet_data(t):
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
     df['Role'] = roles[:len(df)]
     
-    # Расчет Раху (ретроградное движение)
     lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
     ra_lon = (lon.degrees - current_ayan + 180) % 360 
     ra_deg = 30 - (ra_lon % 30) 
@@ -132,15 +130,19 @@ def get_rahu_status(ra_deg):
     else:
         return "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ работает в стандартном режиме."
 
-def get_xau_storms(t_start, days=45):
+def get_xau_storms(dt_start, days=45):
+    # Исправлено: Конвертируем datetime в Skyfield внутри функции
     storms = []
     earth = eph['earth']
-    ayan = get_dynamic_ayanamsa(t_start)
+    
     for i in range(days):
-        check_date = t_start + timedelta(days=i)
-        t = ts.utc(check_date.year, check_date.month, check_date.day)
-        sun_lon = (earth.at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees - ayan) % 360
-        _, _, ra_lon, _ = get_planet_data(t)
+        check_date = dt_start + timedelta(days=i)
+        t_check = ts.utc(check_date.year, check_date.month, check_date.day)
+        ayan = get_dynamic_ayanamsa(t_check)
+        
+        sun_lon = (earth.at(t_check).observe(eph['sun']).ecliptic_latlon()[1].degrees - ayan) % 360
+        _, _, ra_lon, _ = get_planet_data(t_check)
+        
         diff = abs(sun_lon - ra_lon) % 360
         for p in [0, 90, 180, 270]:
             if abs(diff - p) < 3:
@@ -167,7 +169,6 @@ with tab1:
     sochi_now = now_utc + timedelta(hours=3)
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     
-    # Вызов функции (теперь она определена выше!)
     df, ayan_val, rahu_lon, rahu_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_info(t_now)
     
