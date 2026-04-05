@@ -154,12 +154,55 @@ with tab1:
     df, ra_lon, ra_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_data(t_now)
     
-    # --- 1. МОНИТОР РАХУ ---
-    color = "#FF4B4B" if (ra_deg < 2 or ra_deg > 28) else "#FFA500" if (ra_deg < 5 or ra_deg > 25) else "#00C853"
-    st.markdown(f"""<div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44;">
-        <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {ra_deg:.2f}°</h3></div>""", unsafe_allow_html=True)
+   # --- 1. МОНИТОР РАХУ (ПРОФЕССИОНАЛЬНАЯ ВЕРСИЯ) ---
+    st.markdown("### 🐲 Оперативный монитор Раху")
     
-    st.markdown("---")
+    # Логика определения статуса
+    if ra_deg < 2 or ra_deg > 28: 
+        label, color, bg_color, desc = "КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "#311717", "ГАНДАНТА: Максимальная иррациональность. Технический анализ не приоритетен."
+    elif ra_deg < 5 or ra_deg > 25: 
+        label, color, bg_color, desc = "ПОВЫШЕННЫЙ РИСК", "#FFA500", "#332616", "ОПАСНАЯ ЗОНА: Возможны резкие манипуляции и ложные пробои."
+    else: 
+        label, color, bg_color, desc = "ТЕХНИЧНЫЙ РЫНОК", "#00C853", "#162B1D", "ЧИСТАЯ ЗОНА: Рынок предсказуем, уровни отрабатывают штатно."
+
+    # Расчет "Давления" (чем ближе к краям знака, тем выше процент)
+    pressure_val = (30 - ra_deg) * 3.33 if ra_deg > 15 else (ra_deg) * 3.33 # Примерная логика инверсии для Ганданты
+    pressure_pct = min(max(int(100 - (ra_deg * 3.33) if ra_deg < 15 else (ra_deg - 15) * 6.66), 5), 100)
+
+    # HTML Виджет Раху
+    st.markdown(f"""
+    <div style="background-color: {bg_color}; border: 1px solid {color}; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: {color}; font-size: 1.4em; font-weight: bold;">{label}</span>
+            <span style="color: white; font-size: 1.2em; font-family: monospace; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px;">{ra_deg:.4f}°</span>
+        </div>
+        <p style="color: #E0E1DD; margin-top: 10px; font-size: 1.1em; line-height: 1.4;">{desc}</p>
+        <div style="margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span style="font-size: 0.9em; color: #778DA9;">ИНДЕКС ДАВЛЕНИЯ (XAU/USD)</span>
+                <span style="font-size: 0.9em; color: {color}; font-weight: bold;">{pressure_pct}%</span>
+            </div>
+            <div style="width: 100%; background-color: #1B263B; border-radius: 5px; height: 10px;">
+                <div style="width: {pressure_pct}%; background-color: {color}; height: 10px; border-radius: 5px; transition: width 0.5s;"></div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Ближайшие штормы волатильности (компактный список)
+    storms = get_xau_storms(now_utc)
+    if storms:
+        with st.expander("⚡ Календарь ближайших штормов (45 дней)"):
+            cols = st.columns(len(storms))
+            for idx, s in enumerate(storms):
+                with cols[idx]:
+                    st.markdown(f"""
+                    <div style="text-align: center; background: #0D1B2A; padding: 10px; border-radius: 8px; border: 1px solid #415A77;">
+                        <small style="color: #778DA9;">{s['Дата']}</small><br>
+                        <b style="font-size: 0.9em;">{s['Тип']}</b><br>
+                        <code style="color: #A9D6E5;">{s['Угол']}</code>
+                    </div>
+                    """, unsafe_allow_html=True)
 
     # --- 2. ТЕКУЩАЯ АК И АМК (КАРТОЧКИ) ---
     st.subheader("🔄 Текущая АК и AmK")
