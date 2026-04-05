@@ -184,7 +184,17 @@ with tab1:
                     st.caption(f"АК: {get_full_info(df_t.iloc[0])}")
                     st.caption(f"AmK: {get_full_info(df_t.iloc[1])}")
                     break
+# (Внутри tab1, после Лунного цикла)
+df, ayan_val, rahu_lon, rahu_deg = get_planet_data(t_now) # Обновили вызов функции
+ra_label, ra_color, ra_desc = get_rahu_status(rahu_deg)
 
+st.markdown(f"""
+<div style="background: {ra_color}22; border-left: 5px solid {ra_color}; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid {ra_color}44;">
+    <h3 style="margin:0; color: {ra_color};">🐲 Индикатор Раху (Психология Толпы)</h3>
+    <p style="margin:5px 0; font-size: 1.1em;"><b>Статус: {ra_label}</b></p>
+    <p style="margin:0; color: #555; font-size: 0.9em;">{ra_desc} (Градус Раху: {rahu_deg:.2f}°)</p>
+</div>
+""", unsafe_allow_html=True)
 with tab2:
     st.header("📅 Высокоточный планировщик (1940-2050)")
     if 's_dt' not in st.session_state: st.session_state.s_dt = datetime.now()
