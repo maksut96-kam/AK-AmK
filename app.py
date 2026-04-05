@@ -1,3 +1,6 @@
+# ============================================================
+# ⛔ БЛОК 1: DO NOT TOUCH (ФУНДАМЕНТ И ИМПОРТЫ)
+# ============================================================
 import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta
@@ -7,7 +10,6 @@ import math
 import os
 import base64
 
-# 1. Системные настройки
 st.set_page_config(page_title="Julia Assistant Astro Coordination Center", layout="wide")
 
 @st.cache_resource
@@ -18,12 +20,10 @@ def init_engine():
 
 ts, eph = init_engine()
 
-# --- Константы и Словари ---
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 NAK_LORDS = ["Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"] * 3
-
-P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat', 'Rahu': '🐲 Rahu', 'Ketu': '🐍 Ketu'}
+P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat'}
 Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
 
 def get_dynamic_ayanamsa(t):
@@ -33,26 +33,6 @@ def get_dynamic_ayanamsa(t):
 def format_deg_to_min(deg_float):
     d = int(deg_float); m = int((deg_float - d) * 60); s = round((((deg_float - d) * 60) - m) * 60, 2)
     return f"{d}° {m}' {s}\""
-
-def get_planet_data(t):
-    current_ayan = get_dynamic_ayanamsa(t)
-    earth = eph['earth']
-    planets_objects = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
-    res = []
-    for name, obj in planets_objects.items():
-        lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
-        res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
-    
-    lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
-    ra_lon = (lon.degrees - current_ayan + 180) % 360 
-    res.append({'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': 30 - (ra_lon % 30)}) 
-    
-    df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
-    roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'PK', 'GK', 'DK']
-    df['Role'] = roles[:len(df)]
-    ketu_lon = (ra_lon + 180) % 360
-    df = pd.concat([df, pd.DataFrame([{'Planet': 'Ketu', 'Lon': ketu_lon, 'Deg': ketu_lon % 30, 'Role': '-'}])], ignore_index=True)
-    return df, current_ayan
 
 def get_lunar_info(t):
     earth = eph['earth']
@@ -75,7 +55,9 @@ def create_printable_html(df, title_period):
         rows_html += f"<tr><td style='border:1px solid #ddd;padding:12px;font-weight:bold;width:25%;'>{row['Время (Сочи)']}</td><td style='border:1px solid #ddd;padding:12px;'><b>АК:</b> {row['АК']}<br><b>AmK:</b> {row['AmK']}</td><td style='border:1px solid #ddd;padding:12px;color:#eee;vertical-align:bottom;width:30%;'>____________________</td></tr>"
     return f"<html><body style='font-family:sans-serif;color:#333;padding:20px;'><div style='text-align:center;border-bottom:2px solid #1B263B;padding-bottom:10px;margin-bottom:20px;'><h1>Julia Assistant Astro Coordination Center</h1><p>План периодов: {title_period} | Сочи (UTC+3)</p></div><table style='width:100%;border-collapse:collapse;'><thead><tr style='background:#f8f9fa;'><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Дата и время</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Конфигурация (АК/AmK)</th><th style='border:1px solid #ddd;padding:12px;text-align:left;'>Заметки</th></tr></thead><tbody>{rows_html}</tbody></table></body></html>"
 
-# --- ИНТЕРФЕЙС ---
+# ============================================================
+# ⛔ БЛОК 2: DO NOT TOUCH (ШАПКА И ЛОГОТИП)
+# ============================================================
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
 with col_l2:
     if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
@@ -99,6 +81,30 @@ components.html("""
     </script>
 """, height=110)
 
+# ============================================================
+# ✅ БЛОК 3: EDITABLE AREA (РАСЧЕТЫ И ЛОГИКА)
+# ============================================================
+def get_planet_data(t):
+    current_ayan = get_dynamic_ayanamsa(t)
+    earth = eph['earth']
+    planets_objects = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
+    res = []
+    
+    # Расчет только 7 классических планет
+    for name, obj in planets_objects.items():
+        lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - current_ayan) % 360
+        res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
+    
+    df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
+    
+    # Назначаем строго 7 ролей
+    roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
+    df['Role'] = roles[:len(df)]
+    return df, current_ayan
+
+# ============================================================
+# ✅ БЛОК 4: EDITABLE AREA (ВКЛАДКИ И ОТОБРАЖЕНИЕ)
+# ============================================================
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Таймлайн"])
 
 with tab1:
