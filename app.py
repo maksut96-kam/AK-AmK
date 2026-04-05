@@ -166,7 +166,6 @@ def get_full_info(row):
 # 🔵 МОДУЛЬ 4.1: ВИДЖЕТ РАХУ (РАДАР ШТОРМОВ XAUUSD)
 # ============================================================
 def render_rahu_module(ra_deg, now_dt):
-    """Управляет отображением статуса Раху и поиском аспектов к Солнцу."""
     if ra_deg < 2 or ra_deg > 28: label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок крайне иррационален."
     elif ra_deg < 5 or ra_deg > 25: label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны сквизы."
     else: label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
@@ -190,15 +189,13 @@ def render_rahu_module(ra_deg, now_dt):
 # 🌙 МОДУЛЬ 4.2: ВИДЖЕТ ЛУНЫ
 # ============================================================
 def render_lunar_module(tithi, status, icon):
-    """Отображает текущие лунные сутки и фазу."""
     st.markdown(f"### {icon} Лунный цикл: {tithi} сутки")
     st.info(f"Текущая фаза: **{status}**")
 
 # ============================================================
-# 💎 МОДУЛЬ 4.3: ТАБЛИЦА АК / AmK И ВСЕХ КАРАК
+# 💎 МОДУЛЬ 4.3: ТЕКУЩИЕ АК И АмК (ТАБЛИЦА)
 # ============================================================
 def render_karakas_table(df):
-    """Выводит полную таблицу планет и их ролей (Чара-караки)."""
     st.subheader("📊 Таблица Чара-карак")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
@@ -208,16 +205,15 @@ def render_karakas_table(df):
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
 
 # ============================================================
-# 🔄 МОДУЛЬ 4.4: МОНИТОРИНГ РОТАЦИЙ (СМЕНЫ АК/AmK)
+# 🔄 МОДУЛЬ 4.4: МОНИТОРИНГ РОТАЦИЙ (БЛИЖАЙШИЕ СМЕНЫ)
 # ============================================================
 def render_rotation_monitor(df, now_utc):
-    """Рассчитывает и отображает ближайшие моменты смены главных карак."""
     st.subheader("🔄 Мониторинг ротаций")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     
     c_m1, c_m2 = st.columns(2)
     with c_m1: st.metric("💎 Текущая АК", get_full_info(df.iloc[0]))
-    with c_cur2 if 'c_cur2' in locals() else c_m2: st.metric("🥈 Текущая AmK", get_full_info(df.iloc[1]))
+    with c_m2: st.metric("🥈 Текущая AmK", get_full_info(df.iloc[1]))
 
     cols = st.columns(2)
     settings = [(-1, "⬅️ Предыдущая смена", "#415A77"), (1, "➡️ Следующая смена", "#778DA9")]
@@ -234,35 +230,80 @@ def render_rotation_monitor(df, now_utc):
                     break
 
 # ============================================================
-# 🚀 ГЛАВНЫЙ СБОРОЧНЫЙ ЦЕХ (MAIN DISPLAY)
+# 🚀 ГЛАВНЫЙ СБОРОЧНЫЙ ЦЕХ (TABS)
 # ============================================================
 
-tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Планировщик"])
+tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Планировщик"])
 
+# --- ВКЛАДКА 1: ОПЕРАТИВНЫЙ МОНИТОРИНГ ---
 with tab1:
-    # 0. Подготовка данных
     now_utc = datetime.utcnow()
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     df, ra_lon, ra_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_data(t_now)
     
-    st.markdown(f"**📍 Момент расчета:** `{(now_utc + timedelta(hours=3)).strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
+    st.markdown(f"**📍 Расчет (Сочи):** `{(now_utc + timedelta(hours=3)).strftime('%d.%m.%Y %H:%M:%S')}`")
 
-    # --- ВЫЗОВ ОТДЕЛЬНЫХ БЛОКОВ ---
-    
-    # 1. Раху
     render_rahu_module(ra_deg, now_utc)
     st.markdown("---")
-    
-    # 2. Луна
     render_lunar_module(tithi, l_status, l_icon)
     st.markdown("---")
-    
-    # 3. АК и АмК (Таблица)
     render_karakas_table(df)
     st.markdown("---")
-    
-    # 4. Мониторинг ротаций
     render_rotation_monitor(df, now_utc)
 
-# ... (tab2 остается без изменений)
+# --- ВКЛАДКА 2: ИНСТРУМЕНТ ПРОГНОЗИРОВАНИЯ ---
+with tab2:
+    st.header("📅 Высокоточный планировщик ротаций")
+    st.write("Инструмент для поиска точного времени смены АК и AmK на выбранном периоде.")
+    
+    c_p1, c_p2 = st.columns(2)
+    with c_p1:
+        d_s = st.date_input("Дата начала", value=datetime.now(), key="ds_p")
+        t_s = st.time_input("Время начала", value=time(0, 0), key="ts_p")
+    with c_p2:
+        d_e = st.date_input("Дата конца", value=datetime.now() + timedelta(days=3), key="de_p")
+        t_e = st.time_input("Время конца", value=time(23, 59), key="te_p")
+
+    if st.button('🚀 Рассчитать и подготовить бланк'):
+        dt_start = datetime.combine(d_s, t_s)
+        dt_end = datetime.combine(d_e, t_e)
+        
+        if dt_start >= dt_end:
+            st.error("Ошибка: Время начала должно быть раньше времени завершения.")
+        else:
+            with st.spinner('Синхронизация планетарных циклов...'):
+                curr_utc = dt_start - timedelta(hours=3)
+                end_utc = dt_end - timedelta(hours=3)
+                events = []
+                
+                # Начальное состояние
+                t_init = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
+                df_i, _, _ = get_planet_data(t_init)
+                last_pair = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
+                
+                # Добавляем стартовую точку
+                events.append({
+                    "Время (Сочи)": dt_start.strftime("%d.%m.%Y %H:%M"),
+                    "💎 АК": get_full_info(df_i.iloc[0]),
+                    "🥈 AmK": get_full_info(df_i.iloc[1])
+                })
+                
+                # Цикл поиска изменений
+                temp_time = curr_utc
+                while temp_time < end_utc:
+                    temp_time += timedelta(minutes=1)
+                    t_step = ts.utc(temp_time.year, temp_time.month, temp_time.day, temp_time.hour, temp_time.minute)
+                    df_step, _, _ = get_planet_data(t_step)
+                    new_pair = f"{df_step.iloc[0]['Planet']}/{df_step.iloc[1]['Planet']}"
+                    
+                    if new_pair != last_pair:
+                        events.append({
+                            "Время (Сочи)": (temp_time + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"),
+                            "💎 АК": get_full_info(df_step.iloc[0]),
+                            "🥈 AmK": get_full_info(df_step.iloc[1])
+                        })
+                        last_pair = new_pair
+                
+                st.success(f"Найдено ротаций: {len(events)-1}")
+                st.table(pd.DataFrame(events))
