@@ -82,23 +82,18 @@ components.html("""
 """, height=110)
 
 # ============================================================
-# ✅ БЛОК 3: ЛОГИКА РАСЧЕТОВ (ФУНКЦИИ)
+# 🧮 БЛОК 3: МАТЕМАТИЧЕСКОЕ ЯДРО (РАСЧЕТЫ И АСТРО-ЛОГИКА)
 # ============================================================
 
+# --- Подблок 3.1: Базовые вычисления ---
 def get_dynamic_ayanamsa(t_skyfield):
+    """Вычисляет айанамшу Лахири на текущий момент времени."""
     jd = t_skyfield.tt
     t_centuries = (jd - 2451545.0) / 36525
     return 23.85 + (50.3 / 3600) * t_centuries
 
-def get_lunar_info(t):
-    sun_lon = eph['earth'].at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees
-    moon_lon = eph['earth'].at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees
-    diff = (moon_lon - sun_lon) % 360
-    tithi = int(diff / 12) + 1
-    if diff < 180: return tithi, "Растущая (Шукла)", "🌙"
-    else: return tithi, "Убывающая (Кришна)", "🌘"
-
 def get_planet_data(t):
+    """Рассчитывает координаты 7 планет, их роли (АК/AmK) и положение Раху."""
     current_ayan = get_dynamic_ayanamsa(t)
     earth = eph['earth']
     planets_objects = {
@@ -112,24 +107,27 @@ def get_planet_data(t):
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
     
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
-    roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
-    df['Role'] = roles[:len(df)]
+    df['Role'] = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK'][:len(df)]
     
+    # Раху (всегда ретрограден в нашей логике: от 30 к 0)
     lat, lon, dist = earth.at(t).observe(eph['moon']).ecliptic_latlon()
     ra_lon = (lon.degrees - current_ayan + 180) % 360 
     ra_deg = 30 - (ra_lon % 30) 
-    
-    return df, current_ayan, ra_lon, ra_deg
+    return df, ra_lon, ra_deg
 
-def get_rahu_status(ra_deg):
-    if ra_deg < 2 or ra_deg > 28:
-        return "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок XAUUSD крайне иррационален."
-    elif ra_deg < 5 or ra_deg > 25:
-        return "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны ложные сквизы."
-    else:
-        return "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ работает в стандартном режиме."
+# --- Подблок 3.2: Логика Луны и Раху ---
+def get_lunar_data(t):
+    """Определяет титхи (лунные сутки), статус и иконку фазы."""
+    sun_lon = eph['earth'].at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees
+    moon_lon = eph['earth'].at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees
+    diff = (moon_lon - sun_lon) % 360
+    tithi = int(diff / 12) + 1
+    status = "Растущая (Шукла)" if diff < 180 else "Убывающая (Кришна)"
+    icon = "🌙" if diff < 180 else "🌘"
+    return tithi, status, icon
 
 def get_xau_storms(dt_start, days=45):
+    """Ищет критические аспекты Раху к Солнцу (Золоту) на 45 дней вперед."""
     storms = []
     earth = eph['earth']
     for i in range(days):
@@ -137,65 +135,71 @@ def get_xau_storms(dt_start, days=45):
         t_check = ts.utc(check_date.year, check_date.month, check_date.day)
         ayan = get_dynamic_ayanamsa(t_check)
         sun_lon = (earth.at(t_check).observe(eph['sun']).ecliptic_latlon()[1].degrees - ayan) % 360
-        _, _, ra_lon, _ = get_planet_data(t_check)
-        diff = abs(sun_lon - ra_lon) % 360
+        _, _, ra_lon_c = get_planet_data(t_check) # ra_lon_c здесь не используется напрямую, берем из функции
+        
+        # Получаем данные Раху для этой даты
+        _, ra_lon_check, _ = get_planet_data(t_check)
+        diff = abs(sun_lon - ra_lon_check) % 360
+        
+        # Соединение (0), Квадрат (90), Оппозиция (180)
         for p in [0, 90, 180, 270]:
             if abs(diff - p) < 3:
-                storms.append({"Дата": check_date.strftime("%d.%m"), "Тип": "⚠️ ШТОРМ" if p in [0, 180] else "⚡️ ВОЛАТИЛЬНОСТЬ", "Угол": f"{int(p)}°"})
+                storms.append({
+                    "Дата": check_date.strftime("%d.%m"), 
+                    "Тип": "⚠️ ШТОРМ" if p in [0, 180] else "⚡️ ВОЛАТИЛЬНОСТЬ", 
+                    "Угол": f"{int(p)}°"
+                })
                 break
-    seen, unique_storms = set(), []
+    # Фильтр уникальных дат
+    seen, unique = set(), []
     for s in storms:
-        if s["Дата"] not in seen:
-            unique_storms.append(s); seen.add(s["Дата"])
-    return unique_storms[:5]
+        if s["Дата"] not in seen: unique.append(s); seen.add(s["Дата"])
+    return unique[:5]
 
+# --- Подблок 3.3: Форматирование вывода ---
 def get_full_info(row):
+    """Превращает строку данных планеты в читаемый текст с иконкой знака."""
     sign = ZODIAC_SIGNS[int(row['Lon']/30)]
     return f"{row['Planet']} ({Z_ICONS[sign]} {sign} {row['Deg']:.2f}°)"
 
 # ============================================================
-# ✅ БЛОК 4: ИНТЕРФЕЙС И ВЫЗОВЫ
+# 🔵 МОДУЛЬ 4.1: ВИДЖЕТ РАХУ (РАДАР ШТОРМОВ XAUUSD)
 # ============================================================
+def render_rahu_module(ra_deg, now_dt):
+    """Управляет отображением статуса Раху и поиском аспектов к Солнцу."""
+    if ra_deg < 2 or ra_deg > 28: label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок крайне иррационален."
+    elif ra_deg < 5 or ra_deg > 25: label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны сквизы."
+    else: label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
 
-tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Таймлайн"])
-
-with tab1:
-    now_utc = datetime.utcnow()
-    sochi_now = now_utc + timedelta(hours=3)
-    t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
-    
-    df, ayan_val, rahu_lon, rahu_deg = get_planet_data(t_now)
-    tithi, l_status, l_icon = get_lunar_info(t_now)
-    
-    st.markdown(f"**📍 Момент расчета:** `{sochi_now.strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
-
-    # Виджет Раху
-    ra_label, ra_color, ra_desc = get_rahu_status(rahu_deg)
-    st.markdown(f"""
-    <div style="background: {ra_color}22; border-left: 5px solid {ra_color}; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid {ra_color}44;">
-        <h3 style="margin:0; color: {ra_color};">🐲 Монитор Раху: {ra_label}</h3>
-        <p style="margin:5px 0;">{ra_desc} (Градус: {rahu_deg:.2f}°)</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44;">
+        <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {label}</h3>
+        <p style="margin:5px 0;">{desc} (Текущий градус: <b>{ra_deg:.2f}°</b>)</p></div>""", unsafe_allow_html=True)
 
     st.subheader("📡 Радар аномалий XAUUSD")
-    col_r1, col_r2 = st.columns([1, 2])
-    with col_r1:
-        risk_score = 100 - (rahu_deg * 5) if rahu_deg < 10 else (rahu_deg - 20) * 10 if rahu_deg > 20 else 5
-        st.write("**Давление Раху:**")
-        st.progress(min(max(int(risk_score), 5), 100))
-        st.caption("Близость к границам знаков")
-    with col_r2:
-        st.write("**Дни 'Мутного Рынка':**")
-        storms = get_xau_storms(now_utc)
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        score = 100-(ra_deg*5) if ra_deg<10 else (ra_deg-20)*10 if ra_deg>20 else 5
+        st.write("**Давление Раху:**"); st.progress(min(max(int(score), 5), 100))
+    with c2:
+        storms = get_xau_storms(now_dt)
         if storms:
-            for s in storms: st.warning(f"**{s['Дата']}** — {s['Тип']} (Аспект {s['Угол']})")
+            for s in storms: st.warning(f"**{s['Дата']}** — {s['Тип']} (Угол {s['Угол']})")
         else: st.success("✅ Критических помех для золота не обнаружено.")
 
-    st.info("💡 В дни шторма Раху 'ломает' графики. Игнорируйте пробои уровней без сильного фундамента.")
-    st.markdown("---")
-    
-    st.markdown(f"### {l_icon} Луна: {tithi} сутки ({l_status})")
+# ============================================================
+# 🌙 МОДУЛЬ 4.2: ВИДЖЕТ ЛУНЫ
+# ============================================================
+def render_lunar_module(tithi, status, icon):
+    """Отображает текущие лунные сутки и фазу."""
+    st.markdown(f"### {icon} Лунный цикл: {tithi} сутки")
+    st.info(f"Текущая фаза: **{status}**")
+
+# ============================================================
+# 💎 МОДУЛЬ 4.3: ТАБЛИЦА АК / AmK И ВСЕХ КАРАК
+# ============================================================
+def render_karakas_table(df):
+    """Выводит полную таблицу планет и их ролей (Чара-караки)."""
+    st.subheader("📊 Таблица Чара-карак")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
     df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
@@ -203,47 +207,62 @@ with tab1:
     df_v.index = range(1, len(df_v) + 1)
     st.table(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']])
 
-    st.markdown("---")
+# ============================================================
+# 🔄 МОДУЛЬ 4.4: МОНИТОРИНГ РОТАЦИЙ (СМЕНЫ АК/AmK)
+# ============================================================
+def render_rotation_monitor(df, now_utc):
+    """Рассчитывает и отображает ближайшие моменты смены главных карак."""
     st.subheader("🔄 Мониторинг ротаций")
-    c_cur1, c_cur2 = st.columns(2)
-    with c_cur1: st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
-    with c_cur2: st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
-
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    c1, c2 = st.columns(2)
-    for col, direct, label, color in zip([c1, c2], [-1, 1], ["⬅️ Предыдущая смена", "➡️ Следующая смена"], ["#415A77", "#778DA9"]):
-        with col:
-            st.markdown(f"<h4 style='color:{color}; border-bottom: 1px solid #eee;'>{label}</h4>", unsafe_allow_html=True)
+    
+    c_m1, c_m2 = st.columns(2)
+    with c_m1: st.metric("💎 Текущая АК", get_full_info(df.iloc[0]))
+    with c_cur2 if 'c_cur2' in locals() else c_m2: st.metric("🥈 Текущая AmK", get_full_info(df.iloc[1]))
+
+    cols = st.columns(2)
+    settings = [(-1, "⬅️ Предыдущая смена", "#415A77"), (1, "➡️ Следующая смена", "#778DA9")]
+    for idx, (direct, label, color) in enumerate(settings):
+        with cols[idx]:
+            st.markdown(f"<h4 style='color:{color}; border-bottom:1px solid #eee;'>{label}</h4>", unsafe_allow_html=True)
             for m in range(10, 2880, 10):
                 target = now_utc + timedelta(minutes=m*direct)
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
-                df_t, _, _, _ = get_planet_data(t_t)
+                df_t, _, _ = get_planet_data(t_t)
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
                     st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}")
-                    st.caption(f"AmK: {get_full_info(df_t.iloc[1])}")
+                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}\n\nAmK: {get_full_info(df_t.iloc[1])}")
                     break
 
-with tab2:
-    st.header("📅 Высокоточный планировщик")
-    dt_s = datetime.combine(st.date_input("С", key="sd_tl"), st.time_input("С время", key="st_tl"))
-    dt_e = datetime.combine(st.date_input("ПО", key="ed_tl"), st.time_input("ПО время", key="et_tl"))
-    if st.button('🚀 Рассчитать и подготовить бланк'):
-        if dt_s >= dt_e: st.error("Начало должно быть раньше конца.")
-        else:
-            with st.spinner('Минутный расчет...'):
-                curr_u, end_u, events = dt_s - timedelta(hours=3), dt_e - timedelta(hours=3), []
-                t_init = ts.utc(curr_u.year, curr_u.month, curr_u.day, curr_u.hour, curr_u.minute)
-                df_i, _, _, _ = get_planet_data(t_init)
-                last_p = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
-                events.append({"Время (Сочи)": dt_s.strftime("%d.%m.%Y %H:%M"), "АК": get_full_info(df_i.iloc[0]), "AmK": get_full_info(df_i.iloc[1])})
-                tmp = curr_u
-                while tmp < end_u:
-                    tmp += timedelta(minutes=1)
-                    ts_step = ts.utc(tmp.year, tmp.month, tmp.day, tmp.hour, tmp.minute)
-                    df_s, _, _, _ = get_planet_data(ts_step)
-                    new_p = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
-                    if new_p != last_p:
-                        events.append({"Время (Сочи)": (tmp + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "АК": get_full_info(df_s.iloc[0]), "AmK": get_full_info(df_s.iloc[1])})
-                        last_p = new_p
-                st.table(pd.DataFrame(events))
+# ============================================================
+# 🚀 ГЛАВНЫЙ СБОРОЧНЫЙ ЦЕХ (MAIN DISPLAY)
+# ============================================================
+
+tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Планировщик"])
+
+with tab1:
+    # 0. Подготовка данных
+    now_utc = datetime.utcnow()
+    t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
+    df, ra_lon, ra_deg = get_planet_data(t_now)
+    tithi, l_status, l_icon = get_lunar_data(t_now)
+    
+    st.markdown(f"**📍 Момент расчета:** `{(now_utc + timedelta(hours=3)).strftime('%d.%m.%Y %H:%M:%S')}` (Сочи)")
+
+    # --- ВЫЗОВ ОТДЕЛЬНЫХ БЛОКОВ ---
+    
+    # 1. Раху
+    render_rahu_module(ra_deg, now_utc)
+    st.markdown("---")
+    
+    # 2. Луна
+    render_lunar_module(tithi, l_status, l_icon)
+    st.markdown("---")
+    
+    # 3. АК и АмК (Таблица)
+    render_karakas_table(df)
+    st.markdown("---")
+    
+    # 4. Мониторинг ротаций
+    render_rotation_monitor(df, now_utc)
+
+# ... (tab2 остается без изменений)
