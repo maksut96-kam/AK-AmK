@@ -83,34 +83,89 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: ШАПКА, ЛОГОТИП И ЧАСЫ
+# ⛔ БЛОК 3: ВЕРХНЯЯ ПАНЕЛЬ (ЛОГО, ЗАГОЛОВОК И ТАЙМЕР)
 # ============================================================
-col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
-with col_l2:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", use_container_width=True)
 
+# 1. Стилизация (CSS)
 st.markdown("""
 <style>
-    .julia-title { text-align: center; margin-top: -10px; margin-bottom: 25px; font-weight: 800; font-size: 3.2em; 
-    background: linear-gradient(270deg, #0D1B2A, #1B263B, #415A77, #0D1B2A); background-size: 400% 400%; 
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: dark-glow 10s ease infinite; }
-    @keyframes dark-glow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    /* Контейнер для шапки */
+    .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 20px;
+        background: rgba(27, 38, 59, 0.05);
+        border-radius: 15px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(65, 90, 119, 0.2);
+    }
+    /* Заголовок */
+    .julia-title {
+        text-align: center;
+        flex-grow: 1;
+        font-weight: 800;
+        font-size: 2.5em;
+        background: linear-gradient(270deg, #0D1B2A, #415A77, #1B263B);
+        background-size: 400% 400%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
+    }
 </style>
-<h1 class="julia-title">Julia Assistant Astro Coordination Center</h1>
 """, unsafe_allow_html=True)
 
+# 2. Рендеринг Логотипа и Заголовка
+main_col1, main_col2 = st.columns([1, 4])
+
+with main_col1:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=120)
+    else:
+        # Заглушка, если файла нет, чтобы не было пустоты
+        st.markdown("🪐 **ASTRO**")
+
+with main_col2:
+    st.markdown('<h1 class="julia-title">Julia Assistant Astro Center</h1>', unsafe_allow_html=True)
+
+# 3. Виджет живых часов (Sochi Time)
 components.html("""
-    <div style="background: linear-gradient(90deg, #050510, #0a0a20); padding:15px; border-radius:15px; text-align:center; font-family: sans-serif; border: 1px solid #1B263B;">
-        <h2 id="clock" style="margin:0; color:#415A77; letter-spacing: 2px;">Загрузка...</h2>
-        <p style="margin:0; color:#778DA9; font-size: 0.8em; text-transform: uppercase;">Sochi Astro-Coordination Time (UTC+3)</p>
+    <div style="
+        background: #0D1B2A; 
+        padding: 10px; 
+        border-radius: 12px; 
+        text-align: center; 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        border: 1px solid #415A77;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+    ">
+        <div id="clock" style="
+            font-size: 28px; 
+            color: #E0E1DD; 
+            font-weight: bold; 
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px rgba(119, 141, 169, 0.5);
+        ">Загрузка...</div>
+        <div style="color: #778DA9; font-size: 10px; text-transform: uppercase; margin-top: 5px;">
+            Sochi Live Monitoring (UTC+3)
+        </div>
     </div>
     <script>
-        function updateClock() { let d = new Date(); let utc = d.getTime() + (d.getTimezoneOffset() * 60000); let sochi = new Date(utc + (3600000 * 3)); document.getElementById('clock').innerHTML = sochi.toLocaleTimeString('ru-RU'); }
-        setInterval(updateClock, 1000); updateClock();
+        function updateClock() {
+            let d = new Date();
+            let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+            let sochi = new Date(utc + (3600000 * 3));
+            let h = String(sochi.getHours()).padStart(2, '0');
+            let m = String(sochi.getMinutes()).padStart(2, '0');
+            let s = String(sochi.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').innerHTML = h + ":" + m + ":" + s;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
     </script>
-""", height=110)
+""", height=100)
 
+st.markdown("---")
 # ============================================================
 # ⛔ БЛОК 4: ОПЕРАТИВНЫЙ МОНИТОРИНГ (ТАБЫ)
 # ============================================================
