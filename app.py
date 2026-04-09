@@ -83,10 +83,10 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: ГИПЕРПРОСТРАНСТВЕННАЯ ПАНЕЛЬ (MOVING SPACE SHIELD)
+# ⛔ БЛОК 3: ПАРАЛЛАКС-ГИПЕРПРЫЖОК И ВЕРХНИЙ ЗАГОЛОВОК
 # ============================================================
 
-# 1. СНАЧАЛА ОПРЕДЕЛЯЕМ ФУНКЦИЮ (чтобы не было NameError)
+# 1. ОПРЕДЕЛЯЕМ ФУНКЦИЮ (чтобы не было NameError)
 import base64
 import os
 
@@ -96,119 +96,141 @@ def get_base64_img(path):
             return base64.b64encode(f.read()).decode()
     return ""
 
-# 2. ТЕПЕРЬ ВЫЗЫВАЕМ ЕЁ
 logo_data = get_base64_img("logo.png")
 
-# 3. ДАЛЬШЕ ИДЕТ ВЕСЬ ОСТАЛЬНОЙ CSS (st.markdown)
-st.markdown("""
+# 2. НОВЫЙ CSS: Параллакс и Позиционирование
+st.markdown(f"""
 <style>
     /* Основной контейнер "Иллюминатор" */
-    .space-port {
+    .space-port-parallax {{
         position: relative;
         width: 100%;
-        height: 300px;
+        height: 350px; /* Увеличили высоту для глубины */
         border-radius: 20px;
         overflow: hidden;
         background-color: #050505;
         margin-bottom: 30px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-        border: 2px solid rgba(65, 90, 119, 0.3);
-    }
+        box-shadow: 0 10px 50px rgba(0,0,0,0.9);
+        border: 2px solid rgba(65, 90, 119, 0.4);
+    }}
 
     /* СЛОЙ 1: Неподвижный логотип (как подложка) */
-    .logo-static {
+    .logo-static-parallax {{
         position: absolute;
         width: 100%;
         height: 100%;
-        background-image: url('data:image/png;base64,{logo_base64}'); 
+        background-image: url('data:image/png;base64,{logo_data}'); 
         background-size: cover;
         background-position: center;
-        filter: brightness(0.5) contrast(1.1); /* Затемняем, чтобы текст читался */
+        filter: brightness(0.4) contrast(1.1); /* Затемнили сильнее для контраста */
         z-index: 1;
-    }
+    }}
 
-    /* СЛОЙ 2: Быстро движущиеся частицы (эффект полета) */
-    .space-warp {
+    /* СЛОИ ПАРАЛЛАКСА (Анимация из центра на зрителя) */
+    .parallax-layer {{
         position: absolute;
-        width: 100%;
-        height: 100%;
-        background-image: 
-            radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
-            radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
-            radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
-        background-size: 550px 550px, 350px 350px, 250px 250px;
-        background-position: 0 0, 40px 60px, 130px 270px;
+        top: 0; left: 0; right: 0; bottom: 0;
         z-index: 2;
-        /* АНИМАЦИЯ ПОЛЕТА: Сдвиг фона по вертикали */
-        animation: space-fly 1.5s linear infinite; /* 1.5s - быстро */
+        background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px);
+        background-size: 400px 400px;
+        transform: scale(0); /* Изначально скрыты */
+        opacity: 0;
+        animation: warp-drive 2s infinite linear;
+    }}
+
+    /* Слой 1: ДАЛЬНИЙ (Медленный, маленький) */
+    .warp-distant {{
+        animation-duration: 2s;
+        animation-delay: 0s;
+        background-image: radial-gradient(white, rgba(255,255,255,.1) 1.5px, transparent 2.5px);
+        opacity: 0.3;
+    }}
+
+    /* Слой 2: СРЕДНИЙ (Средняя скорость) */
+    .warp-middle {{
+        animation-duration: 1.5s;
+        animation-delay: 0.5s;
+        background-image: radial-gradient(white, rgba(255,255,255,.15) 2px, transparent 3px);
+        background-size: 300px 300px;
+        opacity: 0.6;
+    }}
+
+    /* Слой 3: БЛИЖНИЙ (БЫСТРЫЙ, КРУПНЫЙ) */
+    .warp-close {{
+        animation-duration: 1.2s;
+        animation-delay: 1s;
+        background-image: radial-gradient(white, rgba(255,255,255,.2) 3px, transparent 4px);
+        background-size: 200px 200px;
         opacity: 0.8;
-    }
+    }}
 
-    @keyframes space-fly {
-        from { background-position: 0 0, 40px 60px, 130px 270px; }
-        to { background-position: 0 100%, 40px 100%, 130px 100%; }
-    }
+    @keyframes warp-drive {{
+        0% {{ transform: scale(0.2); opacity: 0; }}
+        20% {{ opacity: 1; }}
+        80% {{ opacity: 1; }}
+        100% {{ transform: scale(2.5); opacity: 0; }} /* Вылетают за экран */
+    }}
 
-    /* СЛОЙ 3: Заголовок сверху */
-    .title-overlay-art {
+    /* СЛОЙ 4: Заголовок в самый верх */
+    .title-overlay-art-top {{
         position: absolute;
-        top: 50%;
+        top: 15%; /* Вынесли в самый верх */
         left: 50%;
         transform: translate(-50%, -50%); /* Центрируем */
-        width: 90%;
+        width: 95%;
         text-align: center;
-        z-index: 3;
-    }
+        z-index: 4;
+    }}
 
-    .julia-title-art {
+    .julia-title-art-top {{
         font-family: 'Lexend', sans-serif;
         font-weight: 800;
-        font-size: 3.8em;
-        letter-spacing: 6px;
+        font-size: 3.5em; /* Немного уменьшили для верха */
+        letter-spacing: 5px;
         text-transform: uppercase;
         color: white;
-        text-shadow: 0 0 15px rgba(255,255,255,0.6), 0 0 30px rgba(65, 90, 119, 0.8);
+        text-shadow: 0 0 15px rgba(255,255,255,0.7), 0 0 30px rgba(65, 90, 119, 0.9);
         margin: 0;
-    }
+    }}
 
-    /* Мини-часы (как в арте) */
-    .clock-overlay-art {
+    /* Мини-часы (как в арте, ID обновлен) */
+    .clock-overlay-art-parallax {{
         position: absolute;
         bottom: 10px;
         right: 20px;
-        z-index: 3;
-        background: rgba(13, 27, 42, 0.7);
+        z-index: 4;
+        background: rgba(13, 27, 42, 0.8);
         padding: 5px 15px;
         border-radius: 20px;
         border: 1px solid rgba(255,255,255,0.1);
         backdrop-filter: blur(5px);
         text-align: center;
-    }
+    }}
 </style>
 """, unsafe_allow_html=True)
 
-# Подготовка изображения для CSS (оставляем функцию из прошлого ответа)
-# get_base64_img("logo.png") должна быть определена выше
-
-logo_data = get_base64_img("logo.png")
-
-# 2. Рендеринг трехслойной конструкции
+# 3. Рендеринг многослойной конструкции
 st.markdown(f"""
-    <div class="space-port">
-        <div class="logo-static" style="background-image: url('data:image/png;base64,{logo_data}');"></div>
-        <div class="space-warp"></div>
-        <div class="title-overlay-art">
-            <h1 class="julia-title-art">Julia Assistant</h1>
-            <p style="color: #778DA9; letter-spacing: 9px; margin-top: -10px; font-size: 1.1em;">ASTRO COORDINATION CENTER</p>
+    <div class="space-port-parallax">
+        <div class="logo-static-parallax" style="background-image: url('data:image/png;base64,{logo_data}');"></div>
+        
+        <div class="parallax-layer warp-distant"></div>
+        <div class="parallax-layer warp-middle"></div>
+        <div class="parallax-layer warp-close"></div>
+
+        <div class="title-overlay-art-top">
+            <h1 class="julia-title-art-top">Julia Assistant</h1>
+            <p style="color: #778DA9; letter-spacing: 8px; margin-top: -10px; font-size: 1em;">ASTRO COORDINATION CENTER</p>
         </div>
-        <div class="clock-overlay-art">
-            <span id="mini-clock-art" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.3em;">00:00:00</span>
+        
+        <div class="clock-overlay-art-parallax">
+            <span id="mini-clock-art-parallax" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.3em;">00:00:00</span>
             <div style="color: #415A77; font-size: 0.7em; text-transform: uppercase;">SOCHI LIVE</div>
         </div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. Скрипт для часов (встраиваем отдельно, ID обновлен)
+# 4. Скрипт для часов (встраиваем отдельно, ID обновлен)
 components.html("""
     <script>
         function updateClock() {
@@ -218,9 +240,8 @@ components.html("""
             let h = String(sochi.getHours()).padStart(2, '0');
             let m = String(sochi.getMinutes()).padStart(2, '0');
             let s = String(sochi.getSeconds()).padStart(2, '0');
-            // Обновляем часы только в родительском окне
-            if (window.parent.document.getElementById('mini-clock-art')) {
-                window.parent.document.getElementById('mini-clock-art').innerHTML = h + ":" + m + ":" + s;
+            if (window.parent.document.getElementById('mini-clock-art-parallax')) {
+                window.parent.document.getElementById('mini-clock-art-parallax').innerHTML = h + ":" + m + ":" + s;
             }
         }
         setInterval(updateClock, 1000);
