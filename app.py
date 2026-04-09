@@ -86,7 +86,20 @@ def get_full_info(row):
 # ⛔ БЛОК 3: ГИПЕРПРОСТРАНСТВЕННАЯ ПАНЕЛЬ (MOVING SPACE SHIELD)
 # ============================================================
 
-# 1. Стилизация (Полный перенос концепт-арта в CSS)
+# 1. СНАЧАЛА ОПРЕДЕЛЯЕМ ФУНКЦИЮ (чтобы не было NameError)
+import base64
+import os
+
+def get_base64_img(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return ""
+
+# 2. ТЕПЕРЬ ВЫЗЫВАЕМ ЕЁ
+logo_data = get_base64_img("logo.png")
+
+# 3. ДАЛЬШЕ ИДЕТ ВЕСЬ ОСТАЛЬНОЙ CSS (st.markdown)
 st.markdown("""
 <style>
     /* Основной контейнер "Иллюминатор" */
