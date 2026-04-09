@@ -83,12 +83,10 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: ВЕРХНИЙ ТЕКСТ И ДИНАМИЧЕСКИЙ БАННЕР (ФИНАЛ)
+# ⛔ БЛОК 3: ПАРАЛЛАКС-ГИПЕРПРЫЖОК (ВЕРСИЯ NANO BANANA STYLE)
 # ============================================================
 import base64
 import os
-from datetime import datetime
-import time as time_core # Импортируем стандартный time, чтобы не конфликтовал с переменными Streamlit
 
 def get_base64_img(path):
     if os.path.exists(path):
@@ -98,74 +96,115 @@ def get_base64_img(path):
 
 logo_data = get_base64_img("logo.png")
 
-# --- ЧАСТЬ 1: ТЕКСТОВЫЙ ЗАГОЛОВОК (НАД БАННЕРОМ) ---
+# --- 1. ВЕРХНИЙ ЗАГОЛОВОК (ВНЕ БАННЕРА) ---
 st.markdown("""
-<style>
-    .top-header-final { text-align: center; margin-bottom: 25px; }
-    .top-title-final { font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 3.2em; letter-spacing: 5px; text-transform: uppercase; color: #FFFFFF; text-shadow: 0 0 15px rgba(65, 90, 119, 0.7); margin: 0; }
-    .top-subtitle-final { color: #778DA9; letter-spacing: 12px; margin-top: 5px; font-weight: bold; font-size: 1.1em; text-transform: uppercase; display: block; }
-</style>
-<div class="top-header-final">
-    <h1 class="top-title-final">Julia's Assistant</h1>
-    <span class="top-subtitle-final">Astro Coordination Center</span>
-</div>
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 3.5em; letter-spacing: 5px; text-transform: uppercase; color: white; text-shadow: 0 0 20px rgba(65, 90, 119, 0.8); margin: 0;">
+            Julia's Assistant
+        </h1>
+        <p style="color: #778DA9; letter-spacing: 10px; font-weight: bold; font-size: 1.1em; text-transform: uppercase; margin-top: 5px;">
+            Astro Coordination Center
+        </p>
+    </div>
 """, unsafe_allow_html=True)
 
-# --- ЧАСТЬ 2: ДИНАМИЧЕСКИЙ БАННЕР (РЫБКИ ТОЖЕ ДВИЖУТСЯ) ---
+# --- 2. ДИНАМИЧЕСКИЙ БАННЕР (ФОН И ПЛАНЕТЫ РАЗДЕЛЕНЫ) ---
 st.markdown(f"""
 <style>
-    .space-port-final {{
-        position: relative; width: 100%; height: 300px; border-radius: 20px; overflow: hidden; background-color: #050505; margin-bottom: 30px; box-shadow: 0 10px 50px rgba(0,0,0,0.9); border: 2px solid rgba(65, 90, 119, 0.4);
+    .viewport-container {{
+        position: relative;
+        width: 100%;
+        height: 350px;
+        border-radius: 25px;
+        overflow: hidden;
+        background: #000;
+        border: 2px solid rgba(255,255,255,0.1);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.8);
     }}
 
-    /* СЛОЙ 1: ЛОГОТИП (Рыбки) ТЕПЕРЬ ДВИЖЕТСЯ (Медленное приближение) */
-    .logo-moving-final {{
-        position: absolute; width: 100%; height: 100%;
-        background-image: url('data:image/png;base64,{logo_data}'); 
-        background-size: cover; background-position: center;
-        filter: brightness(0.6) contrast(1.1);
+    /* СЛОЙ 1: ТВОЕ ЛОГО С РЫБКАМИ (Дрейф) */
+    .layer-base-logo {{
+        position: absolute;
+        width: 110%; height: 110%; /* Чуть больше, чтобы не было пустых краев при движении */
+        top: -5%; left: -5%;
+        background-image: url('data:image/png;base64,{logo_data}');
+        background-size: cover;
+        background-position: center;
+        filter: brightness(0.5) contrast(1.2);
         z-index: 1;
-        /* АНИМАЦИЯ ФОНА: Медленное приближение и отдаление */
-        animation: logo-zoom 20s infinite alternate ease-in-out;
+        animation: drift 30s infinite alternate ease-in-out;
     }}
 
-    @keyframes logo-zoom {{
-        0% {{ transform: scale(1.0); }}
-        100% {{ transform: scale(1.15); }} /* Фон медленно "дышит" */
+    /* СЛОЙ 2: ПЛАНЕТЫ И ЗВЕЗДЫ (Вылет из центра) */
+    .layer-stars {{
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        z-index: 2;
+        background-image: 
+            radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+            radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+            radial-gradient(3px 3px at 50px 160px, #ddd, rgba(0,0,0,0));
+        background-repeat: repeat;
+        background-size: 200px 200px;
+        animation: fly-out 3s infinite linear;
+        opacity: 0.5;
     }}
 
-    /* СЛОИ ПАРАЛЛАКСА (Звезды) - без изменений, они летят */
-    .parallax-layer-final {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; transform: scale(0); opacity: 0; animation: warp-drive 2s infinite linear; }}
-    .warp-distant-final {{ animation-duration: 2s; animation-delay: 0s; background-image: radial-gradient(white, rgba(255,255,255,.1) 1.5px, transparent 2.5px); opacity: 0.3; }}
-    .warp-middle-final {{ animation-duration: 1.5s; animation-delay: 0.5s; background-image: radial-gradient(white, rgba(255,255,255,.15) 2px, transparent 3px); background-size: 300px 300px; opacity: 0.6; }}
-    .warp-close-final {{ animation-duration: 1.2s; animation-delay: 1s; background-image: radial-gradient(white, rgba(255,255,255,.2) 3px, transparent 4px); background-size: 200px 200px; opacity: 0.8; }}
+    /* АНИМАЦИИ */
+    @keyframes drift {{
+        from {{ transform: translate(0, 0) scale(1); }}
+        to {{ transform: translate(2%, 2%) scale(1.05); }}
+    }}
 
-    @keyframes warp-drive {{ 0% {{ transform: scale(0.2); opacity: 0; }} 20% {{ opacity: 1; }} 80% {{ opacity: 1; }} 100% {{ transform: scale(2.5); opacity: 0; }} }}
+    @keyframes fly-out {{
+        0% {{ transform: scale(0.5); opacity: 0; }}
+        50% {{ opacity: 1; }}
+        100% {{ transform: scale(2.5); opacity: 0; }}
+    }}
 
-    /* ЧАСЫ: Упрощенный стиль без JS */
-    .clock-final-simple {{
-        position: absolute; bottom: 15px; right: 25px; z-index: 10;
-        background: rgba(13, 27, 42, 0.85); padding: 8px 18px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(8px);
-        color: white; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.4em; text-align: center;
+    /* ЧАСЫ (Улучшенный контраст) */
+    .clock-glass {{
+        position: absolute;
+        bottom: 20px; right: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(10px);
+        padding: 10px 20px;
+        border-radius: 15px;
+        border: 1px solid rgba(255,255,255,0.2);
+        color: white;
+        font-family: monospace;
+        z-index: 10;
+        text-align: center;
     }}
 </style>
 
-<div class="space-port-final">
-    <div class="logo-moving-final"></div>
+<div class="viewport-container">
+    <div class="layer-base-logo"></div>
+    <div class="layer-stars"></div>
+    <div class="layer-stars" style="animation-delay: 1.5s; background-size: 300px 300px;"></div>
     
-    <div class="parallax-layer-final warp-distant-final"></div>
-    <div class="parallax-layer-final warp-middle-final"></div>
-    <div class="parallax-layer-final warp-close-final"></div>
+    <div class="clock-glass">
+        <div id="clock-txt" style="font-size: 1.5em; font-weight: bold;">00:00:00</div>
+        <div style="font-size: 0.7em; color: #778DA9; text-transform: uppercase;">Sochi Time</div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- ЧАСТЬ 3: ЧАСЫ (НАДЕЖНЫЙ МЕТОД STREAMLIT) ---
-# Вместо сложного JS мы используем встроенный функционал, чтобы они точно не пропали
-with st.container():
-    col_c1, col_c2 = st.columns([5, 1]) # Сдвигаем часы вправо
-    with col_c2:
-        sochi_time = datetime.utcnow() + timedelta(hours=3)
-        st.metric(label="Sochi Time (UTC+3)", value=sochi_time.strftime("%H:%M:%S"))
+# --- 3. СКРИПТ ЧАСОВ (С ПРЯМЫМ ДОСТУПОМ) ---
+import streamlit.components.v1 as components
+components.html("""
+    <script>
+    function tick() {
+        let d = new Date();
+        let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+        let sochi = new Date(utc + (3600000 * 3));
+        let res = sochi.toTimeString().split(' ')[0];
+        window.parent.document.getElementById('clock-txt').innerHTML = res;
+    }
+    setInterval(tick, 1000);
+    tick();
+    </script>
+""", height=0)
 
 st.markdown("---")
 # ============================================================
