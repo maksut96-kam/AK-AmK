@@ -83,10 +83,12 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: ВЕРХНИЙ ТЕКСТ И ОТДЕЛЬНЫЙ ПАРАЛЛАКС-БАННЕР
+# ⛔ БЛОК 3: ВЕРХНИЙ ТЕКСТ И ДИНАМИЧЕСКИЙ БАННЕР (ФИНАЛ)
 # ============================================================
 import base64
 import os
+from datetime import datetime
+import time as time_core # Импортируем стандартный time, чтобы не конфликтовал с переменными Streamlit
 
 def get_base64_img(path):
     if os.path.exists(path):
@@ -97,164 +99,73 @@ def get_base64_img(path):
 logo_data = get_base64_img("logo.png")
 
 # --- ЧАСТЬ 1: ТЕКСТОВЫЙ ЗАГОЛОВОК (НАД БАННЕРОМ) ---
-# Убираем все z-index, позиционирование и свечение. Текст должен быть чистым.
 st.markdown("""
 <style>
-    /* Стиль для чистого заголовка в самом верху */
-    .top-header-clean {
-        text-align: center;
-        margin-top: -10px; /* Поднимаем повыше */
-        margin-bottom: 25px; /* Отступ до баннера */
-    }
-
-    .top-title-main {
-        font-family: 'Lexend', sans-serif;
-        font-weight: 800;
-        font-size: 3.2em; /* Крупный, солидный размер */
-        letter-spacing: 5px;
-        text-transform: uppercase;
-        color: #FFFFFF !important; /* Убедись, что цвет подходит под твою тему (белый для темной темы) */
-        text-shadow: 0 0 10px rgba(65, 90, 119, 0.5); /* Минимальное свечение для акцента */
-        margin: 0;
-    }
-
-    .top-subtitle {
-        color: #778DA9; 
-        letter-spacing: 12px; 
-        margin-top: 5px; 
-        font-weight: bold; 
-        font-size: 1.1em; 
-        text-transform: uppercase;
-        display: block;
-    }
+    .top-header-final { text-align: center; margin-bottom: 25px; }
+    .top-title-final { font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 3.2em; letter-spacing: 5px; text-transform: uppercase; color: #FFFFFF; text-shadow: 0 0 15px rgba(65, 90, 119, 0.7); margin: 0; }
+    .top-subtitle-final { color: #778DA9; letter-spacing: 12px; margin-top: 5px; font-weight: bold; font-size: 1.1em; text-transform: uppercase; display: block; }
 </style>
-
-<div class="top-header-clean">
-    <h1 class="top-title-main">Julia's Assistant</h1>
-    <span class="top-subtitle">Astro Coordination Center</span>
+<div class="top-header-final">
+    <h1 class="top-title-final">Julia's Assistant</h1>
+    <span class="top-subtitle-final">Astro Coordination Center</span>
 </div>
 """, unsafe_allow_html=True)
 
-
-# --- ЧАСТЬ 2: АТМОСФЕРНЫЙ ПАРАЛЛАКС-БАННЕР (БЕЗ ТЕКСТА) ---
-# Здесь мы оставляем только фон, летящие звезды и часы. Текста внутри больше нет.
+# --- ЧАСТЬ 2: ДИНАМИЧЕСКИЙ БАННЕР (РЫБКИ ТОЖЕ ДВИЖУТСЯ) ---
 st.markdown(f"""
 <style>
-    /* Основной контейнер "Иллюминатор" (теперь без текста внутри) */
-    .space-port-parallax-banner {{
-        position: relative;
-        width: 100%;
-        height: 300px; /* Немного уменьшили высоту, так как текста нет */
-        border-radius: 20px;
-        overflow: hidden;
-        background-color: #050505;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 50px rgba(0,0,0,0.9);
-        border: 2px solid rgba(65, 90, 119, 0.4);
+    .space-port-final {{
+        position: relative; width: 100%; height: 300px; border-radius: 20px; overflow: hidden; background-color: #050505; margin-bottom: 30px; box-shadow: 0 10px 50px rgba(0,0,0,0.9); border: 2px solid rgba(65, 90, 119, 0.4);
     }}
 
-    /* СЛОЙ 1: Неподвижный логотип (как подложка) */
-    .logo-static-parallax-banner {{
-        position: absolute;
-        width: 100%;
-        height: 100%;
+    /* СЛОЙ 1: ЛОГОТИП (Рыбки) ТЕПЕРЬ ДВИЖЕТСЯ (Медленное приближение) */
+    .logo-moving-final {{
+        position: absolute; width: 100%; height: 100%;
         background-image: url('data:image/png;base64,{logo_data}'); 
-        background-size: cover;
-        background-position: center;
-        filter: brightness(0.6) contrast(1.1); /* Сделали ярче, так как текст не мешает */
+        background-size: cover; background-position: center;
+        filter: brightness(0.6) contrast(1.1);
         z-index: 1;
+        /* АНИМАЦИЯ ФОНА: Медленное приближение и отдаление */
+        animation: logo-zoom 20s infinite alternate ease-in-out;
     }}
 
-    /* СЛОИ ПАРАЛЛАКСА (Анимация из центра на зрителя) */
-    .parallax-layer-banner {{
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 2;
-        background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px);
-        background-size: 400px 400px;
-        transform: scale(0); /* Изначально скрыты */
-        opacity: 0;
-        animation: warp-drive 2s infinite linear;
+    @keyframes logo-zoom {{
+        0% {{ transform: scale(1.0); }}
+        100% {{ transform: scale(1.15); }} /* Фон медленно "дышит" */
     }}
 
-    /* Слой 1: ДАЛЬНИЙ (Медленный, маленький) */
-    .warp-distant-banner {{
-        animation-duration: 2s;
-        animation-delay: 0s;
-        background-image: radial-gradient(white, rgba(255,255,255,.1) 1.5px, transparent 2.5px);
-        opacity: 0.3;
-    }}
+    /* СЛОИ ПАРАЛЛАКСА (Звезды) - без изменений, они летят */
+    .parallax-layer-final {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; transform: scale(0); opacity: 0; animation: warp-drive 2s infinite linear; }}
+    .warp-distant-final {{ animation-duration: 2s; animation-delay: 0s; background-image: radial-gradient(white, rgba(255,255,255,.1) 1.5px, transparent 2.5px); opacity: 0.3; }}
+    .warp-middle-final {{ animation-duration: 1.5s; animation-delay: 0.5s; background-image: radial-gradient(white, rgba(255,255,255,.15) 2px, transparent 3px); background-size: 300px 300px; opacity: 0.6; }}
+    .warp-close-final {{ animation-duration: 1.2s; animation-delay: 1s; background-image: radial-gradient(white, rgba(255,255,255,.2) 3px, transparent 4px); background-size: 200px 200px; opacity: 0.8; }}
 
-    /* Слой 2: СРЕДНИЙ (Средняя скорость) */
-    .warp-middle-banner {{
-        animation-duration: 1.5s;
-        animation-delay: 0.5s;
-        background-image: radial-gradient(white, rgba(255,255,255,.15) 2px, transparent 3px);
-        background-size: 300px 300px;
-        opacity: 0.6;
-    }}
+    @keyframes warp-drive {{ 0% {{ transform: scale(0.2); opacity: 0; }} 20% {{ opacity: 1; }} 80% {{ opacity: 1; }} 100% {{ transform: scale(2.5); opacity: 0; }} }}
 
-    /* Слой 3: БЛИЖНИЙ (БЫСТРЫЙ, КРУПНЫЙ) */
-    .warp-close-banner {{
-        animation-duration: 1.2s;
-        animation-delay: 1s;
-        background-image: radial-gradient(white, rgba(255,255,255,.2) 3px, transparent 4px);
-        background-size: 200px 200px;
-        opacity: 0.8;
-    }}
-
-    @keyframes warp-drive {{
-        0% {{ transform: scale(0.2); opacity: 0; }}
-        20% {{ opacity: 1; }}
-        80% {{ opacity: 1; }}
-        100% {{ transform: scale(2.5); opacity: 0; }} /* Вылетают за экран */
-    }}
-
-    /* Мини-часы (ID обновлен для надежности) */
-    .clock-overlay-art-parallax-banner {{
-        position: absolute;
-        bottom: 15px;
-        right: 25px;
-        z-index: 10;
-        background: rgba(13, 27, 42, 0.85);
-        padding: 8px 18px;
-        border-radius: 15px;
-        border: 1px solid rgba(255,255,255,0.2);
-        backdrop-filter: blur(8px);
+    /* ЧАСЫ: Упрощенный стиль без JS */
+    .clock-final-simple {{
+        position: absolute; bottom: 15px; right: 25px; z-index: 10;
+        background: rgba(13, 27, 42, 0.85); padding: 8px 18px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+        color: white; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.4em; text-align: center;
     }}
 </style>
 
-<div class="space-port-parallax-banner">
-    <div class="logo-static-parallax-banner" style="background-image: url('data:image/png;base64,{logo_data}');"></div>
+<div class="space-port-final">
+    <div class="logo-moving-final"></div>
     
-    <div class="parallax-layer-banner warp-distant-banner"></div>
-    <div class="parallax-layer-banner warp-middle-banner"></div>
-    <div class="parallax-layer-banner warp-close-banner"></div>
-
-    <div class="clock-overlay-art-parallax-banner">
-        <span id="mini-clock-banner" style="color: white; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.4em;">00:00:00</span>
-        <div style="color: #415A77; font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px;">Sochi Time</div>
-    </div>
+    <div class="parallax-layer-final warp-distant-final"></div>
+    <div class="parallax-layer-final warp-middle-final"></div>
+    <div class="parallax-layer-final warp-close-final"></div>
 </div>
 """, unsafe_allow_html=True)
 
-
-# --- ЧАСТЬ 3: ЧАСЫ (ОСТАВЛЯЕМ КАК ЕСТЬ, ОБНОВЛЯЕМ ID) ---
-components.html("""
-    <script>
-        function updateClock() {
-            let d = new Date();
-            let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-            let sochi = new Date(utc + (3600000 * 3));
-            let t = sochi.toLocaleTimeString('ru-RU');
-            if (window.parent.document.getElementById('mini-clock-banner')) {
-                window.parent.document.getElementById('mini-clock-banner').innerHTML = t;
-            }
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-    </script>
-""", height=0)
+# --- ЧАСТЬ 3: ЧАСЫ (НАДЕЖНЫЙ МЕТОД STREAMLIT) ---
+# Вместо сложного JS мы используем встроенный функционал, чтобы они точно не пропали
+with st.container():
+    col_c1, col_c2 = st.columns([5, 1]) # Сдвигаем часы вправо
+    with col_c2:
+        sochi_time = datetime.utcnow() + timedelta(hours=3)
+        st.metric(label="Sochi Time (UTC+3)", value=sochi_time.strftime("%H:%M:%S"))
 
 st.markdown("---")
 # ============================================================
