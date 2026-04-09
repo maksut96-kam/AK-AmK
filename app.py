@@ -83,7 +83,7 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: ПАРАЛЛАКС-ГИПЕРПРЫЖОК (ФИНАЛЬНАЯ СТАБИЛЬНАЯ ВЕРСИЯ)
+# ⛔ БЛОК 3: ВЕРХНИЙ ТЕКСТ И ОТДЕЛЬНЫЙ ПАРАЛЛАКС-БАННЕР
 # ============================================================
 import base64
 import os
@@ -96,75 +96,122 @@ def get_base64_img(path):
 
 logo_data = get_base64_img("logo.png")
 
-# 1. CSS Стили (Используем обычную строку без f-префикса, чтобы избежать NameError и конфликтов скобок)
+# --- ЧАСТЬ 1: ТЕКСТОВЫЙ ЗАГОЛОВОК (НАД БАННЕРОМ) ---
+# Убираем все z-index, позиционирование и свечение. Текст должен быть чистым.
 st.markdown("""
 <style>
-    .space-port-parallax {
+    /* Стиль для чистого заголовка в самом верху */
+    .top-header-clean {
+        text-align: center;
+        margin-top: -10px; /* Поднимаем повыше */
+        margin-bottom: 25px; /* Отступ до баннера */
+    }
+
+    .top-title-main {
+        font-family: 'Lexend', sans-serif;
+        font-weight: 800;
+        font-size: 3.2em; /* Крупный, солидный размер */
+        letter-spacing: 5px;
+        text-transform: uppercase;
+        color: #FFFFFF !important; /* Убедись, что цвет подходит под твою тему (белый для темной темы) */
+        text-shadow: 0 0 10px rgba(65, 90, 119, 0.5); /* Минимальное свечение для акцента */
+        margin: 0;
+    }
+
+    .top-subtitle {
+        color: #778DA9; 
+        letter-spacing: 12px; 
+        margin-top: 5px; 
+        font-weight: bold; 
+        font-size: 1.1em; 
+        text-transform: uppercase;
+        display: block;
+    }
+</style>
+
+<div class="top-header-clean">
+    <h1 class="top-title-main">Julia's Assistant</h1>
+    <span class="top-subtitle">Astro Coordination Center</span>
+</div>
+""", unsafe_allow_html=True)
+
+
+# --- ЧАСТЬ 2: АТМОСФЕРНЫЙ ПАРАЛЛАКС-БАННЕР (БЕЗ ТЕКСТА) ---
+# Здесь мы оставляем только фон, летящие звезды и часы. Текста внутри больше нет.
+st.markdown(f"""
+<style>
+    /* Основной контейнер "Иллюминатор" (теперь без текста внутри) */
+    .space-port-parallax-banner {{
         position: relative;
         width: 100%;
-        height: 350px;
+        height: 300px; /* Немного уменьшили высоту, так как текста нет */
         border-radius: 20px;
         overflow: hidden;
         background-color: #050505;
         margin-bottom: 30px;
         box-shadow: 0 10px 50px rgba(0,0,0,0.9);
         border: 2px solid rgba(65, 90, 119, 0.4);
-    }
+    }}
 
-    .logo-static-parallax {
+    /* СЛОЙ 1: Неподвижный логотип (как подложка) */
+    .logo-static-parallax-banner {{
         position: absolute;
         width: 100%;
         height: 100%;
+        background-image: url('data:image/png;base64,{logo_data}'); 
         background-size: cover;
         background-position: center;
-        filter: brightness(0.4) contrast(1.1);
+        filter: brightness(0.6) contrast(1.1); /* Сделали ярче, так как текст не мешает */
         z-index: 1;
-    }
+    }}
 
-    .parallax-layer {
+    /* СЛОИ ПАРАЛЛАКСА (Анимация из центра на зрителя) */
+    .parallax-layer-banner {{
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
         z-index: 2;
         background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px);
         background-size: 400px 400px;
-        transform: scale(0);
+        transform: scale(0); /* Изначально скрыты */
         opacity: 0;
         animation: warp-drive 2s infinite linear;
-    }
+    }}
 
-    .warp-distant { animation-duration: 2s; animation-delay: 0s; opacity: 0.3; }
-    .warp-middle { animation-duration: 1.5s; animation-delay: 0.5s; background-size: 300px 300px; opacity: 0.6; }
-    .warp-close { animation-duration: 1.2s; animation-delay: 1s; background-size: 200px 200px; opacity: 0.8; }
+    /* Слой 1: ДАЛЬНИЙ (Медленный, маленький) */
+    .warp-distant-banner {{
+        animation-duration: 2s;
+        animation-delay: 0s;
+        background-image: radial-gradient(white, rgba(255,255,255,.1) 1.5px, transparent 2.5px);
+        opacity: 0.3;
+    }}
 
-    @keyframes warp-drive {
-        0% { transform: scale(0.2); opacity: 0; }
-        20% { opacity: 1; }
-        80% { opacity: 1; }
-        100% { transform: scale(2.5); opacity: 0; }
-    }
+    /* Слой 2: СРЕДНИЙ (Средняя скорость) */
+    .warp-middle-banner {{
+        animation-duration: 1.5s;
+        animation-delay: 0.5s;
+        background-image: radial-gradient(white, rgba(255,255,255,.15) 2px, transparent 3px);
+        background-size: 300px 300px;
+        opacity: 0.6;
+    }}
 
-    .title-overlay-art-top {
-        position: absolute;
-        top: 25%; /* Чуть ниже самого верха, чтобы было "воздушно" */
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 100%;
-        text-align: center;
-        z-index: 10; /* Максимальный приоритет */
-    }
+    /* Слой 3: БЛИЖНИЙ (БЫСТРЫЙ, КРУПНЫЙ) */
+    .warp-close-banner {{
+        animation-duration: 1.2s;
+        animation-delay: 1s;
+        background-image: radial-gradient(white, rgba(255,255,255,.2) 3px, transparent 4px);
+        background-size: 200px 200px;
+        opacity: 0.8;
+    }}
 
-    .julia-title-art-top {
-        font-family: 'Lexend', sans-serif;
-        font-weight: 800;
-        font-size: 3.5em;
-        letter-spacing: 5px;
-        text-transform: uppercase;
-        color: #FFFFFF !important;
-        text-shadow: 0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(65, 90, 119, 1);
-        margin: 0;
-    }
+    @keyframes warp-drive {{
+        0% {{ transform: scale(0.2); opacity: 0; }}
+        20% {{ opacity: 1; }}
+        80% {{ opacity: 1; }}
+        100% {{ transform: scale(2.5); opacity: 0; }} /* Вылетают за экран */
+    }}
 
-    .clock-overlay-art-parallax {
+    /* Мини-часы (ID обновлен для надежности) */
+    .clock-overlay-art-parallax-banner {{
         position: absolute;
         bottom: 15px;
         right: 25px;
@@ -174,47 +221,38 @@ st.markdown("""
         border-radius: 15px;
         border: 1px solid rgba(255,255,255,0.2);
         backdrop-filter: blur(8px);
-    }
+    }}
 </style>
-""", unsafe_allow_html=True)
 
-# 2. Рендеринг HTML с принудительным приоритетом текста
-st.markdown(f"""
-    <div class="space-port-parallax">
-        <div class="logo-static-parallax" style="background-image: url('data:image/png;base64,{logo_data}'); z-index: 1;"></div>
-        
-        <div class="parallax-layer warp-distant" style="z-index: 2;"></div>
-        <div class="parallax-layer warp-middle" style="z-index: 3;"></div>
-        <div class="parallax-layer warp-close" style="z-index: 4;"></div>
+<div class="space-port-parallax-banner">
+    <div class="logo-static-parallax-banner" style="background-image: url('data:image/png;base64,{logo_data}');"></div>
+    
+    <div class="parallax-layer-banner warp-distant-banner"></div>
+    <div class="parallax-layer-banner warp-middle-banner"></div>
+    <div class="parallax-layer-banner warp-close-banner"></div>
 
-        <div class="title-overlay-art-top" style="z-index: 9999; position: absolute; width: 100%; text-align: center;">
-            <h1 class="julia-title-art-top" style="color: white !important; margin: 0; padding: 0;">Julia's Assistant</h1>
-            <p style="color: #778DA9; letter-spacing: 10px; margin: 0; font-weight: bold; font-size: 1.1em; text-transform: uppercase;">
-                Astro Coordination Center
-            </p>
-        </div>
-        
-        <div class="clock-overlay-art-parallax" style="z-index: 10000;">
-            <span id="mini-clock-target" style="color: white; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.4em;">00:00:00</span>
-            <div style="color: #415A77; font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px;">Sochi Time</div>
-        </div>
+    <div class="clock-overlay-art-parallax-banner">
+        <span id="mini-clock-banner" style="color: white; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.4em;">00:00:00</span>
+        <div style="color: #415A77; font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px;">Sochi Time</div>
     </div>
+</div>
 """, unsafe_allow_html=True)
 
-# 3. Живые часы (с исправленным путем доступа к элементу)
+
+# --- ЧАСТЬ 3: ЧАСЫ (ОСТАВЛЯЕМ КАК ЕСТЬ, ОБНОВЛЯЕМ ID) ---
 components.html("""
     <script>
-        function update() {
+        function updateClock() {
             let d = new Date();
             let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
             let sochi = new Date(utc + (3600000 * 3));
             let t = sochi.toLocaleTimeString('ru-RU');
-            // Ищем элемент в родительском окне
-            const clock = window.parent.document.getElementById('mini-clock-target');
-            if (clock) clock.innerHTML = t;
+            if (window.parent.document.getElementById('mini-clock-banner')) {
+                window.parent.document.getElementById('mini-clock-banner').innerHTML = t;
+            }
         }
-        setInterval(update, 1000);
-        update();
+        setInterval(updateClock, 1000);
+        updateClock();
     </script>
 """, height=0)
 
