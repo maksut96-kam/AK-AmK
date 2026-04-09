@@ -83,102 +83,119 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: КОСМИЧЕСКАЯ ПАНЕЛЬ (FULL-WIDTH LOGO & FLYING TITLE)
+# ⛔ БЛОК 3: ГИПЕРПРОСТРАНСТВЕННАЯ ПАНЕЛЬ (MOVING SPACE SHIELD)
 # ============================================================
 
-# 1. Стилизация глубокого погружения
+# 1. Стилизация (Полный перенос концепт-арта в CSS)
 st.markdown("""
 <style>
-    /* Контейнер для логотипа на всю ширину с эффектом глубины */
-    .space-header {
+    /* Основной контейнер "Иллюминатор" */
+    .space-port {
         position: relative;
         width: 100%;
-        height: 250px;
+        height: 300px;
         border-radius: 20px;
         overflow: hidden;
         background-color: #050505;
         margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        border: 2px solid rgba(65, 90, 119, 0.3);
     }
 
-    /* Само изображение логотипа как подложка с анимацией приближения */
-    .logo-bg {
+    /* СЛОЙ 1: Неподвижный логотип (как подложка) */
+    .logo-static {
         position: absolute;
         width: 100%;
         height: 100%;
         background-image: url('data:image/png;base64,{logo_base64}'); 
         background-size: cover;
         background-position: center;
-        filter: brightness(0.6) contrast(1.2);
-        animation: space-zoom 20s infinite alternate ease-in-out;
+        filter: brightness(0.5) contrast(1.1); /* Затемняем, чтобы текст читался */
+        z-index: 1;
     }
 
-    @keyframes space-zoom {
-        0% { transform: scale(1.0); }
-        100% { transform: scale(1.1); }
-    }
-
-    /* Слой с названием сверху */
-    .title-overlay {
+    /* СЛОЙ 2: Быстро движущиеся частицы (эффект полета) */
+    .space-warp {
         position: absolute;
-        top: 20%;
         width: 100%;
-        text-align: center;
+        height: 100%;
+        background-image: 
+            radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
+            radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
+            radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
+        background-size: 550px 550px, 350px 350px, 250px 250px;
+        background-position: 0 0, 40px 60px, 130px 270px;
         z-index: 2;
+        /* АНИМАЦИЯ ПОЛЕТА: Сдвиг фона по вертикали */
+        animation: space-fly 1.5s linear infinite; /* 1.5s - быстро */
+        opacity: 0.8;
     }
 
-    .julia-title-main {
+    @keyframes space-fly {
+        from { background-position: 0 0, 40px 60px, 130px 270px; }
+        to { background-position: 0 100%, 40px 100%, 130px 100%; }
+    }
+
+    /* СЛОЙ 3: Заголовок сверху */
+    .title-overlay-art {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%); /* Центрируем */
+        width: 90%;
+        text-align: center;
+        z-index: 3;
+    }
+
+    .julia-title-art {
         font-family: 'Lexend', sans-serif;
         font-weight: 800;
-        font-size: 3.5em;
-        letter-spacing: 5px;
+        font-size: 3.8em;
+        letter-spacing: 6px;
         text-transform: uppercase;
         color: white;
-        text-shadow: 0 0 20px rgba(255,255,255,0.4), 0 0 40px rgba(65, 90, 119, 0.6);
+        text-shadow: 0 0 15px rgba(255,255,255,0.6), 0 0 30px rgba(65, 90, 119, 0.8);
         margin: 0;
     }
 
-    /* Маленькие парящие часы */
-    .clock-overlay {
+    /* Мини-часы (как в арте) */
+    .clock-overlay-art {
         position: absolute;
-        bottom: 15%;
-        right: 5%;
-        z-index: 2;
-        background: rgba(13, 27, 42, 0.6);
+        bottom: 10px;
+        right: 20px;
+        z-index: 3;
+        background: rgba(13, 27, 42, 0.7);
         padding: 5px 15px;
-        border-radius: 30px;
-        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 20px;
+        border: 1px solid rgba(255,255,255,0.1);
         backdrop-filter: blur(5px);
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Подготовка изображения для CSS
-import base64
-def get_base64_img(path):
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return ""
+# Подготовка изображения для CSS (оставляем функцию из прошлого ответа)
+# get_base64_img("logo.png") должна быть определена выше
 
 logo_data = get_base64_img("logo.png")
 
-# 2. Рендеринг всей конструкции
+# 2. Рендеринг трехслойной конструкции
 st.markdown(f"""
-    <div class="space-header">
-        <div class="logo-bg" style="background-image: url('data:image/png;base64,{logo_data}');"></div>
-        <div class="title-overlay">
-            <h1 class="julia-title-main">Julia Assistant</h1>
-            <p style="color: #778DA9; letter-spacing: 8px; margin-top: -10px;">ASTRO COORDINATION CENTER</p>
+    <div class="space-port">
+        <div class="logo-static" style="background-image: url('data:image/png;base64,{logo_data}');"></div>
+        <div class="space-warp"></div>
+        <div class="title-overlay-art">
+            <h1 class="julia-title-art">Julia Assistant</h1>
+            <p style="color: #778DA9; letter-spacing: 9px; margin-top: -10px; font-size: 1.1em;">ASTRO COORDINATION CENTER</p>
         </div>
-        <div class="clock-overlay">
-            <span id="mini-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.2em;">00:00:00</span>
-            <span style="color: #415A77; font-size: 0.7em; margin-left: 5px;">SOCHI</span>
+        <div class="clock-overlay-art">
+            <span id="mini-clock-art" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.3em;">00:00:00</span>
+            <div style="color: #415A77; font-size: 0.7em; text-transform: uppercase;">SOCHI LIVE</div>
         </div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. Скрипт для часов (встраиваем отдельно, чтобы не перегружать блоки)
+# 3. Скрипт для часов (встраиваем отдельно, ID обновлен)
 components.html("""
     <script>
         function updateClock() {
@@ -188,7 +205,10 @@ components.html("""
             let h = String(sochi.getHours()).padStart(2, '0');
             let m = String(sochi.getMinutes()).padStart(2, '0');
             let s = String(sochi.getSeconds()).padStart(2, '0');
-            window.parent.document.getElementById('mini-clock').innerHTML = h + ":" + m + ":" + s;
+            // Обновляем часы только в родительском окне
+            if (window.parent.document.getElementById('mini-clock-art')) {
+                window.parent.document.getElementById('mini-clock-art').innerHTML = h + ":" + m + ":" + s;
+            }
         }
         setInterval(updateClock, 1000);
         updateClock();
