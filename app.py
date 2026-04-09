@@ -83,73 +83,103 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: ВЕРХНЯЯ ПАНЕЛЬ (ЛОГО, ЗАГОЛОВОК И ТАЙМЕР)
+# ⛔ БЛОК 3: КОСМИЧЕСКАЯ ПАНЕЛЬ (FULL-WIDTH LOGO & FLYING TITLE)
 # ============================================================
 
-# 1. Стилизация (CSS)
+# 1. Стилизация глубокого погружения
 st.markdown("""
 <style>
-    /* Контейнер для шапки */
-    .header-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 20px;
-        background: rgba(27, 38, 59, 0.05);
-        border-radius: 15px;
-        margin-bottom: 20px;
-        border: 1px solid rgba(65, 90, 119, 0.2);
+    /* Контейнер для логотипа на всю ширину с эффектом глубины */
+    .space-header {
+        position: relative;
+        width: 100%;
+        height: 250px;
+        border-radius: 20px;
+        overflow: hidden;
+        background-color: #050505;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
-    /* Заголовок */
-    .julia-title {
+
+    /* Само изображение логотипа как подложка с анимацией приближения */
+    .logo-bg {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-image: url('data:image/png;base64,{logo_base64}'); 
+        background-size: cover;
+        background-position: center;
+        filter: brightness(0.6) contrast(1.2);
+        animation: space-zoom 20s infinite alternate ease-in-out;
+    }
+
+    @keyframes space-zoom {
+        0% { transform: scale(1.0); }
+        100% { transform: scale(1.1); }
+    }
+
+    /* Слой с названием сверху */
+    .title-overlay {
+        position: absolute;
+        top: 20%;
+        width: 100%;
         text-align: center;
-        flex-grow: 1;
+        z-index: 2;
+    }
+
+    .julia-title-main {
+        font-family: 'Lexend', sans-serif;
         font-weight: 800;
-        font-size: 2.5em;
-        background: linear-gradient(270deg, #0D1B2A, #415A77, #1B263B);
-        background-size: 400% 400%;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-size: 3.5em;
+        letter-spacing: 5px;
+        text-transform: uppercase;
+        color: white;
+        text-shadow: 0 0 20px rgba(255,255,255,0.4), 0 0 40px rgba(65, 90, 119, 0.6);
         margin: 0;
+    }
+
+    /* Маленькие парящие часы */
+    .clock-overlay {
+        position: absolute;
+        bottom: 15%;
+        right: 5%;
+        z-index: 2;
+        background: rgba(13, 27, 42, 0.6);
+        padding: 5px 15px;
+        border-radius: 30px;
+        border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(5px);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 2. Рендеринг Логотипа и Заголовка
-main_col1, main_col2 = st.columns([1, 4])
+# Подготовка изображения для CSS
+import base64
+def get_base64_img(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return ""
 
-with main_col1:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=120)
-    else:
-        # Заглушка, если файла нет, чтобы не было пустоты
-        st.markdown("🪐 **ASTRO**")
+logo_data = get_base64_img("logo.png")
 
-with main_col2:
-    st.markdown('<h1 class="julia-title">Julia Assistant Astro Center</h1>', unsafe_allow_html=True)
-
-# 3. Виджет живых часов (Sochi Time)
-components.html("""
-    <div style="
-        background: #0D1B2A; 
-        padding: 10px; 
-        border-radius: 12px; 
-        text-align: center; 
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        border: 1px solid #415A77;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
-    ">
-        <div id="clock" style="
-            font-size: 28px; 
-            color: #E0E1DD; 
-            font-weight: bold; 
-            letter-spacing: 3px;
-            text-shadow: 0 0 10px rgba(119, 141, 169, 0.5);
-        ">Загрузка...</div>
-        <div style="color: #778DA9; font-size: 10px; text-transform: uppercase; margin-top: 5px;">
-            Sochi Live Monitoring (UTC+3)
+# 2. Рендеринг всей конструкции
+st.markdown(f"""
+    <div class="space-header">
+        <div class="logo-bg" style="background-image: url('data:image/png;base64,{logo_data}');"></div>
+        <div class="title-overlay">
+            <h1 class="julia-title-main">Julia Assistant</h1>
+            <p style="color: #778DA9; letter-spacing: 8px; margin-top: -10px;">ASTRO COORDINATION CENTER</p>
+        </div>
+        <div class="clock-overlay">
+            <span id="mini-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.2em;">00:00:00</span>
+            <span style="color: #415A77; font-size: 0.7em; margin-left: 5px;">SOCHI</span>
         </div>
     </div>
+""", unsafe_allow_html=True)
+
+# 3. Скрипт для часов (встраиваем отдельно, чтобы не перегружать блоки)
+components.html("""
     <script>
         function updateClock() {
             let d = new Date();
@@ -158,12 +188,12 @@ components.html("""
             let h = String(sochi.getHours()).padStart(2, '0');
             let m = String(sochi.getMinutes()).padStart(2, '0');
             let s = String(sochi.getSeconds()).padStart(2, '0');
-            document.getElementById('clock').innerHTML = h + ":" + m + ":" + s;
+            window.parent.document.getElementById('mini-clock').innerHTML = h + ":" + m + ":" + s;
         }
         setInterval(updateClock, 1000);
         updateClock();
     </script>
-""", height=100)
+""", height=0)
 
 st.markdown("---")
 # ============================================================
