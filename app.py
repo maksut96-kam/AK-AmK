@@ -178,21 +178,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. Рендеринг HTML
+# 2. Рендеринг HTML с принудительным приоритетом текста
 st.markdown(f"""
     <div class="space-port-parallax">
-        <div class="logo-static-parallax" style="background-image: url('data:image/png;base64,{logo_data}');"></div>
+        <div class="logo-static-parallax" style="background-image: url('data:image/png;base64,{logo_data}'); z-index: 1;"></div>
         
-        <div class="parallax-layer warp-distant"></div>
-        <div class="parallax-layer warp-middle"></div>
-        <div class="parallax-layer warp-close"></div>
+        <div class="parallax-layer warp-distant" style="z-index: 2;"></div>
+        <div class="parallax-layer warp-middle" style="z-index: 3;"></div>
+        <div class="parallax-layer warp-close" style="z-index: 4;"></div>
 
-        <div class="title-overlay-art-top">
-            <h1 class="julia-title-art-top">Julia's Assistant</h1>
-            <p style="color: #778DA9; letter-spacing: 10px; margin-top: 0px; font-weight: bold; font-size: 1.1em;">ASTRO COORDINATION CENTER</p>
+        <div class="title-overlay-art-top" style="z-index: 9999; position: absolute; width: 100%; text-align: center;">
+            <h1 class="julia-title-art-top" style="color: white !important; margin: 0; padding: 0;">Julia's Assistant</h1>
+            <p style="color: #778DA9; letter-spacing: 10px; margin: 0; font-weight: bold; font-size: 1.1em; text-transform: uppercase;">
+                Astro Coordination Center
+            </p>
         </div>
         
-        <div class="clock-overlay-art-parallax">
+        <div class="clock-overlay-art-parallax" style="z-index: 10000;">
             <span id="mini-clock-target" style="color: white; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.4em;">00:00:00</span>
             <div style="color: #415A77; font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px;">Sochi Time</div>
         </div>
