@@ -83,185 +83,156 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: ЛОГОТИП, ВЕРХНИЙ ЗАГОЛОВОК И ДИНАМИЧЕСКИЙ БАННЕР (ФИНАЛ)
+# ⛔ БЛОК 3: ЛОГОТИП + ЗАГОЛОВОК + БАННЕР С ПЛАНЕТАМИ
 # ============================================================
 import base64
 import os
 
-# Функция для загрузки изображений (оставляем без изменений)
 def get_base64_img(path):
     if os.path.exists(path):
         with open(path, "rb") as f:
             return base64.b64encode(f.read()).decode()
     return ""
 
-# Загружаем логотип с рыбками
 logo_data = get_base64_img("logo.png")
 
-# --- 1. ВЕРХНЯЯ ПАНЕЛЬ (ЛОГО + ЗАГОЛОВОК) ---
-# Эта часть находится НАД баннером, на чистом фоне.
+# --- 1. ШАПКА: ЛОГОТИП СЛЕВА + ТЕКСТ ---
 st.markdown(f"""
 <style>
-    /* Контейнер для всей верхней панели */
-    .top-panel-final {{
+    .header-container {{
         display: flex;
         align-items: center;
-        justify-content: center; /* Центрируем заголовок */
-        margin-top: -10px; /* Поднимаем повыше */
-        margin-bottom: 25px; /* Отступ до баннера */
-        position: relative;
+        margin-bottom: 20px;
+        padding: 10px;
     }}
-
-    /* СТИЛЬ ЛОГОТИПА (Рыбки) - СЛЕВА */
-    .logo-final {{
-        width: 100px; /* Размер логотипа */
-        height: 100px;
+    .logo-fish {{
+        width: 80px;
+        height: 80px;
         background-image: url('data:image/png;base64,{logo_data}');
         background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
-        position: absolute;
-        left: 20px; /* Отступ от левого края */
-        filter: brightness(0.9) contrast(1.1); /* Немного ярче */
+        margin-right: 25px;
+        flex-shrink: 0;
     }}
-
-    /* СТИЛЬ ЗАГОЛОВОКА (Julia's Assistant) - ПО ЦЕНТРУ */
-    .title-final-clean {{
-        text-align: center;
-        margin: 0;
+    .title-group {{
+        display: flex;
+        flex-direction: column;
     }}
-
-    .title-main-clean {{
+    .title-main {{
         font-family: 'Lexend', sans-serif;
         font-weight: 800;
-        font-size: 3.2em; /* Крупный размер */
-        letter-spacing: 5px;
+        font-size: 3em;
+        letter-spacing: 3px;
         text-transform: uppercase;
-        color: #FFFFFF !important; /* Белый для темной темы */
-        text-shadow: 0 0 15px rgba(65, 90, 119, 0.7); /* Минимальное свечение */
+        color: white;
         margin: 0;
+        line-height: 1;
     }}
-
-    .subtitle-clean {{
-        color: #778DA9; 
-        letter-spacing: 12px; 
-        margin-top: 5px; 
-        font-weight: bold; 
-        font-size: 1.1em; 
+    .subtitle-main {{
+        color: #778DA9;
+        letter-spacing: 8px;
+        font-size: 1em;
         text-transform: uppercase;
-        display: block;
+        margin-top: 5px;
     }}
 </style>
 
-<div class="top-panel-final">
-    <div class="logo-final"></div>
-    
-    <div class="title-final-clean">
-        <h1 class="title-main-clean">Julia's Assistant</h1>
-        <span class="subtitle-clean">Astro Coordination Center</span>
+<div class="header-container">
+    <div class="logo-fish"></div>
+    <div class="title-group">
+        <h1 class="title-main">Julia's Assistant</h1>
+        <span class="subtitle-main">Astro Coordination Center</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-
-# --- 2. ДИНАМИЧЕСКИЙ БАННЕР (ВЫЛЕТАЮЩИЕ ПЛАНЕТЫ И ЗВЕЗДЫ) ---
-# Эта часть находится НИЖЕ заголовка. Внутри баннера больше НЕТ логотипа с рыбками.
+# --- 2. БАННЕР: ПОЛЕТ СКВОЗЬ ПЛАНЕТЫ ---
 st.markdown(f"""
 <style>
-    /* Основной контейнер баннера "Иллюминатор" */
-    .viewport-final-banner {{
+    .space-window {{
         position: relative;
         width: 100%;
-        height: 300px; /* Высота баннера */
+        height: 320px;
         border-radius: 20px;
         overflow: hidden;
-        background: #000; /* Черный космос */
-        border: 2px solid rgba(65, 90, 119, 0.4);
-        box-shadow: 0 10px 50px rgba(0,0,0,0.9);
-        margin-bottom: 30px;
+        background: radial-gradient(circle at center, #0d1b2a 0%, #050505 100%);
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: inset 0 0 50px rgba(0,0,0,1);
     }}
 
-    /* СЛОИ ПАРАЛЛАКСА (Анимация из центра на зрителя) */
-    .parallax-layer-final {{
+    /* Слои с планетами и звездами */
+    .planet-layer {{
         position: absolute;
-        top: 0; left: 0; width: 100%; height: 100%;
-        z-index: 2;
-        transform: scale(0); /* Изначально скрыты */
+        top: 0; left: 0; right: 0; bottom: 0;
+        transform: scale(0);
         opacity: 0;
-        animation: warp-drive 2s infinite linear;
+        animation: hyper-jump 3s infinite linear;
     }}
 
-    /* Слой 1: ДАЛЬНИЙ (Планеты-частицы вылетают медленно, маленькие) */
-    .warp-distant-final {{
-        animation-duration: 2s;
-        animation-delay: 0s;
+    /* Слой 1: Мелкие планеты (дальние) */
+    .p-far {{
         background-image: 
-            radial-gradient(4px 4px at 50px 50px, #aabbee, rgba(0,0,0,0)), /* Синяя планета */
-            radial-gradient(3px 3px at 150px 100px, #eeddaa, rgba(0,0,0,0)), /* Золотая планета */
-            radial-gradient(2px 2px at 250px 200px, #ffffff, rgba(0,0,0,0)); /* Дальняя звезда */
-        background-repeat: repeat;
+            radial-gradient(circle, #415A77 2px, transparent 8px),
+            radial-gradient(circle, #1B263B 4px, transparent 10px);
         background-size: 400px 400px;
-        opacity: 0.3;
+        animation-duration: 4s;
     }}
 
-    /* Слой 2: СРЕДНИЙ (Средняя скорость вылета) */
-    .warp-middle-final {{
-        animation-duration: 1.5s;
-        animation-delay: 0.5s;
+    /* Слой 2: Средние планеты */
+    .p-mid {{
         background-image: 
-            radial-gradient(6px 6px at 100px 150px, #ccddff, rgba(0,0,0,0)), /* Крупная синяя планета */
-            radial-gradient(5px 5px at 200px 50px, #ffdcaa, rgba(0,0,0,0)); /* Крупная золотая планета */
-        background-repeat: repeat;
+            radial-gradient(circle, #778DA9 6px, transparent 15px),
+            radial-gradient(circle, #e0e1dd 3px, transparent 12px);
         background-size: 300px 300px;
-        opacity: 0.6;
-    }}
-
-    /* Слой 3: БЛИЖНИЙ (БЫСТРЫЙ, КРУПНЫЙ) */
-    .warp-close-final {{
-        animation-duration: 1.2s;
+        animation-duration: 2.5s;
         animation-delay: 1s;
+    }}
+
+    /* Слой 3: Близкие крупные объекты */
+    .p-near {{
         background-image: 
-            radial-gradient(10px 10px at 50px 50px, #ffffff, rgba(0,0,0,0)), /* Ближняя крупная звезда */
-            radial-gradient(8px 8px at 150px 150px, #415A77, rgba(0,0,0,0)); /* Ближняя планета */
-        background-repeat: repeat;
-        background-size: 200px 200px;
-        opacity: 0.8;
+            radial-gradient(circle, #5e6472 12px, transparent 25px),
+            radial-gradient(circle, #1b263b 8px, transparent 20px);
+        background-size: 500px 500px;
+        animation-duration: 1.8s;
+        animation-delay: 0.5s;
     }}
 
-    @keyframes warp-drive {{
-        0% {{ transform: scale(0.2); opacity: 0; }}
-        20% {{ opacity: 1; }}
-        80% {{ opacity: 1; }}
-        100% {{ transform: scale(2.5); opacity: 0; }} /* Вылетают за экран */
+    @keyframes hyper-jump {{
+        0% {{ transform: scale(0.1); opacity: 0; }}
+        30% {{ opacity: 1; }}
+        90% {{ opacity: 1; }}
+        100% {{ transform: scale(3); opacity: 0; }}
     }}
 
-    /* ЧАСЫ (Glassmorphism стиль внутри баннера) */
-    .clock-glass-final {{
+    .clock-glass-box {{
         position: absolute;
-        bottom: 20px; right: 20px;
+        bottom: 20px;
+        right: 25px;
+        background: rgba(13, 27, 42, 0.7);
+        backdrop-filter: blur(10px);
+        padding: 10px 20px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.1);
         z-index: 10;
-        background: rgba(13, 27, 42, 0.85);
-        padding: 8px 18px;
-        border-radius: 15px;
-        border: 1px solid rgba(255,255,255,0.2);
-        backdrop-filter: blur(8px);
+        text-align: center;
     }}
 </style>
 
-<div class="viewport-final-banner">
-    <div class="parallax-layer-final warp-distant-final"></div>
-    <div class="parallax-layer-final warp-middle-final"></div>
-    <div class="parallax-layer-final warp-close-final"></div>
-
-    <div class="clock-glass-final">
-        <span id="mini-clock-target" style="color: white; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.4em;">00:00:00</span>
-        <div style="color: #415A77; font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px;">Sochi Time</div>
+<div class="space-window">
+    <div class="planet-layer p-far"></div>
+    <div class="planet-layer p-mid"></div>
+    <div class="planet-layer p-near"></div>
+    
+    <div class="clock-glass-box">
+        <span id="sochi-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.5em;">00:00:00</span>
+        <div style="color: #778DA9; font-size: 0.7em; text-transform: uppercase;">Sochi Time</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-
-# --- 3. СКРИПТ ЧАСОВ (С ПРЯМЫМ ДОСТУПОМ К ЭЛЕМЕНТУ) ---
+# --- 3. СКРИПТ ЧАСОВ ---
 import streamlit.components.v1 as components
 components.html("""
     <script>
@@ -269,10 +240,9 @@ components.html("""
         let d = new Date();
         let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
         let sochi = new Date(utc + (3600000 * 3));
-        let t = sochi.toLocaleTimeString('ru-RU');
-        // Ищем элемент в родительском окне
-        const clock = window.parent.document.getElementById('mini-clock-target');
-        if (clock) clock.innerHTML = t;
+        let timeStr = sochi.toTimeString().split(' ')[0];
+        const display = window.parent.document.getElementById('sochi-clock');
+        if (display) display.innerHTML = timeStr;
     }
     setInterval(update, 1000);
     update();
