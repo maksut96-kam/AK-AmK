@@ -241,7 +241,7 @@ with tab1:
         hrs = int(h % 24)
         return f"{d}д {hrs}ч"
 
-   # === 2. ВИЗУАЛЬНЫЙ БЛОК: "ЛУННЫЙ АЛТАРЬ" (AmK Special) ===
+# === 2. ВИЗУАЛЬНЫЙ БЛОК: "ЛУННЫЙ АЛТАРЬ" (ОБЪЕДИНЕННЫЙ) ===
     st.markdown(f"""
     <style>
         .moon-altar {{
@@ -254,27 +254,14 @@ with tab1:
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }}
         .moon-title {{ font-size: 1.8em; font-weight: 700; margin-bottom: 5px; }}
-        .gandanta-alert {{
-            background: rgba(230, 57, 70, 0.2);
-            border: 1px solid #e63946;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 0.85em;
-            margin-top: 15px;
-            text-align: center;
-            color: #ffb3b3;
-            animation: pulse 2s infinite;
-        }}
-        @keyframes pulse {{ 0% {{ opacity: 0.6; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.6; }} }}
         .progress-bg {{ background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; margin: 15px 0; overflow:hidden; }}
         .progress-fill {{ 
             background: linear-gradient(90deg, #415a77, #778da9, #e0e1dd); 
             width: {l['illum']}%; height: 100%; 
-            box-shadow: 0 0 15px rgba(224, 225, 221, 0.5);
         }}
         .stat-row {{ display: flex; justify-content: space-between; font-size: 0.85em; opacity: 0.8; }}
         .moon-footer {{ 
-            margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); 
+            margin-top: 20px; font-size: 0.95em; border-top: 1px solid rgba(255,255,255,0.1); 
             padding-top: 15px; color: #adb5bd; 
         }}
     </style>
@@ -292,24 +279,25 @@ with tab1:
                 <div style="background: rgba(65, 90, 119, 0.3); padding: 10px 18px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
                     <div style="font-size: 1.2em; font-weight: bold; color: #e0e1dd;">{l['sign']}</div>
                     <div style="font-size: 0.85em; color: #778da9;">{l['nak']}</div>
-                    <div style="font-size: 0.7em; color: #415a77; text-transform: uppercase; margin-top: 3px;">Лорд: {l['nak_lord']}</div>
                 </div>
             </div>
         </div>
+        
         <div class="progress-bg"><div class="progress-fill"></div></div>
+        
         <div class="stat-row">
             <span>🌕 До Полнолуния: <b>{fmt_h(l['to_full'])}</b></span>
             <span>🌑 До Новолуния: <b>{fmt_h(l['to_new'])}</b></span>
         </div>
-        {f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''}
-        
+
+        {f'<div style="background: rgba(230, 57, 70, 0.2); border: 1px solid #e63946; padding: 10px; border-radius: 10px; margin-top: 15px; text-align: center; color: #ffb3b3;">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''}
+
         <div class="moon-footer">
             💎 <b>Совет для AmK Луны:</b><br>
             {"Время транслировать идеи и расширять контакты." if l['is_waxing'] else "Время анализа и завершения текущих стратегий."}
         </div>
     </div>
     """, unsafe_allow_html=True)
-    # === КОНЕЦ ВЫВОДА ЛУННОГО АЛТАРЯ ===
     # 3. ОСНОВНЫЕ МЕТРИКИ АК / AmK
     c1, c2 = st.columns(2)
     with c1:
