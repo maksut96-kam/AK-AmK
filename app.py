@@ -221,11 +221,11 @@ components.html("""
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Планировщик"])
 
 with tab1:
-    # 1. Расчет данных
+    # 1. Сбор актуальных данных
     now_utc = datetime.utcnow()
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     
-    # Исправленный вызов (принимаем 2 значения)
+    # ПРАВИЛЬНЫЙ ВЫЗОВ: принимаем ровно 2 значения
     df, ayan_val = get_planet_data(t_now)
     l = get_lunar_detailed_info(t_now) 
 
@@ -234,7 +234,7 @@ with tab1:
         hrs = int(h % 24)
         return f"{d}д {hrs}ч"
 
-    # 2. ВИЗУАЛЬНЫЙ БЛОК: "ЛУННЫЙ АЛТАРЬ"
+    # 2. ВИЗУАЛЬНЫЙ БЛОК: "ЛУННЫЙ АЛТАРЬ" (AmK Special)
     st.markdown(f"""
     <style>
         .moon-altar {{
@@ -244,6 +244,7 @@ with tab1:
             border: 1px solid rgba(119, 141, 169, 0.3);
             color: #e0e1dd;
             margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }}
         .moon-title {{ font-size: 1.8em; font-weight: 700; margin-bottom: 5px; }}
         .gandanta-alert {{
@@ -290,13 +291,22 @@ with tab1:
             <span>🌑 До Новолуния: <b>{fmt_h(l['to_new'])}</b></span>
         </div>
         {f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''}
+        
+        <div style="margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; color: #adb5bd;">
+            💎 <b>Совет для AmK Луны:</b><br>
+            {"Время транслировать идеи и расширять контакты." if l['is_waxing'] else "Время анализа и завершения текущих стратегий."}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 3. ТАБЛИЦА ПЛАНЕТ
-    st.table(df[['Role', 'Planet', 'Deg']])
-    
-    # 4. ТАБЛИЦА КАРАК
+    # 3. ОСНОВНЫЕ МЕТРИКИ АК / AmK
+    c1, c2 = st.columns(2)
+    with c1:
+        st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
+    with c2:
+        st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
+
+    # 4. ТАБЛИЦА ЧАРА-КАРАК
     st.subheader("📊 Таблица Чара-карак")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
@@ -306,7 +316,7 @@ with tab1:
 
     st.divider()
 
-    # 5. МОНИТОРИНГ РОТАЦИЙ (ИСПРАВЛЕНО)
+    # 5. МОНИТОРИНГ РОТАЦИЙ (ИСПРАВЛЕННЫЙ ВЫЗОВ)
     st.subheader("🔄 Мониторинг ротаций")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     
@@ -318,23 +328,23 @@ with tab1:
             for m in range(10, 2880, 10):
                 target = now_utc + timedelta(minutes=m*direct)
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
-                # ИСПРАВЛЕНИЕ: принимаем 2 значения, а не 3
+                # ИСПРАВЛЕНИЕ: Принимаем только 2 значения (df_t и ayan)
                 df_t, _ = get_planet_data(t_t) 
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
                     st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
                     st.caption(f"АК: {df_t.iloc[0]['Planet']} | AmK: {df_t.iloc[1]['Planet']}")
                     break
     
-    # 6. МОДУЛЬ РАХУ (ИСПРАВЛЕНО)
+    # 6. МОДУЛЬ РАХУ
     ra_row = df[df['Planet'] == 'Rahu'].iloc[0]
     ra_deg = ra_row['Deg']
     
     if ra_deg < 2 or ra_deg > 28:
-        label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты."
+        label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок иррационален."
     elif ra_deg < 5 or ra_deg > 25:
         label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели."
     else:
-        label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона."
+        label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
 
     st.markdown(f"""<div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44; margin-top:20px;">
         <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {label}</h3>
