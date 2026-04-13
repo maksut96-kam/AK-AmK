@@ -241,7 +241,7 @@ with tab1:
         hrs = int(h % 24)
         return f"{d}д {hrs}ч"
 
-    # 2. ВИЗУАЛЬНЫЙ БЛОК: "ЛУННЫЙ АЛТАРЬ" (AmK Special)
+   # === 2. ВИЗУАЛЬНЫЙ БЛОК: "ЛУННЫЙ АЛТАРЬ" (AmK Special) ===
     st.markdown(f"""
     <style>
         .moon-altar {{
@@ -273,6 +273,10 @@ with tab1:
             box-shadow: 0 0 15px rgba(224, 225, 221, 0.5);
         }}
         .stat-row {{ display: flex; justify-content: space-between; font-size: 0.85em; opacity: 0.8; }}
+        .moon-footer {{ 
+            margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); 
+            padding-top: 15px; color: #adb5bd; 
+        }}
     </style>
 
     <div class="moon-altar">
@@ -299,14 +303,13 @@ with tab1:
         </div>
         {f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''}
         
-   # Проверь, чтобы этот блок был внутри with tab1:
-    st.markdown(f"""
-    <div style="margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; color: #adb5bd;">
-        💎 <b>Совет для AmK Луны:</b><br>
-        {"Время транслировать идеи и расширять контакты." if l['is_waxing'] else "Время анализа и завершения текущих стратегий."}
+        <div class="moon-footer">
+            💎 <b>Совет для AmK Луны:</b><br>
+            {"Время транслировать идеи и расширять контакты." if l['is_waxing'] else "Время анализа и завершения текущих стратегий."}
+        </div>
     </div>
     """, unsafe_allow_html=True)
-
+    # === КОНЕЦ ВЫВОДА ЛУННОГО АЛТАРЯ ===
     # 3. ОСНОВНЫЕ МЕТРИКИ АК / AmK
     c1, c2 = st.columns(2)
     with c1:
