@@ -83,10 +83,12 @@ def get_full_info(row):
     return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
 
 # ============================================================
-# ⛔ БЛОК 3: ЛОГОТИП + ЗАГОЛОВОК + БАННЕР С ПЛАНЕТАМИ
+# ⛔ БЛОК 3: ПОЛНАЯ СБОРКА (БЕЗ ОШИБОК)
 # ============================================================
 import base64
 import os
+import streamlit as st
+import streamlit.components.v1 as components
 
 def get_base64_img(path):
     if os.path.exists(path):
@@ -96,193 +98,87 @@ def get_base64_img(path):
 
 logo_data = get_base64_img("logo.png")
 
-# --- 1. ШАПКА: ЛОГОТИП СЛЕВА + ТЕКСТ ---
+# 1. СТИЛИ (CSS)
 st.markdown(f"""
 <style>
-    .header-container {{
+    /* Шапка: Лого + Текст */
+    .header-wrapper {{
         display: flex;
         align-items: center;
         margin-bottom: 20px;
-        padding: 10px;
     }}
-    .logo-fish {{
-        width: 80px;
-        height: 80px;
+    .fish-logo {{
+        width: 60px; height: 60px;
         background-image: url('data:image/png;base64,{logo_data}');
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-        margin-right: 25px;
-        flex-shrink: 0;
+        background-size: contain; background-repeat: no-repeat;
+        margin-right: 20px;
     }}
-    .title-group {{
-        display: flex;
-        flex-direction: column;
-    }}
-    .title-main {{
-        font-family: 'Lexend', sans-serif;
-        font-weight: 800;
-        font-size: 3em;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: white;
-        margin: 0;
-        line-height: 1;
-    }}
-    .subtitle-main {{
-        color: #778DA9;
-        letter-spacing: 8px;
-        font-size: 1em;
-        text-transform: uppercase;
-        margin-top: 5px;
-    }}
-</style>
-
-<div class="header-container">
-    <div class="logo-fish"></div>
-    <div class="title-group">
-        <h1 class="title-main">Julia's Assistant</h1>
-        <span class="subtitle-main">Astro Coordination Center</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# --- 2. БАННЕР: ПОЛЕТ СКВОЗЬ ПЛАНЕТЫ ---
-st.markdown(f"""
-<style>
-    .space-window {{
-        position: relative;
-        width: 100%;
-        height: 320px;
-        border-radius: 20px;
-        overflow: hidden;
-        background: radial-gradient(circle at center, #0d1b2a 0%, #050505 100%);
-        border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: inset 0 0 50px rgba(0,0,0,1);
+    .main-title {{
+        font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 2.8em;
+        text-transform: uppercase; color: white; margin: 0;
     }}
 
-    /* Слои с планетами и звездами */
-    .planet-layer {{
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        transform: scale(0);
-        opacity: 0;
-        animation: hyper-jump 3s infinite linear;
+    /* Баннер и Полет планет */
+    .space-banner {{
+        position: relative; width: 100%; height: 300px;
+        border-radius: 20px; overflow: hidden;
+        background: black; border: 1px solid rgba(255,255,255,0.1);
     }}
-
-    /* Слой 1: Мелкие планеты (дальние) */
-    .p-far {{
-        background-image: 
-            radial-gradient(circle, #415A77 2px, transparent 8px),
-            radial-gradient(circle, #1B263B 4px, transparent 10px);
-        background-size: 400px 400px;
-        animation-duration: 4s;
+    .planet {{
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        transform: scale(0); opacity: 0;
+        animation: fly 3s infinite linear;
     }}
-
-    /* Слой 2: Средние планеты */
-    .p-mid {{
-        background-image: 
-            radial-gradient(circle, #778DA9 6px, transparent 15px),
-            radial-gradient(circle, #e0e1dd 3px, transparent 12px);
-        background-size: 300px 300px;
-        animation-duration: 2.5s;
-        animation-delay: 1s;
-    }}
-
-    /* Слой 3: Близкие крупные объекты */
-    .p-near {{
-        background-image: 
-            radial-gradient(circle, #5e6472 12px, transparent 25px),
-            radial-gradient(circle, #1b263b 8px, transparent 20px);
-        background-size: 500px 500px;
-        animation-duration: 1.8s;
-        animation-delay: 0.5s;
-    }}
-
-    @keyframes hyper-jump {{
-        0% {{ transform: scale(0.1); opacity: 0; }}
-        30% {{ opacity: 1; }}
-        90% {{ opacity: 1; }}
-        100% {{ transform: scale(3); opacity: 0; }}
-    }}
-
-    .clock-glass-box {{
-        position: absolute;
-        bottom: 20px;
-        right: 25px;
-        background: rgba(13, 27, 42, 0.7);
-        backdrop-filter: blur(10px);
-        padding: 10px 20px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.1);
-        z-index: 10;
-        text-align: center;
-    }}
-</style>
-
-<div class="space-window">
-    <div class="planet-layer p-far"></div>
-    <div class="planet-layer p-mid"></div>
-    <div class="planet-layer p-near"></div>
+    .p1 {{ background-image: radial-gradient(circle, #415A77 8px, transparent 15px); background-size: 400px 400px; animation-duration: 4s; }}
+    .p2 {{ background-image: radial-gradient(circle, #778DA9 4px, transparent 10px); background-size: 300px 300px; animation-duration: 2.5s; animation-delay: 1s; }}
     
-    <div class="clock-glass-box">
-        <span id="sochi-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.5em;">00:00:00</span>
+    @keyframes fly {{
+        0% {{ transform: scale(0.1); opacity: 0; }}
+        50% {{ opacity: 1; }}
+        100% {{ transform: scale(2.5); opacity: 0; }}
+    }}
+
+    /* Часы (Стекляшка) */
+    .clock-box {{
+        position: absolute; bottom: 20px; right: 20px;
+        background: rgba(13, 27, 42, 0.7); backdrop-filter: blur(10px);
+        padding: 10px 20px; border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.1); z-index: 99;
+    }}
+</style>
+
+<div class="header-wrapper">
+    <div class="fish-logo"></div>
+    <div>
+        <h1 class="main-title">Julia's Assistant</h1>
+        <div style="color: #778DA9; letter-spacing: 5px; font-size: 0.9em;">ASTRO COORDINATION CENTER</div>
+    </div>
+</div>
+
+<div class="space-banner">
+    <div class="planet p1"></div>
+    <div class="planet p2"></div>
+    <div class="clock-box">
+        <span id="live-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.5em;">00:00:00</span>
         <div style="color: #778DA9; font-size: 0.7em; text-transform: uppercase;">Sochi Time</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- 3. СКРИПТ ЧАСОВ ---
-# --- ПОЛНЫЙ БЛОК ЧАСОВ ДЛЯ ВСТАВКИ ---
-
-# 1. СТИЛИ (Определяем внешний вид "стеклянной" плашки)
-st.markdown("""
-<style>
-    .clock-glass-box {
-        position: absolute;
-        bottom: 20px;
-        right: 25px;
-        background: rgba(13, 27, 42, 0.7);
-        backdrop-filter: blur(10px);
-        padding: 10px 20px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.1);
-        z-index: 99;
-        text-align: center;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# 2. HTML (Создаем само место, где будут цифры)
-st.markdown("""
-    <div class="clock-glass-box">
-        <span id="sochi-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.5em;">00:00:00</span>
-        <div style="color: #778DA9; font-size: 0.7em; text-transform: uppercase;">Sochi Time</div>
-    </div>
-""", unsafe_allow_html=True)
-
-# 3. JAVASCRIPT (Оживляем цифры, чтобы они тикали)
-import streamlit.components.v1 as components
+# 2. ОЖИВЛЕНИЕ ЧАСОВ (JS)
 components.html("""
     <script>
-    function update() {
+    function tick() {
         let d = new Date();
         let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-        let sochi = new Date(utc + (3600000 * 3)); // Сочи UTC+3
-        let timeStr = sochi.toTimeString().split(' ')[0];
-        
-        // Ищем элемент в родительском окне приложения
-        const display = window.parent.document.getElementById('sochi-clock');
-        if (display) {
-            display.innerHTML = timeStr;
-        }
+        let sochi = new Date(utc + (3600000 * 3));
+        let s = sochi.toTimeString().split(' ')[0];
+        const el = window.parent.document.getElementById('live-clock');
+        if (el) el.innerHTML = s;
     }
-    setInterval(update, 1000);
-    update();
+    setInterval(tick, 1000); tick();
     </script>
 """, height=0)
-
-st.markdown("---")
 # ============================================================
 # ⛔ БЛОК 4: ОПЕРАТИВНЫЙ МОНИТОРИНГ (ТАБЫ)
 # ============================================================
