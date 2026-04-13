@@ -385,7 +385,7 @@ with tab2:
         last_pair = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
         events.append({"Время (Сочи)": dt_start.strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_i.iloc[0]), "🥈 AmK": get_full_info(df_i.iloc[1])})
 
-        while curr_utc < end_utc:
+while curr_utc < end_utc:
             curr_utc += timedelta(minutes=5)
             t_s_loop = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
             
@@ -393,7 +393,7 @@ with tab2:
             df_s, _ = get_planet_data(t_s_loop)
             
             new_pair = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
-            if new_pair != last_pair:
+    if new_pair != last_pair:
                 events.append({"Время (Сочи)": (curr_utc + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_s.iloc[0]), "🥈 AmK": get_full_info(df_s.iloc[1])})
                 last_pair = new_pair
         st.table(pd.DataFrame(events))
