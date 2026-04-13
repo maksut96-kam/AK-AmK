@@ -48,14 +48,50 @@ def get_planet_data(t):
     ra_deg = 30 - (ra_lon % 30) 
     return df, ra_lon, ra_deg
 
-def get_lunar_data(t):
-    sun_lon = eph['earth'].at(t).observe(eph['sun']).ecliptic_latlon()[1].degrees
-    moon_lon = eph['earth'].at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees
-    diff = (moon_lon - sun_lon) % 360
-    tithi = int(diff / 12) + 1
-    status = "Растущая (Шукла)" if diff < 180 else "Убывающая (Кришна)"
-    icon = ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(diff/45) % 8]
-    return tithi, status, icon
+def get_lunar_detailed_info(t):
+    """Расширенная математика Луны для AmK"""
+    earth = eph['earth']
+    s_pos = earth.at(t).observe(eph['sun']).ecliptic_latlon()
+    m_pos = earth.at(t).observe(eph['moon']).ecliptic_latlon()
+    
+    s_lon = s_pos[1].degrees
+    m_lon = m_pos[1].degrees
+    
+    # 1. Титхи и освещенность
+    diff = (m_lon - s_lon) % 360
+    tithi_num = math.ceil(diff / 12) or 1
+    illumination = (1 - math.cos(math.radians(diff))) / 2 * 100
+    
+    # 2. Время до сизигий (скорость ~0.508 град/час)
+    dist_to_full = (180 - diff) % 360
+    dist_to_new = (360 - diff) % 360
+    h_to_full = dist_to_full / 0.508
+    h_to_new = dist_to_new / 0.508
+    
+    # 3. Сидерические данные (Знак и Накшатра)
+    ayan = get_dynamic_ayanamsa(t)
+    lon_sid = (m_lon - ayan) % 360
+    sign_idx = int(lon_sid / 30)
+    nak_idx = int(lon_sid / (360/27)) % 27
+    
+    # 4. Фишка: Проверка на Ганданту (опасные стыки)
+    gandanta = False
+    deg_in_sign = lon_sid % 30
+    if sign_idx in [3, 7, 11] and deg_in_sign > 27: gandanta = "Реактивная (конец воды)"
+    if sign_idx in [0, 4, 8] and deg_in_sign < 3: gandanta = "Импульсивная (начало огня)"
+    
+    return {
+        "tithi": tithi_num,
+        "phase_icon": ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(((diff + 22.5) % 360) / 45)],
+        "illum": illumination,
+        "to_full": h_to_full,
+        "to_new": h_to_new,
+        "sign": ZODIAC_SIGNS[sign_idx],
+        "nak": NAKSHATRAS[nak_idx],
+        "nak_lord": NAK_LORDS[nak_idx],
+        "is_waxing": diff < 180,
+        "gandanta": gandanta
+    }
 
 def get_xau_storms(dt_start, days=45):
     storms = []
@@ -185,10 +221,105 @@ components.html("""
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Планировщик"])
 
 with tab1:
+    # 1. Расчет данных (этот блок должен быть здесь)
     now_utc = datetime.utcnow()
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
-    df, ra_lon, ra_deg = get_planet_data(t_now)
-    tithi, l_status, l_icon = get_lunar_data(t_now)
+    
+    # Получаем данные планет и расширенную инфо по Луне
+    df, ayan_val = get_planet_data(t_now)
+    l = get_lunar_detailed_info(t_now) # Твоя новая функция
+
+    # Вспомогательная функция для красивого времени
+    def fmt_h(h):
+        d = int(h // 24)
+        hrs = int(h % 24)
+        return f"{d}д {hrs}ч"
+
+    # 2. ВИЗУАЛЬНЫЙ БЛОК: "ЛУННЫЙ АЛТАРЬ"
+    st.markdown(f"""
+    <style>
+        .moon-altar {{
+            background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(119, 141, 169, 0.3);
+            color: #e0e1dd;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }}
+        .moon-title {{ font-size: 1.8em; font-weight: 700; margin-bottom: 5px; }}
+        .gandanta-alert {{
+            background: rgba(230, 57, 70, 0.2);
+            border: 1px solid #e63946;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            margin-top: 15px;
+            text-align: center;
+            color: #ffb3b3;
+            animation: pulse 2s infinite;
+        }}
+        @keyframes pulse {{
+            0% {{ opacity: 0.6; }}
+            50% {{ opacity: 1; }}
+            100% {{ opacity: 0.6; }}
+        }}
+        .progress-bg {{ background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; margin: 15px 0; overflow:hidden; }}
+        .progress-fill {{ 
+            background: linear-gradient(90deg, #415a77, #778da9, #e0e1dd); 
+            width: {l['illum']}%; height: 100%; 
+            box-shadow: 0 0 15px rgba(224, 225, 221, 0.5);
+        }}
+        .stat-row {{ display: flex; justify-content: space-between; font-size: 0.85em; opacity: 0.8; }}
+    </style>
+
+    <div class="moon-altar">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="font-size: 3.5em; margin-bottom: -10px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));">
+                    {l['phase_icon']}
+                </div>
+                <div class="moon-title">{l['tithi']} лунные сутки</div>
+                <div style="color: #778da9; font-size: 0.95em;">
+                    { "Растущая (Шукла)" if l['is_waxing'] else "Убывающая (Кришна)" } • {int(l['illum'])}% света
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="background: rgba(65, 90, 119, 0.3); padding: 10px 18px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 1.2em; font-weight: bold; color: #e0e1dd;">{l['sign']}</div>
+                    <div style="font-size: 0.85em; color: #778da9;">{l['nak']}</div>
+                    <div style="font-size: 0.7em; color: #415a77; text-transform: uppercase; margin-top: 3px;">Лорд: {l['nak_lord']}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-bg"><div class="progress-fill"></div></div>
+        
+        <div class="stat-row">
+            <span>🌕 До Полнолуния: <b>{fmt_h(l['to_full'])}</b></span>
+            <span>🌑 До Новолуния: <b>{fmt_h(l['to_new'])}</b></span>
+        </div>
+
+        {f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}. Снизьте внешнюю активность.</div>' if l['gandanta'] else ''}
+
+        <div style="margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+            💎 <b>Совет для AmK Луны:</b><br>
+            <span style="color: #adb5bd;">
+                {"Сейчас время активного роста и презентации своих талантов миру." if l['is_waxing'] 
+                else "Время анализа, наведения порядка в делах и подготовки к новому рывку."}
+            </span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 3. ТАБЛИЦА ПЛАНЕТ И МЕТРИКИ (Остаются как были)
+    st.table(df[['Role', 'Planet', 'Deg']])
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
+    with c2:
+        st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
 
         # --- ТАБЛИЦА КАРАК ---
     st.subheader("📊 Таблица Чара-карак")
