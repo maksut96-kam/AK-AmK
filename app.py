@@ -370,7 +370,7 @@ with tab2:
         d_e = st.date_input("Дата конца", datetime.now() + timedelta(days=3), key="de_p")
         t_e = st.time_input("Время конца", time(23, 59), key="te_p")
 
-    if st.button('🚀 Рассчитать и подготовить бланк'):
+  if st.button('🚀 Рассчитать и подготовить бланк'):
         dt_start = datetime.combine(d_s, t_s)
         dt_end = datetime.combine(d_e, t_e)
         curr_utc = dt_start - timedelta(hours=3)
@@ -378,8 +378,9 @@ with tab2:
         events = []
         
         t_init = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
-       # Было: df_i, _, _ = get_planet_data(t_init)
-        df_i, _ = get_planet_data(t_init) # Стало (2 значения)
+        
+        # ИСПРАВЛЕНИЕ 1: Принимаем 2 значения вместо 3
+        df_i, _ = get_planet_data(t_init) 
         
         last_pair = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
         events.append({"Время (Сочи)": dt_start.strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_i.iloc[0]), "🥈 AmK": get_full_info(df_i.iloc[1])})
@@ -388,8 +389,9 @@ with tab2:
             curr_utc += timedelta(minutes=5)
             t_s_loop = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
             
-            # Было: df_s, _, _ = get_planet_data(t_s_loop)
-            df_s, _ = get_planet_data(t_s_loop) # Стало (2 значения)
+            # ИСПРАВЛЕНИЕ 2: Принимаем 2 значения вместо 3
+            df_s, _ = get_planet_data(t_s_loop)
+            
             new_pair = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
             if new_pair != last_pair:
                 events.append({"Время (Сочи)": (curr_utc + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_s.iloc[0]), "🥈 AmK": get_full_info(df_s.iloc[1])})
