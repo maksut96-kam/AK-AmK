@@ -199,6 +199,12 @@ with tab1:
     st.dataframe(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']], use_container_width=True, hide_index=True)
 
     st.divider()
+
+       # --- МОДУЛЬ ЛУНЫ (ВОССТАНОВЛЕНО) ---
+    st.markdown(f"### {l_icon} Лунный цикл: {tithi} сутки")
+    st.info(f"Текущая фаза: **{l_status}**")
+
+    st.markdown("---")
     
     # --- МОДУЛЬ РАХУ (ПОЛНЫЙ) ---
     if ra_deg < 2 or ra_deg > 28:
@@ -225,12 +231,6 @@ with tab1:
                 st.warning(f"**{s['Дата']}** — {s['Тип']} (Угол {s['Угол']})")
         else:
             st.success("✅ Критических помех для золота не обнаружено.")
-
-    st.markdown("---")
-
-    # --- МОДУЛЬ ЛУНЫ (ВОССТАНОВЛЕНО) ---
-    st.markdown(f"### {l_icon} Лунный цикл: {tithi} сутки")
-    st.info(f"Текущая фаза: **{l_status}**")
 
     st.markdown("---")
 
