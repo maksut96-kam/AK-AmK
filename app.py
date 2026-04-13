@@ -221,15 +221,14 @@ components.html("""
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Планировщик"])
 
 with tab1:
-    # 1. Расчет данных (этот блок должен быть здесь)
+    # 1. Расчет данных
     now_utc = datetime.utcnow()
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     
-    # Получаем данные планет и расширенную инфо по Луне
+    # Исправленный вызов (принимаем 2 значения)
     df, ayan_val = get_planet_data(t_now)
-    l = get_lunar_detailed_info(t_now) # Твоя новая функция
+    l = get_lunar_detailed_info(t_now) 
 
-    # Вспомогательная функция для красивого времени
     def fmt_h(h):
         d = int(h // 24)
         hrs = int(h % 24)
@@ -245,7 +244,6 @@ with tab1:
             border: 1px solid rgba(119, 141, 169, 0.3);
             color: #e0e1dd;
             margin-bottom: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }}
         .moon-title {{ font-size: 1.8em; font-weight: 700; margin-bottom: 5px; }}
         .gandanta-alert {{
@@ -259,11 +257,7 @@ with tab1:
             color: #ffb3b3;
             animation: pulse 2s infinite;
         }}
-        @keyframes pulse {{
-            0% {{ opacity: 0.6; }}
-            50% {{ opacity: 1; }}
-            100% {{ opacity: 0.6; }}
-        }}
+        @keyframes pulse {{ 0% {{ opacity: 0.6; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.6; }} }}
         .progress-bg {{ background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; margin: 15px 0; overflow:hidden; }}
         .progress-fill {{ 
             background: linear-gradient(90deg, #415a77, #778da9, #e0e1dd); 
@@ -276,9 +270,7 @@ with tab1:
     <div class="moon-altar">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
-                <div style="font-size: 3.5em; margin-bottom: -10px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));">
-                    {l['phase_icon']}
-                </div>
+                <div style="font-size: 3.5em; margin-bottom: -10px;">{l['phase_icon']}</div>
                 <div class="moon-title">{l['tithi']} лунные сутки</div>
                 <div style="color: #778da9; font-size: 0.95em;">
                     { "Растущая (Шукла)" if l['is_waxing'] else "Убывающая (Кришна)" } • {int(l['illum'])}% света
@@ -292,36 +284,19 @@ with tab1:
                 </div>
             </div>
         </div>
-
         <div class="progress-bg"><div class="progress-fill"></div></div>
-        
         <div class="stat-row">
             <span>🌕 До Полнолуния: <b>{fmt_h(l['to_full'])}</b></span>
             <span>🌑 До Новолуния: <b>{fmt_h(l['to_new'])}</b></span>
         </div>
-
-        {f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}. Снизьте внешнюю активность.</div>' if l['gandanta'] else ''}
-
-        <div style="margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-            💎 <b>Совет для AmK Луны:</b><br>
-            <span style="color: #adb5bd;">
-                {"Сейчас время активного роста и презентации своих талантов миру." if l['is_waxing'] 
-                else "Время анализа, наведения порядка в делах и подготовки к новому рывку."}
-            </span>
-        </div>
+        {f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''}
     </div>
     """, unsafe_allow_html=True)
 
-    # 3. ТАБЛИЦА ПЛАНЕТ И МЕТРИКИ (Остаются как были)
+    # 3. ТАБЛИЦА ПЛАНЕТ
     st.table(df[['Role', 'Planet', 'Deg']])
     
-    c1, c2 = st.columns(2)
-    with c1:
-        st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
-    with c2:
-        st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
-
-        # --- ТАБЛИЦА КАРАК ---
+    # 4. ТАБЛИЦА КАРАК
     st.subheader("📊 Таблица Чара-карак")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
@@ -331,20 +306,10 @@ with tab1:
 
     st.divider()
 
-       # --- МОДУЛЬ ЛУНЫ (ВОССТАНОВЛЕНО) ---
-    st.markdown(f"### {l_icon} Лунный цикл: {tithi} сутки")
-    st.info(f"Текущая фаза: **{l_status}**")
-
-    st.markdown("---")
-
-    # --- МОНИТОРИНГ РОТАЦИЙ (ВОССТАНОВЛЕНО) ---
+    # 5. МОНИТОРИНГ РОТАЦИЙ (ИСПРАВЛЕНО)
     st.subheader("🔄 Мониторинг ротаций")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     
-    c_m1, c_m2 = st.columns(2)
-    c_m1.metric("💎 Текущая АК", get_full_info(df.iloc[0]))
-    c_m2.metric("🥈 Текущая AmK", get_full_info(df.iloc[1]))
-
     cols = st.columns(2)
     settings = [(-1, "⬅️ Предыдущая смена", "#415A77"), (1, "➡️ Следующая смена", "#778DA9")]
     for idx, (direct, label_rot, color_rot) in enumerate(settings):
@@ -353,39 +318,27 @@ with tab1:
             for m in range(10, 2880, 10):
                 target = now_utc + timedelta(minutes=m*direct)
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
-                df_t, _, _ = get_planet_data(t_t)
+                # ИСПРАВЛЕНИЕ: принимаем 2 значения, а не 3
+                df_t, _ = get_planet_data(t_t) 
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
                     st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}\n\nAmK: {get_full_info(df_t.iloc[1])}")
+                    st.caption(f"АК: {df_t.iloc[0]['Planet']} | AmK: {df_t.iloc[1]['Planet']}")
                     break
     
-    # --- МОДУЛЬ РАХУ (ПОЛНЫЙ) ---
-    if ra_deg < 2 or ra_deg > 28:
-        label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок крайне иррационален."
-    elif ra_deg < 5 or ra_deg > 25:
-        label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели. Возможны сквизы."
-    else:
-        label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона. Теханализ в норме."
-
-    st.markdown(f"""<div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44;">
-        <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {label}</h3>
-        <p style="margin:5px 0;">{desc} (Текущий градус: <b>{ra_deg:.2f}°</b>)</p></div>""", unsafe_allow_html=True)
+    # 6. МОДУЛЬ РАХУ (ИСПРАВЛЕНО)
+    ra_row = df[df['Planet'] == 'Rahu'].iloc[0]
+    ra_deg = ra_row['Deg']
     
-    st.subheader("📡 Радар аномалий XAUUSD")
-    c_r1, c_r2 = st.columns([1, 2])
-    with c_r1:
-        score = 100 - (ra_deg*5) if ra_deg < 10 else (ra_deg-20)*10 if ra_deg > 20 else 5
-        st.write("**Давление Раху:**")
-        st.progress(min(max(int(score), 5), 100))
-    with c_r2:
-        storms = get_xau_storms(now_utc)
-        if storms:
-            for s in storms:
-                st.warning(f"**{s['Дата']}** — {s['Тип']} (Угол {s['Угол']})")
-        else:
-            st.success("✅ Критических помех для золота не обнаружено.")
+    if ra_deg < 2 or ra_deg > 28:
+        label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты."
+    elif ra_deg < 5 or ra_deg > 25:
+        label, color, desc = "🟡 ПОВЫШЕННЫЙ РИСК", "#FFA500", "Эмоциональные качели."
+    else:
+        label, color, desc = "🟢 ТЕХНИЧНЫЙ РЫНОК", "#00C853", "Чистая зона."
 
-    st.markdown("---")
+    st.markdown(f"""<div style="background:{color}22; border-left:5px solid {color}; padding:15px; border-radius:10px; border:1px solid {color}44; margin-top:20px;">
+        <h3 style="margin:0; color:{color};">🐲 Монитор Раху: {label}</h3>
+        <p style="margin:5px 0;">{desc} (Градус: <b>{ra_deg:.2f}°</b>)</p></div>""", unsafe_allow_html=True)
 
 # ============================================================
 # ⛔ БЛОК 5: ПЛАНИРОВЩИК (ВЫСОКОТОЧНЫЙ РАСЧЕТ)
