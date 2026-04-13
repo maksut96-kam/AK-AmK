@@ -42,11 +42,18 @@ def get_planet_data(t):
     for name, obj in planets_objects.items():
         lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - ayan) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
+    
+    # Считаем АК/AmK
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
-    df['Role'] = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK'][:len(df)]
+    df['Role'] = (['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK'] + ['-'] * 10)[:len(df)]
+    
+    # Считаем Раху и добавляем его ВНУТРЬ таблицы df
     ra_lon = (earth.at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees - ayan + 180) % 360 
-    ra_deg = 30 - (ra_lon % 30) 
-    return df, ra_lon, ra_deg
+    ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': 30 - (ra_lon % 30), 'Role': '-'}])
+    df = pd.concat([df, ra_row], ignore_index=True)
+    
+    # Возвращаем строго ДВА значения (таблицу и аянамшу)
+    return df, ayan
 
 def get_lunar_detailed_info(t):
     """Расширенная математика Луны для AmK"""
