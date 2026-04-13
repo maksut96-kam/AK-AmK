@@ -205,6 +205,28 @@ with tab1:
     st.info(f"Текущая фаза: **{l_status}**")
 
     st.markdown("---")
+
+    # --- МОНИТОРИНГ РОТАЦИЙ (ВОССТАНОВЛЕНО) ---
+    st.subheader("🔄 Мониторинг ротаций")
+    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
+    
+    c_m1, c_m2 = st.columns(2)
+    c_m1.metric("💎 Текущая АК", get_full_info(df.iloc[0]))
+    c_m2.metric("🥈 Текущая AmK", get_full_info(df.iloc[1]))
+
+    cols = st.columns(2)
+    settings = [(-1, "⬅️ Предыдущая смена", "#415A77"), (1, "➡️ Следующая смена", "#778DA9")]
+    for idx, (direct, label_rot, color_rot) in enumerate(settings):
+        with cols[idx]:
+            st.markdown(f"<h4 style='color:{color_rot}; border-bottom:1px solid #eee;'>{label_rot}</h4>", unsafe_allow_html=True)
+            for m in range(10, 2880, 10):
+                target = now_utc + timedelta(minutes=m*direct)
+                t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
+                df_t, _, _ = get_planet_data(t_t)
+                if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
+                    st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}\n\nAmK: {get_full_info(df_t.iloc[1])}")
+                    break
     
     # --- МОДУЛЬ РАХУ (ПОЛНЫЙ) ---
     if ra_deg < 2 or ra_deg > 28:
@@ -233,28 +255,6 @@ with tab1:
             st.success("✅ Критических помех для золота не обнаружено.")
 
     st.markdown("---")
-
-    # --- МОНИТОРИНГ РОТАЦИЙ (ВОССТАНОВЛЕНО) ---
-    st.subheader("🔄 Мониторинг ротаций")
-    ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    
-    c_m1, c_m2 = st.columns(2)
-    c_m1.metric("💎 Текущая АК", get_full_info(df.iloc[0]))
-    c_m2.metric("🥈 Текущая AmK", get_full_info(df.iloc[1]))
-
-    cols = st.columns(2)
-    settings = [(-1, "⬅️ Предыдущая смена", "#415A77"), (1, "➡️ Следующая смена", "#778DA9")]
-    for idx, (direct, label_rot, color_rot) in enumerate(settings):
-        with cols[idx]:
-            st.markdown(f"<h4 style='color:{color_rot}; border-bottom:1px solid #eee;'>{label_rot}</h4>", unsafe_allow_html=True)
-            for m in range(10, 2880, 10):
-                target = now_utc + timedelta(minutes=m*direct)
-                t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
-                df_t, _, _ = get_planet_data(t_t)
-                if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
-                    st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
-                    st.caption(f"АК: {get_full_info(df_t.iloc[0])}\n\nAmK: {get_full_info(df_t.iloc[1])}")
-                    break
 
 # ============================================================
 # ⛔ БЛОК 5: ПЛАНИРОВЩИК (ВЫСОКОТОЧНЫЙ РАСЧЕТ)
