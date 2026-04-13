@@ -241,12 +241,9 @@ with tab1:
         hrs = int(h % 24)
         return f"{d}д {hrs}ч"
 
-# === ПОЛНЫЙ БЛОК ЛУННОГО АЛТАРЯ (БЕЗ РАЗРЫВОВ) ===
-    # Сначала готовим текст совета
+# === ПОЛНЫЙ ИСПРАВЛЕННЫЙ БЛОК ЛУННОГО АЛТАРЯ ===
     advice = "Время транслировать идеи и расширять контакты." if l['is_waxing'] else "Время анализа и завершения текущих стратегий."
-    
-    # Готовим плашку Ганданты (если она есть)
-    gandanta_html = f'<div style="background: rgba(230, 57, 70, 0.2); border: 1px solid #e63946; padding: 10px; border-radius: 10px; margin-top: 15px; text-align: center; color: #ffb3b3;">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''
+    gandanta_html = f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''
 
     st.markdown(f"""
     <style>
@@ -257,35 +254,52 @@ with tab1:
             border: 1px solid rgba(119, 141, 169, 0.3);
             color: #e0e1dd;
             margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }}
+        .moon-title {{ font-size: 1.8em; font-weight: 700; margin-bottom: 5px; }}
         .progress-bg {{ background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; margin: 15px 0; overflow:hidden; }}
-        .progress-fill {{ background: linear-gradient(90deg, #415a77, #e0e1dd); width: {l['illum']}%; height: 100%; }}
-        .stat-row {{ display: flex; justify-content: space-between; font-size: 0.85em; opacity: 0.8; }}
-        .moon-footer {{ margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; color: #adb5bd; }}
+        .progress-fill {{ 
+            background: linear-gradient(90deg, #415a77, #778da9, #e0e1dd); 
+            width: {l['illum']}%; height: 100%; 
+            box-shadow: 0 0 15px rgba(224, 225, 221, 0.5);
+        }}
+        .stat-row {{ display: flex; justify-content: space-between; font-size: 0.85em; opacity: 0.8; margin-top: 10px; }}
+        .moon-footer {{ 
+            margin-top: 20px; font-size: 0.95em; border-top: 1px solid rgba(255,255,255,0.1); 
+            padding-top: 15px; color: #adb5bd; 
+        }}
+        .gandanta-alert {{
+            background: rgba(230, 57, 70, 0.2); border: 1px solid #e63946;
+            padding: 10px; border-radius: 10px; font-size: 0.85em;
+            margin-top: 15px; text-align: center; color: #ffb3b3;
+        }}
     </style>
 
     <div class="moon-altar">
-        <div style="display: flex; justify-content: space-between;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
                 <div style="font-size: 3.5em; margin-bottom: -10px;">{l['phase_icon']}</div>
-                <div style="font-size: 1.8em; font-weight: 700;">{l['tithi']} лунные сутки</div>
-                <div style="color: #778da9;">{"Растущая" if l['is_waxing'] else "Убывающая"} • {int(l['illum'])}% света</div>
+                <div class="moon-title">{l['tithi']} лунные сутки</div>
+                <div style="color: #778da9; font-size: 0.95em;">
+                    {"Растущая (Шукла)" if l['is_waxing'] else "Убывающая (Кришна)"} • {int(l['illum'])}% света
+                </div>
             </div>
             <div style="text-align: right;">
-                <div style="background: rgba(65, 90, 119, 0.3); padding: 10px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
-                    <div style="font-size: 1.2em; font-weight: bold;">{l['sign']}</div>
+                <div style="background: rgba(65, 90, 119, 0.3); padding: 10px 18px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 1.2em; font-weight: bold; color: #e0e1dd;">{l['sign']}</div>
                     <div style="font-size: 0.85em; color: #778da9;">{l['nak']}</div>
+                    <div style="font-size: 0.7em; color: #415a77; text-transform: uppercase; margin-top: 3px;">Лорд: {l['nak_lord']}</div>
                 </div>
             </div>
         </div>
-        
+
         <div class="progress-bg"><div class="progress-fill"></div></div>
-        
+
         <div class="stat-row">
             <span>🌕 До Полнолуния: <b>{fmt_h(l['to_full'])}</b></span>
             <span>🌑 До Новолуния: <b>{fmt_h(l['to_new'])}</b></span>
         </div>
-        
+
         {gandanta_html}
 
         <div class="moon-footer">
@@ -294,7 +308,7 @@ with tab1:
         </div>
     </div>
     """, unsafe_allow_html=True)
-    # === КОНЕЦ БЛОКА ЛУННОГО АЛТАРЯ ===
+    # === КОНЕЦ БЛОКА ===
     # 3. ОСНОВНЫЕ МЕТРИКИ АК / AmK
     c1, c2 = st.columns(2)
     with c1:
