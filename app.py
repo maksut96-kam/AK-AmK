@@ -363,6 +363,7 @@ with tab1:
 with tab2:
     st.header("📅 Высокоточный планировщик ротаций")
     c_p1, c_p2 = st.columns(2)
+    
     with c_p1:
         d_s = st.date_input("Дата начала", datetime.now(), key="ds_p")
         t_s = st.time_input("Время начала", time(0, 0), key="ts_p")
@@ -370,30 +371,38 @@ with tab2:
         d_e = st.date_input("Дата конца", datetime.now() + timedelta(days=3), key="de_p")
         t_e = st.time_input("Время конца", time(23, 59), key="te_p")
 
-  if st.button('🚀 Рассчитать и подготовить бланк'):
+    if st.button('🚀 Рассчитать и подготовить бланк'):
         dt_start = datetime.combine(d_s, t_s)
         dt_end = datetime.combine(d_e, t_e)
+        # Сочи UTC+3, для расчетов вычитаем 3 часа
         curr_utc = dt_start - timedelta(hours=3)
         end_utc = dt_end - timedelta(hours=3)
         events = []
         
         t_init = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
-        
-        # ИСПРАВЛЕНИЕ 1: Принимаем 2 значения вместо 3
-        df_i, _ = get_planet_data(t_init) 
+        df_i, _ = get_planet_data(t_init)
         
         last_pair = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
-        events.append({"Время (Сочи)": dt_start.strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_i.iloc[0]), "🥈 AmK": get_full_info(df_i.iloc[1])})
+        events.append({
+            "Время (Сочи)": dt_start.strftime("%d.%m.%Y %H:%M"), 
+            "💎 АК": get_full_info(df_i.iloc[0]), 
+            "🥈 AmK": get_full_info(df_i.iloc[1])
+        })
 
-while curr_utc < end_utc:
+        while curr_utc < end_utc:
             curr_utc += timedelta(minutes=5)
             t_s_loop = ts.utc(curr_utc.year, curr_utc.month, curr_utc.day, curr_utc.hour, curr_utc.minute)
-            
-            # ИСПРАВЛЕНИЕ 2: Принимаем 2 значения вместо 3
             df_s, _ = get_planet_data(t_s_loop)
             
             new_pair = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
-    if new_pair != last_pair:
-                events.append({"Время (Сочи)": (curr_utc + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M"), "💎 АК": get_full_info(df_s.iloc[0]), "🥈 AmK": get_full_info(df_s.iloc[1])})
+            if new_pair != last_pair:
+                sochi_time = curr_utc + timedelta(hours=3)
+                events.append({
+                    "Время (Сочи)": sochi_time.strftime("%d.%m.%Y %H:%M"), 
+                    "💎 АК": get_full_info(df_s.iloc[0]), 
+                    "🥈 AmK": get_full_info(df_s.iloc[1])
+                })
                 last_pair = new_pair
-        st.table(pd.DataFrame(events))
+        
+        if events:
+            st.table(pd.DataFrame(events))
