@@ -189,6 +189,16 @@ with tab1:
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
     df, ra_lon, ra_deg = get_planet_data(t_now)
     tithi, l_status, l_icon = get_lunar_data(t_now)
+
+        # --- ТАБЛИЦА КАРАК ---
+    st.subheader("📊 Таблица Чара-карак")
+    df_v = df.copy()
+    df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
+    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
+    df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
+    st.dataframe(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']], use_container_width=True, hide_index=True)
+
+    st.divider()
     
     # --- МОДУЛЬ РАХУ (ПОЛНЫЙ) ---
     if ra_deg < 2 or ra_deg > 28:
@@ -223,16 +233,6 @@ with tab1:
     st.info(f"Текущая фаза: **{l_status}**")
 
     st.markdown("---")
-    
-    # --- ТАБЛИЦА КАРАК ---
-    st.subheader("📊 Таблица Чара-карак")
-    df_v = df.copy()
-    df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
-    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
-    df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
-    st.dataframe(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']], use_container_width=True, hide_index=True)
-
-    st.divider()
 
     # --- МОНИТОРИНГ РОТАЦИЙ (ВОССТАНОВЛЕНО) ---
     st.subheader("🔄 Мониторинг ротаций")
