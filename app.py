@@ -299,13 +299,13 @@ with tab1:
         </div>
         {f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''}
         
-      # Проверь, чтобы f-строка начиналась перед тегом и заканчивалась после него
+     # Проверь, чтобы перед 💎 стояла открывающая кавычка функции markdown
     st.markdown(f"""
     <div style="margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; color: #adb5bd;">
         💎 <b>Совет для AmK Луны:</b><br>
         {"Время транслировать идеи и расширять контакты." if l['is_waxing'] else "Время анализа и завершения текущих стратегий."}
     </div>
-    """, unsafe_allow_html=True) # <-- ЭТОТ ПАРАМЕТР ОБЯЗАТЕЛЕН
+    """, unsafe_allow_html=True)
 
     # 3. ОСНОВНЫЕ МЕТРИКИ АК / AmK
     c1, c2 = st.columns(2)
