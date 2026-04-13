@@ -233,52 +233,54 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- 3. СКРИПТ ЧАСОВ ---
-# --- ИСПРАВЛЕННЫЙ БЛОК ЧАСОВ (HTML + JS ВМЕСТЕ) ---
-import streamlit.components.v1 as components
+# --- ПОЛНЫЙ БЛОК ЧАСОВ ДЛЯ ВСТАВКИ ---
 
-# Мы вставляем часы прямо через компонент, чтобы избежать конфликтов доступа
-components.html("""
-    <div style="
+# 1. СТИЛИ (Определяем внешний вид "стеклянной" плашки)
+st.markdown("""
+<style>
+    .clock-glass-box {
+        position: absolute;
+        bottom: 20px;
+        right: 25px;
         background: rgba(13, 27, 42, 0.7);
         backdrop-filter: blur(10px);
         padding: 10px 20px;
         border-radius: 12px;
         border: 1px solid rgba(255,255,255,0.1);
+        z-index: 99;
         text-align: center;
-        width: fit-content;
-        float: right;
-        margin-right: 25px;
-        margin-top: -80px; /* Поднимаем их внутрь баннера */
-        position: relative;
-        z-index: 100;
-    ">
-        <span id="sochi-clock" style="
-            color: white; 
-            font-weight: bold; 
-            font-family: monospace; 
-            font-size: 1.5em;
-            display: block;
-        ">00:00:00</span>
-        <div style="color: #778DA9; font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px;">Sochi Time</div>
-    </div>
+    }
+</style>
+""", unsafe_allow_html=True)
 
+# 2. HTML (Создаем само место, где будут цифры)
+st.markdown("""
+    <div class="clock-glass-box">
+        <span id="sochi-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.5em;">00:00:00</span>
+        <div style="color: #778DA9; font-size: 0.7em; text-transform: uppercase;">Sochi Time</div>
+    </div>
+""", unsafe_allow_html=True)
+
+# 3. JAVASCRIPT (Оживляем цифры, чтобы они тикали)
+import streamlit.components.v1 as components
+components.html("""
     <script>
     function update() {
         let d = new Date();
-        // Рассчитываем время Сочи (UTC+3)
         let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-        let sochi = new Date(utc + (3600000 * 3));
+        let sochi = new Date(utc + (3600000 * 3)); // Сочи UTC+3
+        let timeStr = sochi.toTimeString().split(' ')[0];
         
-        let h = String(sochi.getHours()).padStart(2, '0');
-        let m = String(sochi.getMinutes()).padStart(2, '0');
-        let s = String(sochi.getSeconds()).padStart(2, '0');
-        
-        document.getElementById('sochi-clock').innerHTML = h + ":" + m + ":" + s;
+        // Ищем элемент в родительском окне приложения
+        const display = window.parent.document.getElementById('sochi-clock');
+        if (display) {
+            display.innerHTML = timeStr;
+        }
     }
     setInterval(update, 1000);
     update();
     </script>
-""", height=100)
+""", height=0)
 
 st.markdown("---")
 # ============================================================
