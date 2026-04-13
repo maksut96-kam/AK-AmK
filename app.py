@@ -299,7 +299,7 @@ with tab1:
         </div>
         {f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''}
         
-     # Проверь, чтобы перед 💎 стояла открывающая кавычка функции markdown
+   # Проверь, чтобы этот блок был внутри with tab1:
     st.markdown(f"""
     <div style="margin-top: 20px; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; color: #adb5bd;">
         💎 <b>Совет для AmK Луны:</b><br>
