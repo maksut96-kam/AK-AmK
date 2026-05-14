@@ -32,8 +32,8 @@ Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близ
 st.markdown("""
 <style>
     .header-box { margin-bottom: 5px; }
-    .main-title { font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 2.2em; color: white; margin: 0; }
-    .sub-title { color: #778da9; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; }
+    .main-title { font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 2.5em; color: white; margin: 0; }
+    .sub-title { color: #778da9; font-size: 0.9em; letter-spacing: 3px; text-transform: uppercase; }
     .space-banner { position: relative; width: 100%; height: 180px; background: #000814; border-radius: 15px; overflow: hidden; border: 1px solid #1b263b; margin-top:10px; }
     .stars { position: absolute; width: 200%; height: 200%; background: url('https://www.transparenttextures.com/patterns/stardust.png'); opacity: 0.9; animation: rotateStars 120s infinite linear; }
     @keyframes rotateStars { from { transform: translate(-25%, -25%) rotate(0deg); } to { transform: translate(-25%, -25%) rotate(360deg); } }
@@ -44,10 +44,10 @@ st.markdown("""
     .p4 { background: radial-gradient(circle, #ff4b4b, #330000); width: 10px; height: 10px; animation-duration: 7s; animation-delay: 1.5s; top: 75%; }
     .p5 { background: radial-gradient(circle, #5e60ce, #000); width: 7px; height: 7px; animation-duration: 9s; animation-delay: 5s; top: 45%; }
     @keyframes fly { 0% { transform: translateX(-100px) scale(0.5); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateX(1600px) scale(1.8); opacity: 0; } }
-    .clock-box { position: absolute; bottom: 15px; right: 20px; background: rgba(13,27,42,0.9); padding: 8px 15px; border-radius: 10px; color: white; font-family: monospace; border: 1px solid #415a77; z-index: 10; }
+    .clock-box { position: absolute; bottom: 15px; right: 20px; background: rgba(13,27,42,0.9); padding: 8px 15px; border-radius: 10px; color: white; font-family: monospace; border: 1px solid #415a77; z-index: 10; font-size: 1.2em; }
     .moon-altar { background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); border-radius: 20px; padding: 25px; border: 1px solid #415a77; color: #e0e1dd; }
-    .widget-title { color:#778da9; font-size: 1.25em; font-weight: 800; margin-bottom: 10px; text-transform: uppercase; }
-    .custom-metric-box { background: rgba(65, 90, 119, 0.2); padding: 18px; border-radius: 12px; border: 1px solid #778da9; height: 100%; }
+    .widget-title { color:#778da9; font-size: 1.4em; font-weight: 800; margin-bottom: 12px; text-transform: uppercase; }
+    .custom-metric-box { background: rgba(65, 90, 119, 0.2); padding: 20px; border-radius: 12px; border: 1px solid #778da9; height: 100%; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -66,8 +66,15 @@ def format_cell(row):
     p_deg = n_deg / 4
     pada = int((lon % n_deg) / p_deg) + 1
     nav_idx = int((lon * 9) / 30) % 12
-    # Используем <br> вместо \n для чистого HTML
-    return f"<b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {row['Deg']:.2f}°<br><span style='color:#ffffff; font-weight:bold;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#778da9;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span>"
+    # Используем Золотой цвет для Накшатр и увеличенные шрифты
+    return f"""
+    <div style='font-size:1.15em; line-height:1.45;'>
+        <b style='font-size:1.2em;'>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {row['Deg']:.2f}°<br>
+        <span style='color:#ffd700; font-weight:800; font-size:1.1em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br>
+        <span style='font-size:0.9em; color:#ffffff;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br>
+        <span style='color:#778da9; font-size:0.9em;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span>
+    </div>
+    """
 
 def get_planet_data(t):
     ayan = get_dynamic_ayanamsa(t)
@@ -165,18 +172,18 @@ with t1:
     st.markdown(f"""
     <div class="moon-altar">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div><div style="font-size: 4em; line-height:1;">{l['phase_icon']}</div><div style="font-size: 1.8em; font-weight: bold;">{l['tithi']} лунные сутки</div></div>
-            <div style="text-align: right;"><div style="font-size: 1.4em; font-weight: bold;">{l['sign']}</div><div style="color: #778da9;">{l['nak']}</div></div>
+            <div><div style="font-size: 4.5em; line-height:1;">{l['phase_icon']}</div><div style="font-size: 2em; font-weight: bold;">{l['tithi']} лунные сутки</div></div>
+            <div style="text-align: right;"><div style="font-size: 1.8em; font-weight: bold;">{l['sign']}</div><div style="color: #ffd700; font-size:1.3em; font-weight:bold;">{l['nak']}</div></div>
         </div>
-        <div style="margin: 15px 0 5px 0;">
-            <small style="color:#778da9; text-transform: uppercase;">Освещенность Луны: {int(l['illum'])}%</small>
-            <div style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 6px; margin-top:5px;">
-                <div style="background: linear-gradient(to right, #415a77, #e0e1dd); width: {l['illum']}%; height: 12px; border-radius: 6px; box-shadow: 0 0 10px #fff;"></div>
+        <div style="margin: 20px 0 5px 0;">
+            <small style="color:#778da9; text-transform: uppercase; font-size:1em;">Освещенность Луны: {int(l['illum'])}%</small>
+            <div style="background: rgba(255,255,255,0.1); height: 16px; border-radius: 8px; margin-top:8px;">
+                <div style="background: linear-gradient(to right, #415a77, #e0e1dd); width: {l['illum']}%; height: 16px; border-radius: 8px; box-shadow: 0 0 15px #fff;"></div>
             </div>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.9em; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top:15px;">
-            <div>🌕 <b>Осталось до Полнолуния:</b><br>{l['rem_full'].days}д {l['rem_full'].seconds//3600}ч ({l['full_dt'].strftime('%d.%m %H:%M')})</div>
-            <div style="text-align: right;">🌑 <b>Осталось до Новолуния:</b><br>{l['rem_new'].days}д {l['rem_new'].seconds//3600}ч ({l['new_dt'].strftime('%d.%m %H:%M')})</div>
+        <div style="display: flex; justify-content: space-between; font-size: 1.1em; margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top:15px;">
+            <div>🌕 <b>Полнолуние:</b><br>{l['full_dt'].strftime('%d.%m %H:%M')} <span style='color:#778da9'>(через {l['rem_full'].days}д {l['rem_full'].seconds//3600}ч)</span></div>
+            <div style="text-align: right;">🌑 <b>Новолуние:</b><br>{l['new_dt'].strftime('%d.%m %H:%M')} <span style='color:#778da9'>(через {l['rem_new'].days}д {l['rem_new'].seconds//3600}ч)</span></div>
         </div>
     </div>""", unsafe_allow_html=True)
 
@@ -192,10 +199,10 @@ with t1:
         with (rc1 if r['type']=="Предыдущая" else rc2):
             st.markdown(f"""<div class="custom-metric-box" style="background:rgba(255,255,255,0.03)">
                 <div class="widget-title">{r['type'].upper()} ({r['dt'].strftime('%H:%M')})</div>
-                <div style="color:#778da9; font-size:0.9em; margin-bottom:10px;">{r['dt'].strftime('%d.%m.%Y')}</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div><small style="color:#778da9">АК</small><br>{format_cell(r['ak'])}</div>
-                    <div><small style="color:#778da9">AmK</small><br>{format_cell(r['amk'])}</div>
+                <div style="color:#ffd700; font-size:1.1em; font-weight:bold; margin-bottom:12px;">{r['dt'].strftime('%d.%m.%Y')}</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    <div><small style="color:#778da9; font-size:0.9em;">АК</small><br>{format_cell(r['ak'])}</div>
+                    <div><small style="color:#778da9; font-size:0.9em;">AmK</small><br>{format_cell(r['amk'])}</div>
                 </div>
             </div>""", unsafe_allow_html=True)
 
@@ -208,10 +215,10 @@ with t1:
     ra_val = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
     cr1, cr2 = st.columns([1, 2])
     with cr1: st.markdown(f'<div class="custom-metric-box" style="border-color:#ff4b4b;"><div class="widget-title">ТЕКУЩИЙ РАХУ</div>{format_cell(ra_val)}</div>', unsafe_allow_html=True)
-    with cr2: st.markdown("""<div style="font-size:0.9em; padding:20px; background:rgba(255,75,75,0.05); border-radius:12px; border:1px solid #ff4b4b;">
+    with cr2: st.markdown("""<div style="font-size:1.1em; padding:25px; background:rgba(255,75,75,0.05); border-radius:12px; border:1px solid #ff4b4b; line-height:1.6;">
         <b>Календарь ингрессий Раху (True Node):</b><br>
         • Рыбы: до 18.05.2025<br>
-        • <b>Водолей: с 18.05.2025 по 05.12.2026</b><br>
+        • <b style='color:#ffd700;'>Водолей: с 18.05.2025 по 05.12.2026</b><br>
         • Козерог: с 05.12.2026
     </div>""", unsafe_allow_html=True)
 
@@ -238,5 +245,5 @@ with t2:
         if results:
             df_res = pd.DataFrame(results)
             html_table = df_res.to_html(escape=False, index=False).replace('\n', '')
-            st.markdown(f"""<script>function openPrint() {{ const win = window.open('', '_blank'); win.document.write('<html><head><title>Печать</title><style>table {{ border-collapse: collapse; width: 100%; }} th, td {{ border: 1px solid black; padding: 8px; font-size: 10px; }}</style></head><body>' + `{html_table}` + '</body></html>'); win.document.close(); win.print(); }}</script><button onclick="openPrint()" style="width:100%; padding:10px; background:#28a745; color:white; border:none; border-radius:5px; cursor:pointer;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ</button>""", unsafe_allow_html=True)
+            st.markdown(f"""<script>function openPrint() {{ const win = window.open('', '_blank'); win.document.write('<html><head><title>Печать ротаций</title><style>table {{ border-collapse: collapse; width: 100%; font-family: sans-serif; }} th, td {{ border: 1px solid #ccc; padding: 10px; font-size: 11px; text-align: left; }} th {{ background: #f0f0f0; }} b {{ color: #000; }} span {{ color: #444; }}</style></head><body><h2>График ротаций АК/AmK</h2>' + `{html_table}` + '</body></html>'); win.document.close(); win.print(); }}</script><button onclick="openPrint()" style="width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:1.1em; margin-bottom:20px;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ</button>""", unsafe_allow_html=True)
             st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
