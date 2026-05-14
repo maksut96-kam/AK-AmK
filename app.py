@@ -54,7 +54,7 @@ def format_cell(row):
     lon = row.get('Lon', 0)
     s_idx = int(lon/30); n_deg = 360/27; n_idx = int(lon / n_deg) % 27
     p_deg = n_deg / 4; pada = int((lon % n_deg) / p_deg) + 1; nav_idx = int((lon * 9) / 30) % 12
-    return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {row['Deg']:.2f}°<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
+    return f"""<div style='font-size:1.25em; line-height:1.45;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {row['Deg']:.2f}°<br><span style='color:#00d4ff; font-weight:800; font-size:1.1em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.9em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.9em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
 
 def get_planet_data(t):
     ayan = get_dynamic_ayanamsa(t); earth = eph['earth']
@@ -91,12 +91,28 @@ def get_lunar_full_data(t_now):
         return curr
     f_dt = find_nearest(180); n_dt = find_nearest(0); now_diff = get_diff(t_now); ayan = get_dynamic_ayanamsa(t_now)
     m_lon = (earth.at(t_now).observe(eph['moon']).ecliptic_latlon()[1].degrees - ayan) % 360
-    return {"tithi": math.ceil(now_diff / 12) or 1, "phase_icon": ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(((now_diff + 22.5) % 360) / 45)], "illum": (1 - math.cos(math.radians(now_diff))) / 2 * 100, "sign": ZODIAC_SIGNS[int(m_lon/30)], "nak": NAKSHATRAS[int(m_lon/(360/27))%27], "full_dt": f_dt + timedelta(hours=3), "new_dt": n_dt + timedelta(hours=3), "rem_full": f_dt - t_now.utc_datetime(), "rem_new": n_dt - t_now.utc_datetime()}
+    return {"tithi": math.ceil(now_diff / 12) or 1, "phase_icon": ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(((now_diff + 22.5) % 360) / 45)], "illum": (1 - math.cos(math.radians(now_diff))) / 2 * 100, "sign": ZODIAC_SIGNS[int(m_lon/30)], "nak": NAKSHATRAS[int(m_lon/(360/27))%27], "full_dt": f_dt + timedelta(hours=3), "new_dt": n_dt + timedelta(hours=3)}
+
+def find_rotations(start_dt):
+    events = []
+    t_start = ts.utc(start_dt.year, start_dt.month, start_dt.day, start_dt.hour, start_dt.minute)
+    df_now = get_planet_data(t_start); current_pair = f"{df_now.iloc[0]['Planet']}-{df_now.iloc[1]['Planet']}"
+    for i in range(1, 1500, 10):
+        t_check_dt = start_dt - timedelta(minutes=i)
+        df_p = get_planet_data(ts.utc(t_check_dt.year, t_check_dt.month, t_check_dt.day, t_check_dt.hour, t_check_dt.minute))
+        if f"{df_p.iloc[0]['Planet']}-{df_p.iloc[1]['Planet']}" != current_pair:
+            events.append({"type": "Прошлая", "dt": t_check_dt + timedelta(hours=3), "ak": df_p.iloc[0], "amk": df_p.iloc[1]}); break
+    for i in range(1, 1500, 10):
+        t_check_dt = start_dt + timedelta(minutes=i)
+        df_f = get_planet_data(ts.utc(t_check_dt.year, t_check_dt.month, t_check_dt.day, t_check_dt.hour, t_check_dt.minute))
+        if f"{df_f.iloc[0]['Planet']}-{df_f.iloc[1]['Planet']}" != current_pair:
+            events.append({"type": "Следующая", "dt": t_check_dt + timedelta(hours=3), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}); break
+    return events
 
 # ============================================================
 # ⛔ БЛОК 3: ИНТЕРФЕЙС
 # ============================================================
-st.markdown("""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>
+st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>
 <div class="space-banner"><div class="stars"></div><div class="clock-box" id="live-clock">00:00:00</div></div>""", unsafe_allow_html=True)
 components.html("<script>setInterval(()=>{let d=new Date();let s=new Date(d.getTime()+(d.getTimezoneOffset()*60000)+(3600000*3)).toTimeString().split(' ')[0];window.parent.document.getElementById('live-clock').innerHTML=s;},1000);</script>", height=0)
 
@@ -105,25 +121,22 @@ t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
 with t1:
     now_u = datetime.utcnow(); t_n = ts.utc(now_u.year, now_u.month, now_u.day, now_u.hour, now_u.minute)
     df_n = get_planet_data(t_n); l = get_lunar_full_data(t_n)
-    
     st.markdown(f"""<div class="moon-altar"><div style="display: flex; justify-content: space-between; align-items: center;"><div><div style="font-size: 5em; line-height:1;">{l['phase_icon']}</div><div style="font-size: 2.5em; font-weight: bold;">{l['tithi']} лунные сутки</div></div><div style="text-align: right;"><div style="font-size: 2.2em; font-weight: bold;">{l['sign']}</div><div style="color: #00d4ff; font-size:1.6em; font-weight:bold;">{l['nak']}</div></div></div><div style="margin: 25px 0 5px 0;"><small style="color:#778da9; text-transform: uppercase; font-size:1.1em;">Освещенность: {int(l['illum'])}%</small><div style="background: rgba(255,255,255,0.1); height: 18px; border-radius: 9px; margin-top:10px;"><div style="background: linear-gradient(to right, #00d4ff, #e0e1dd); width: {l['illum']}%; height: 18px; border-radius: 9px; box-shadow: 0 0 20px #00d4ff;"></div></div></div><div style="display: flex; justify-content: space-between; font-size: 1.25em; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top:20px;"><div>🌕 <b>Полнолуние:</b><br>{l['full_dt'].strftime('%d.%m %H:%M')}</div><div style="text-align: right;">🌑 <b>Новолуние:</b><br>{l['new_dt'].strftime('%d.%m %H:%M')}</div></div></div>""", unsafe_allow_html=True)
 
-    st.subheader("👑 Караки (AK и AmK)")
+    st.subheader("👑 Основные Караки")
     c1, c2 = st.columns(2)
     with c1: st.markdown(f'<div class="custom-metric-box"><div class="widget-title">💎 ATMAKARAKA</div>{format_cell(df_n.iloc[0])}</div>', unsafe_allow_html=True)
     with c2: st.markdown(f'<div class="custom-metric-box"><div class="widget-title">🥈 AMATYAKARAKA</div>{format_cell(df_n.iloc[1])}</div>', unsafe_allow_html=True)
 
-    st.subheader("📋 Полная таблица")
-    df_v = df_n.copy(); df_v['Детализация'] = df_v.apply(format_cell, axis=1)
-    st.write(df_v[['Role', 'Planet', 'Deg', 'Детализация']].to_html(escape=False, index=False).replace('\n', ''), unsafe_allow_html=True)
+    st.subheader("🔄 Ближайшие смены ротаций")
+    rots = find_rotations(now_u); rc1, rc2 = st.columns(2)
+    for r in rots:
+        with (rc1 if r['type']=="Прошлая" else rc2):
+            st.markdown(f"""<div class="custom-metric-box" style="background:rgba(255,255,255,0.03)"><div class="widget-title">{r['type'].upper()} ({r['dt'].strftime('%H:%M')})</div><div style="color:#00d4ff; font-weight:bold; margin-bottom:10px;">{r['dt'].strftime('%d.%m.%Y')}</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;"><div><small style="color:#778da9">АК</small><br>{format_cell(r['ak'])}</div><div><small style="color:#778da9">AmK</small><br>{format_cell(r['amk'])}</div></div></div>""", unsafe_allow_html=True)
 
-    st.subheader("🐉 Календарь Раху")
+    st.subheader("🐉 Раху (True Node)")
     st.markdown("""<div style="font-size:1.2em; padding:25px; background:rgba(255,75,75,0.05); border-radius:15px; border:1px solid #ff4b4b; line-height:1.6;">
-        <b>Ингрессии Раху (True Node):</b><br>
-        • Рыбы: до 18.05.2025<br>
-        • <b style='color:#00d4ff;'>Водолей: с 18.05.2025 по 05.12.2026</b><br>
-        • Козерог: с 05.12.2026
-    </div>""", unsafe_allow_html=True)
+        <b>Ингрессии Раху:</b><br>• Рыбы: до 18.05.2025<br>• <b style='color:#00d4ff;'>Водолей: с 18.05.2025 по 05.12.2026</b><br>• Козерог: с 05.12.2026</div>""", unsafe_allow_html=True)
 
 with t2:
     st.subheader("⚙️ Сетка планирования")
@@ -131,36 +144,30 @@ with t2:
     with cx: ds = st.date_input("Начало", datetime.now()); ts_i = st.time_input("Старт", time(0, 0))
     with cy: de = st.date_input("Конец", datetime.now() + timedelta(days=2)); te_i = st.time_input("Финиш", time(23, 59))
     
-    if st.button("🚀 РАССЧИТАТЬ ПЕРИОД"):
-        s_u = datetime.combine(ds, ts_i) - timedelta(hours=3); e_u = datetime.combine(de, te_i) - timedelta(hours=3)
-        results = []; curr = s_u; last_p = ""
-        while curr < e_u:
-            t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute); df_ev = get_planet_data(t_ev)
-            new_p = f"{df_ev.iloc[0]['Planet']}-{df_ev.iloc[1]['Planet']}"
-            if new_p != last_p:
-                sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]; moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
-                results.append({
-                    "Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"),
-                    "Время": (curr + timedelta(hours=3)).strftime("%H:%M"),
-                    "💎 АК": format_cell(df_ev.iloc[0]),
-                    "🥈 AmK": format_cell(df_ev.iloc[1]),
-                    "☀️ Солнце": format_cell(sun),
-                    "🌙 Луна": format_cell(moon)
-                })
-                last_p = new_p
-            curr += timedelta(minutes=15)
-        
-        if results:
-            df_res = pd.DataFrame(results); clean_html = df_res.to_html(escape=False, index=False).replace('\n', '')
-            st.markdown(f"""
-            <script>
-            function printLandscape() {{
-                const win = window.open('', '_blank');
-                win.document.write('<html><head><title>Печать</title><style>@page{{size: landscape; margin: 10mm;}} table{{border-collapse:collapse;width:100%;font-family:sans-serif;}}th,td{{border:1px solid #000;padding:6px;font-size:9px;}}b{{color:#000;}}</style></head><body>' + `{clean_html}` + '</body></html>');
-                win.document.close();
-                setTimeout(()=>win.print(), 500);
-            }}
-            </script>
-            <button onclick="printLandscape()" style="width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1.2em; margin-bottom:20px;">🖨️ ПЕЧАТЬ В АЛЬБОМНОМ ФОРМАТЕ</button>
-            """, unsafe_allow_html=True)
-            st.write(clean_html, unsafe_allow_html=True)
+    if st.button("🚀 ПОСТРОИТЬ ТАБЛИЦУ РОТАЦИЙ"):
+        with st.spinner("Идет расчет планетарных позиций..."):
+            s_u = datetime.combine(ds, ts_i) - timedelta(hours=3); e_u = datetime.combine(de, te_i) - timedelta(hours=3)
+            results = []; curr = s_u; last_p = ""
+            while curr < e_u:
+                t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute); df_ev = get_planet_data(t_ev)
+                new_p = f"{df_ev.iloc[0]['Planet']}-{df_ev.iloc[1]['Planet']}"
+                if new_p != last_p:
+                    sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]; moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
+                    results.append({"Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"), "Время": (curr + timedelta(hours=3)).strftime("%H:%M"), "💎 АК": format_cell(df_ev.iloc[0]), "🥈 AmK": format_cell(df_ev.iloc[1]), "☀️ Солнце": format_cell(sun), "🌙 Луна": format_cell(moon)})
+                    last_p = new_p
+                curr += timedelta(minutes=15)
+            
+            if results:
+                df_res = pd.DataFrame(results); clean_html = df_res.to_html(escape=False, index=False).replace('\n', '')
+                st.markdown(f"""
+                <script>
+                function printT() {{
+                    const win = window.open('', '_blank');
+                    win.document.write('<html><head><title>Print</title><style>@page{{size: landscape; margin: 10mm;}} table{{border-collapse:collapse;width:100%;font-family:sans-serif;}}th,td{{border:1px solid #000;padding:6px;font-size:9px;}}b{{color:#000;}}</style></head><body>' + `{clean_html}` + '</body></html>');
+                    win.document.close();
+                    setTimeout(()=>win.print(), 500);
+                }}
+                </script>
+                <button onclick="printT()" style="width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1.2em; margin-bottom:20px;">🖨️ ПЕЧАТЬ (АЛЬБОМНЫЙ ФОРМАТ)</button>
+                """, unsafe_allow_html=True)
+                st.write(clean_html, unsafe_allow_html=True)
