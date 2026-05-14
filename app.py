@@ -54,7 +54,7 @@ def format_cell(row):
     lon = row.get('Lon', 0)
     s_idx = int(lon/30); n_deg = 360/27; n_idx = int(lon / n_deg) % 27
     p_deg = n_deg / 4; pada = int((lon % n_deg) / p_deg) + 1; nav_idx = int((lon * 9) / 30) % 12
-    return f"""<div style='font-size:1.25em; line-height:1.45;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {row['Deg']:.2f}°<br><span style='color:#00d4ff; font-weight:800; font-size:1.1em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.9em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.9em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
+    return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {row['Deg']:.2f}°<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
 
 def get_planet_data(t):
     ayan = get_dynamic_ayanamsa(t); earth = eph['earth']
@@ -134,9 +134,15 @@ with t1:
         with (rc1 if r['type']=="Прошлая" else rc2):
             st.markdown(f"""<div class="custom-metric-box" style="background:rgba(255,255,255,0.03)"><div class="widget-title">{r['type'].upper()} ({r['dt'].strftime('%H:%M')})</div><div style="color:#00d4ff; font-weight:bold; margin-bottom:10px;">{r['dt'].strftime('%d.%m.%Y')}</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;"><div><small style="color:#778da9">АК</small><br>{format_cell(r['ak'])}</div><div><small style="color:#778da9">AmK</small><br>{format_cell(r['amk'])}</div></div></div>""", unsafe_allow_html=True)
 
+    st.subheader("📋 Таблица карак")
+    df_v = df_n.copy(); df_v['Детализация'] = df_v.apply(format_cell, axis=1)
+    st.write(df_v[['Role', 'Planet', 'Deg', 'Детализация']].to_html(escape=False, index=False).replace('\n', ''), unsafe_allow_html=True)
+
     st.subheader("🐉 Раху (True Node)")
-    st.markdown("""<div style="font-size:1.2em; padding:25px; background:rgba(255,75,75,0.05); border-radius:15px; border:1px solid #ff4b4b; line-height:1.6;">
-        <b>Ингрессии Раху:</b><br>• Рыбы: до 18.05.2025<br>• <b style='color:#00d4ff;'>Водолей: с 18.05.2025 по 05.12.2026</b><br>• Козерог: с 05.12.2026</div>""", unsafe_allow_html=True)
+    ra_val = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
+    wr1, wr2 = st.columns([1, 2])
+    with wr1: st.markdown(f'<div class="custom-metric-box" style="border-color:#ff4b4b;"><div class="widget-title">ТЕКУЩИЙ РАХУ</div>{format_cell(ra_val)}</div>', unsafe_allow_html=True)
+    with wr2: st.markdown("""<div style="font-size:1.2em; padding:25px; background:rgba(255,75,75,0.05); border-radius:15px; border:1px solid #ff4b4b; line-height:1.6;"><b>Ингрессии Раху:</b><br>• Рыбы: до 18.05.2025<br>• <b style='color:#00d4ff;'>Водолей: с 18.05.2025 по 05.12.2026</b><br>• Козерог: с 05.12.2026</div>""", unsafe_allow_html=True)
 
 with t2:
     st.subheader("⚙️ Сетка планирования")
@@ -145,9 +151,11 @@ with t2:
     with cy: de = st.date_input("Конец", datetime.now() + timedelta(days=2)); te_i = st.time_input("Финиш", time(23, 59))
     
     if st.button("🚀 ПОСТРОИТЬ ТАБЛИЦУ РОТАЦИЙ"):
+        progress_bar = st.progress(0)
         with st.spinner("Идет расчет планетарных позиций..."):
             s_u = datetime.combine(ds, ts_i) - timedelta(hours=3); e_u = datetime.combine(de, te_i) - timedelta(hours=3)
             results = []; curr = s_u; last_p = ""
+            total_steps = int((e_u - s_u).total_seconds() / 900); current_step = 0
             while curr < e_u:
                 t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute); df_ev = get_planet_data(t_ev)
                 new_p = f"{df_ev.iloc[0]['Planet']}-{df_ev.iloc[1]['Planet']}"
@@ -155,7 +163,8 @@ with t2:
                     sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]; moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
                     results.append({"Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"), "Время": (curr + timedelta(hours=3)).strftime("%H:%M"), "💎 АК": format_cell(df_ev.iloc[0]), "🥈 AmK": format_cell(df_ev.iloc[1]), "☀️ Солнце": format_cell(sun), "🌙 Луна": format_cell(moon)})
                     last_p = new_p
-                curr += timedelta(minutes=15)
+                curr += timedelta(minutes=15); current_step += 1
+                if total_steps > 0: progress_bar.progress(min(current_step / total_steps, 1.0))
             
             if results:
                 df_res = pd.DataFrame(results); clean_html = df_res.to_html(escape=False, index=False).replace('\n', '')
