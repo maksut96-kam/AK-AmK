@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, time
 import pandas as pd
 import streamlit.components.v1 as components
 import math
-import base64
 
 # ============================================================
 # ⛔ БЛОК 1: КОНФИГУРАЦИЯ И СТИЛИ
@@ -36,12 +35,20 @@ st.markdown("""
     .sub-title { color: #778da9; font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 15px; }
     .space-banner { position: relative; width: 100%; height: 180px; background: #000; border-radius: 15px; overflow: hidden; border: 1px solid #1b263b; }
     .stars { position: absolute; width: 100%; height: 100%; background: url('https://www.transparenttextures.com/patterns/stardust.png'); opacity: 0.4; }
-    @keyframes fly { 0% { transform: scale(0.1) translate(0, 0); opacity: 0; } 20% { opacity: 1; } 100% { transform: scale(18) translate(150px, 80px); opacity: 0; } }
-    .clock-box { position: absolute; bottom: 15px; right: 20px; background: rgba(13,27,42,0.8); padding: 8px 15px; border-radius: 10px; color: white; font-family: monospace; border: 1px solid #415a77; }
+    
+    /* ПЛАНЕТЫ В БАННЕРЕ */
+    .planet-container { position: absolute; top: 50%; left: 50%; width: 1px; height: 1px; }
+    .planet { position: absolute; border-radius: 50%; opacity: 0; animation: fly 5s infinite linear; }
+    .p1 { background: radial-gradient(circle, #415a77, #0d1b2a); width: 15px; height: 15px; animation-duration: 7s; }
+    .p2 { background: radial-gradient(circle, #778da9, #415a77); width: 10px; height: 10px; animation-duration: 5s; animation-delay: 2s; }
+    @keyframes fly { 0% { transform: scale(0.1) translate(0, 0); opacity: 0; } 20% { opacity: 1; } 100% { transform: scale(18) translate(250px, 120px); opacity: 0; } }
+    
+    .clock-box { position: absolute; bottom: 15px; right: 20px; background: rgba(13,27,42,0.8); padding: 8px 15px; border-radius: 10px; color: white; font-family: monospace; border: 1px solid #415a77; z-index: 10; }
     .moon-altar { background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); border-radius: 20px; padding: 25px; border: 1px solid #415a77; color: #e0e1dd; }
-    .custom-metric-box { background: rgba(65, 90, 119, 0.2); padding: 15px; border-radius: 12px; border: 1px solid #778da9; height: 100%; }
-    .prev-box { background: rgba(45, 56, 77, 0.4); border: 1px solid #415a77; padding: 15px; border-radius: 12px; height: 100%; }
-    .next-box { background: rgba(45, 77, 65, 0.3); border: 1px solid #41775e; padding: 15px; border-radius: 12px; height: 100%; }
+    .widget-title { color:#778da9; font-size: 1.1em; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    .custom-metric-box { background: rgba(65, 90, 119, 0.2); padding: 18px; border-radius: 12px; border: 1px solid #778da9; height: 100%; }
+    .prev-box { background: rgba(45, 56, 77, 0.4); border: 1px solid #415a77; padding: 18px; border-radius: 12px; height: 100%; }
+    .next-box { background: rgba(45, 77, 65, 0.3); border: 1px solid #41775e; padding: 18px; border-radius: 12px; height: 100%; }
 </style>
 
 <div class="header-box">
@@ -51,6 +58,7 @@ st.markdown("""
 
 <div class="space-banner">
     <div class="stars"></div>
+    <div class="planet-container"><div class="planet p1"></div><div class="planet p2"></div></div>
     <div class="clock-box" id="live-clock">00:00:00</div>
 </div>
 """, unsafe_allow_html=True)
@@ -75,6 +83,7 @@ def get_planet_data(t):
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
     df['Role'] = (roles + ['-']*5)[:len(df)]
+    # Раху (истинный узел приближенно)
     ra_lon = (earth.at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees - ayan + 180) % 360 
     ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': 30 - (ra_lon % 30), 'Role': '-'}])
     return pd.concat([df, ra_row], ignore_index=True)
@@ -90,22 +99,29 @@ def get_lunar_full_data(t_now):
     ayan = get_dynamic_ayanamsa(t_now)
     m_lon = (earth.at(t_now).observe(eph['moon']).ecliptic_latlon()[1].degrees - ayan) % 360
     
-    # Поиск фаз
     def find_phase(start_t, target_deg):
-        curr = start_t
-        for _ in range(100):
-            d = (get_diff(curr) - target_deg + 180) % 360 - 180
-            if abs(d) < 0.001: break
-            curr = ts.utc(curr.utc_datetime() + timedelta(days=d/12.5))
-        return curr.utc_datetime() + timedelta(hours=3)
+        curr_t = start_t
+        for _ in range(8): # Итерационный поиск
+            d = (get_diff(curr_t) - target_deg + 180) % 360 - 180
+            curr_t = ts.utc(curr_t.utc_datetime() + timedelta(days=d/12.2))
+        return curr_t.utc_datetime()
 
+    f_dt = find_phase(t_now, 180)
+    n_dt = find_phase(t_now, 0)
+    # Если событие уже в прошлом относительно "сейчас", ищем следующее (через 29.5 дней)
+    if f_dt < t_now.utc_datetime(): f_dt = find_phase(ts.utc(f_dt + timedelta(days=20)), 180)
+    if n_dt < t_now.utc_datetime(): n_dt = find_phase(ts.utc(n_dt + timedelta(days=20)), 0)
+
+    now_utc = t_now.utc_datetime()
     return {
         "tithi": math.ceil(diff / 12) or 1,
         "phase": ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(((diff + 22.5) % 360) / 45)],
         "illum": (1 - math.cos(math.radians(diff))) / 2 * 100,
         "sign": ZODIAC_SIGNS[int(m_lon/30)], "nak": NAKSHATRAS[int(m_lon/(360/27))%27],
-        "full_dt": find_phase(t_now, 180),
-        "new_dt": find_phase(t_now, 0)
+        "full_dt": f_dt + timedelta(hours=3),
+        "new_dt": n_dt + timedelta(hours=3),
+        "rem_full": f_dt - now_utc,
+        "rem_new": n_dt - now_utc
     }
 
 def format_cell(row):
@@ -149,21 +165,26 @@ with t1:
     
     st.markdown(f"""
     <div class="moon-altar">
-        <div style="display: flex; justify-content: space-between;">
-            <div><div style="font-size: 3.5em;">{l['phase']}</div><div style="font-size: 1.8em; font-weight: bold;">{l['tithi']} лунные сутки</div></div>
-            <div style="text-align: right;"><div style="font-size: 1.2em; font-weight: bold;">{l['sign']}</div><div style="color: #778da9;">{l['nak']}</div></div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div><div style="font-size: 4em; line-height:1;">{l['phase']}</div><div style="font-size: 1.8em; font-weight: bold;">{l['tithi']} лунные сутки</div></div>
+            <div style="text-align: right;"><div style="font-size: 1.4em; font-weight: bold;">{l['sign']}</div><div style="color: #778da9;">{l['nak']}</div></div>
         </div>
-        <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; margin: 15px 0;"><div style="background: #e0e1dd; width: {l['illum']}%; height: 8px; border-radius: 4px;"></div></div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.85em; opacity: 0.8;">
-            <span>🌕 Полнолуние: <b>{l['full_dt'].strftime('%d.%m %H:%M')}</b></span>
-            <span>🌑 Новолуние: <b>{l['new_dt'].strftime('%d.%m %H:%M')}</b></span>
+        <div style="margin: 15px 0 5px 0;">
+            <small style="color:#778da9; text-transform: uppercase;">Прогресс лунного цикла</small>
+            <div style="background: rgba(255,255,255,0.1); height: 10px; border-radius: 5px; margin-top:5px;">
+                <div style="background: #e0e1dd; width: {l['illum']}%; height: 10px; border-radius: 5px; box-shadow: 0 0 10px #fff;"></div>
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.9em; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top:10px;">
+            <div>🌕 <b>Полнолуние:</b> {l['full_dt'].strftime('%d.%m %H:%M')}<br><span style="color:#778da9;">Осталось: {l['rem_full'].days}д {l['rem_full'].seconds//3600}ч</span></div>
+            <div style="text-align: right;">🌑 <b>Новолуние:</b> {l['new_dt'].strftime('%d.%m %H:%M')}<br><span style="color:#778da9;">Осталось: {l['rem_new'].days}д {l['rem_new'].seconds//3600}ч</span></div>
         </div>
     </div>""", unsafe_allow_html=True)
 
     st.subheader("👑 Текущие АК и АмК")
     c1, c2 = st.columns(2)
-    with c1: st.markdown(f'<div class="custom-metric-box"><div style="color:#778da9; font-size:0.8em; font-weight:bold; margin-bottom:5px;">💎 ТЕКУЩАЯ АК</div>{format_cell(df_n.iloc[0])}</div>', unsafe_allow_html=True)
-    with c2: st.markdown(f'<div class="custom-metric-box"><div style="color:#778da9; font-size:0.8em; font-weight:bold; margin-bottom:5px;">🥈 ТЕКУЩАЯ AmK</div>{format_cell(df_n.iloc[1])}</div>', unsafe_allow_html=True)
+    with c1: st.markdown(f'<div class="custom-metric-box"><div class="widget-title">💎 ТЕКУЩАЯ АК</div>{format_cell(df_n.iloc[0])}</div>', unsafe_allow_html=True)
+    with c2: st.markdown(f'<div class="custom-metric-box"><div class="widget-title">🥈 ТЕКУЩАЯ AmK</div>{format_cell(df_n.iloc[1])}</div>', unsafe_allow_html=True)
 
     st.subheader("🔄 Ближайшие смены ротаций")
     rots = find_rotations(now)
@@ -172,7 +193,7 @@ with t1:
         with (rc1 if r['type']=="Предыдущая" else rc2):
             style = "prev-box" if r['type']=="Предыдущая" else "next-box"
             st.markdown(f"""<div class="{style}">
-                <div style="color:#778da9; font-size:0.8em; font-weight:bold; margin-bottom:5px;">{r['type'].upper()} РОТАЦИЯ ({r['dt'].strftime('%H:%M')})</div>
+                <div class="widget-title">{r['type'].upper()} РОТАЦИЯ ({r['dt'].strftime('%H:%M')})</div>
                 <div style="margin-bottom:10px; font-size:1.1em; font-weight:bold;">{r['dt'].strftime('%d.%m.%Y')}</div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <div><small>АК</small><br>{format_cell(r['ak'])}</div>
@@ -180,14 +201,19 @@ with t1:
                 </div>
             </div>""", unsafe_allow_html=True)
 
-    st.subheader("📋 Все караки")
-    df_f = df_n.copy()
-    df_f['Инфо'] = df_f.apply(format_cell, axis=1)
-    st.write(df_f[['Role', 'Planet', 'Deg', 'Инфо']].to_html(escape=False, index=False), unsafe_allow_html=True)
-
     st.subheader("📡 Мониторинг Раху")
     ra_data = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
-    st.markdown(f'<div class="custom-metric-box" style="border-color:#ff4b4b;">{format_cell(ra_data)}</div>', unsafe_allow_html=True)
+    col_ra1, col_ra2 = st.columns([1, 2])
+    with col_ra1:
+        st.markdown(f'<div class="custom-metric-box" style="border-color:#ff4b4b;"><div class="widget-title">🐉 ТЕКУЩИЙ РАХУ</div>{format_cell(ra_data)}</div>', unsafe_allow_html=True)
+    with col_ra2:
+        st.markdown("""<div class="small-metric" style="font-size:0.85em; padding:15px; background:rgba(255,75,75,0.05); border-radius:12px; border:1px solid #ff4b4b;">
+            <b>Календарь ингрессий Раху (ретроградный ход):</b><br>
+            • Вхождение в знак <b>Рыбы</b>: 30.10.2023<br>
+            • Вхождение в знак <b>Водолей</b>: 18.05.2025<br>
+            • Вхождение в знак <b>Козерог</b>: 05.12.2026<br>
+            <small>* Расчет по True Node (истинный узел)</small>
+        </div>""", unsafe_allow_html=True)
 
 with t2:
     st.subheader("⚙️ Сетка ротаций")
@@ -203,8 +229,7 @@ with t2:
         lp = f"{df_init.iloc[0]['Planet']}-{df_init.iloc[1]['Planet']}"
         
         def get_row(t, df):
-            ayan = get_dynamic_ayanamsa(t)
-            e = eph['earth']
+            ayan = get_dynamic_ayanamsa(t); e = eph['earth']
             def p_inf(obj):
                 lon = (e.at(t).observe(obj).ecliptic_latlon()[1].degrees - ayan) % 360
                 ni = int(lon/(360/27))%27
