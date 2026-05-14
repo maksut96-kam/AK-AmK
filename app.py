@@ -24,9 +24,42 @@ ts, eph = init_engine()
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 NAK_LORDS = ["Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"] * 3
-# Добавлены символы Накшатр и дни недели
-NAK_SYMBOLS = ["🐎", "🐘", "🪒", "🐂", "🦌", "💧", "🏹", "🌸", "🐍", "👑", "🛏️", "🛏️", "✋", "💎", "🌾", "🌿", "🌸", "☂️", "🌱", "🌊", "🐘", "👂", "🥁", "⭕", "⚔️", "🐍", "🐟"]
-RU_DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
+
+# ИСПРАВЛЕНИЕ 1: Текстовые символы накшатр (3-4 символа словами)
+NAK_TEXT_SYMBOLS = [
+    "Голова лошади, всадник, карета", 
+    "Йони, женские органы, лодка", 
+    "Лезвие, бритва, нож, пламя", 
+    "Повозка, колесница, храм, дерево", 
+    "Голова оленя, горшок с сомой", 
+    "Слеза, алмаз, человеческая голова", 
+    "Лук, колчан стрел, дом", 
+    "Вымя коровы, цветок лотоса, круг", 
+    "Свернувшаяся змея, колесо", 
+    "Трон, паланкин, корона", 
+    "Передние ножки кровати, гамак, смоковница", 
+    "Задние ножки кровати, гамак, посох", 
+    "Ладонь, сжатый кулак, гончарный круг", 
+    "Сверкающая жемчужина, драгоценный камень", 
+    "Побег растения, коралл, меч", 
+    "Триумфальная арка, гончарный круг, ветви", 
+    "Посох, лотос, триумфальная арка", 
+    "Круглый амулет, зонтик, серьга", 
+    "Связка корней, стрекало для слона", 
+    "Веер, ложе, сито для веяния зерна", 
+    "Бивень слона, маленькая кровать", 
+    "Ухо, три следа, трезубец", 
+    "Барабан, флейта, корона", 
+    "Пустой круг, тысяча цветов", 
+    "Передние ножки погребального ложа, двуликий человек, меч", 
+    "Задние ножки погребального ложа, близнецы, змея", 
+    "Рыба, барабан"
+]
+
+# ИСПРАВЛЕНИЕ 3: Дни недели CAPS LOCK
+RU_DAYS = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+# Массив управителей знаков Навамши (для управителя пады)
+PADA_LORDS_MAP = ["Марс", "Венера", "Меркурий", "Луна", "Солнце", "Меркурий", "Венера", "Марс", "Юпитер", "Сатурн", "Сатурн", "Юпитер"]
 
 P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat'}
 Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
@@ -47,11 +80,9 @@ def get_planet_data(t):
         lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - ayan) % 360
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
     
-    # Считаем АК/AmK
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     df['Role'] = (['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK'] + ['-'] * 10)[:len(df)]
     
-    # Считаем Раху и добавляем его ВНУТРЬ таблицы df
     ra_lon = (earth.at(t).observe(eph['moon']).ecliptic_latlon()[1].degrees - ayan + 180) % 360 
     ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': 30 - (ra_lon % 30), 'Role': '-'}])
     df = pd.concat([df, ra_row], ignore_index=True)
@@ -59,7 +90,6 @@ def get_planet_data(t):
     return df, ayan
 
 def get_lunar_detailed_info(t):
-    """Расширенная математика Луны для AmK"""
     earth = eph['earth']
     s_pos = earth.at(t).observe(eph['sun']).ecliptic_latlon()
     m_pos = earth.at(t).observe(eph['moon']).ecliptic_latlon()
@@ -67,24 +97,20 @@ def get_lunar_detailed_info(t):
     s_lon = s_pos[1].degrees
     m_lon = m_pos[1].degrees
     
-    # 1. Титхи и освещенность
     diff = (m_lon - s_lon) % 360
     tithi_num = math.ceil(diff / 12) or 1
     illumination = (1 - math.cos(math.radians(diff))) / 2 * 100
     
-    # 2. Время до сизигий (скорость ~0.508 град/час)
     dist_to_full = (180 - diff) % 360
     dist_to_new = (360 - diff) % 360
     h_to_full = dist_to_full / 0.508
     h_to_new = dist_to_new / 0.508
     
-    # 3. Сидерические данные (Знак и Накшатра)
     ayan = get_dynamic_ayanamsa(t)
     lon_sid = (m_lon - ayan) % 360
     sign_idx = int(lon_sid / 30)
     nak_idx = int(lon_sid / (360/27)) % 27
     
-    # 4. Фишка: Проверка на Ганданту (опасные стыки)
     gandanta = False
     deg_in_sign = lon_sid % 30
     if sign_idx in [3, 7, 11] and deg_in_sign > 27: gandanta = "Реактивная (конец воды)"
@@ -103,19 +129,28 @@ def get_lunar_detailed_info(t):
         "gandanta": gandanta
     }
 
-# ОБНОВЛЕНО: Расчет Накшатр, Символов, Пад и Управителей для любой планеты
+# ИСПРАВЛЕНИЕ 1: Расширенная информация о накшатре и управителе пады
 def get_full_info(row):
     lon = row['Lon']
     sign = ZODIAC_SIGNS[int(lon/30)]
     nak_idx = int(lon / (360/27)) % 27
     pada = int((lon % (360/27)) / (360/108)) + 1
+    
     nak = NAKSHATRAS[nak_idx]
-    nak_sym = NAK_SYMBOLS[nak_idx]
-    lord = NAK_LORDS[nak_idx]
+    nak_sym = NAK_TEXT_SYMBOLS[nak_idx]
+    nak_lord = NAK_LORDS[nak_idx]
+    
+    # Считаем знак Навамши для управителя пады
+    navamsha_sign = int((lon * 9) / 30) % 12
+    pada_lord = PADA_LORDS_MAP[navamsha_sign]
     
     base_info = f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
-    nak_info = f"{nak_sym} {nak} (Пада {pada}, Упр: {lord})"
-    return f"{base_info} | {nak_info}"
+    nak_info = f"{nak}<br><span style='font-size:0.85em; color:#A0B2C6;'>Символы: {nak_sym}<br>Пада {pada} | Упр. Накшатры: {nak_lord} | Упр. Пады: <b>{pada_lord}</b></span>"
+    return f"{base_info}<br>{nak_info}"
+
+def get_full_info_text(row):
+    """Специальная версия функции без HTML-тегов для скачивания/таблиц"""
+    return get_full_info(row).replace("<br>", " ").replace("<b>", "").replace("</b>", "").replace("<span style='font-size:0.85em; color:#A0B2C6;'>", "").replace("</span>", "")
 
 # ============================================================
 # ⛔ БЛОК 3: ПОЛНАЯ СБОРКА (БЕЗ ОШИБОК)
@@ -128,7 +163,6 @@ def get_base64_img(path):
 
 logo_data = get_base64_img("logo.png")
 
-# 1. СТИЛИ (CSS) - ОСТАВЛЕНЫ БЕЗ ИЗМЕНЕНИЙ
 st.markdown(f"""
 <style>
     .header-wrapper {{ display: flex; align-items: center; margin-bottom: 20px; }}
@@ -140,12 +174,14 @@ st.markdown(f"""
     .p2 {{ background-image: radial-gradient(circle, #778DA9 4px, transparent 10px); background-size: 300px 300px; animation-duration: 2.5s; animation-delay: 1s; }}
     @keyframes fly {{ 0% {{ transform: scale(0.1); opacity: 0; }} 50% {{ opacity: 1; }} 100% {{ transform: scale(2.5); opacity: 0; }} }}
     .clock-box {{ position: absolute; bottom: 20px; right: 20px; background: rgba(13, 27, 42, 0.7); backdrop-filter: blur(10px); padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); z-index: 99; }}
+    .custom-metric-box {{ background: rgba(65, 90, 119, 0.2); padding: 20px; border-radius: 12px; border: 1px solid rgba(119, 141, 169, 0.3); height: 100%; }}
+    .custom-metric-title {{ color: #778DA9; font-size: 1.1em; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(119, 141, 169, 0.2); padding-bottom: 5px; }}
+    .custom-metric-value {{ font-size: 1.15em; color: white; line-height: 1.5; }}
 </style>
 <div class="header-wrapper"><div class="fish-logo"></div><div><h1 class="main-title">Julia's Assistant</h1><div style="color: #778DA9; letter-spacing: 5px; font-size: 0.9em;">ASTRO COORDINATION CENTER</div></div></div>
 <div class="space-banner"><div class="planet p1"></div><div class="planet p2"></div><div class="clock-box"><span id="live-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.5em;">00:00:00</span><div style="color: #778DA9; font-size: 0.7em; text-transform: uppercase;">Sochi Time</div></div></div>
 """, unsafe_allow_html=True)
 
-# 2. ОЖИВЛЕНИЕ ЧАСОВ (JS)
 components.html("""
     <script>
     function tick() {
@@ -188,15 +224,12 @@ with tab1:
 .moon-footer {{ margin-top: 20px; font-size: 0.95em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; color: #adb5bd; }}
 .gandanta-alert {{ background: rgba(230, 57, 70, 0.2); border: 1px solid #e63946; padding: 10px; border-radius: 10px; font-size: 0.85em; margin-top: 15px; text-align: center; color: #ffb3b3; }}
 </style>
-
 <div class="moon-altar">
 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
 <div>
 <div style="font-size: 3.5em; margin-bottom: -10px;">{l['phase_icon']}</div>
 <div class="moon-title">{l['tithi']} лунные сутки</div>
-<div style="color: #778da9; font-size: 0.95em;">
-{"Растущая (Шукла)" if l['is_waxing'] else "Убывающая (Кришна)"} • {int(l['illum'])}% света
-</div>
+<div style="color: #778da9; font-size: 0.95em;">{"Растущая (Шукла)" if l['is_waxing'] else "Убывающая (Кришна)"} • {int(l['illum'])}% света</div>
 </div>
 <div style="text-align: right;">
 <div style="background: rgba(65, 90, 119, 0.3); padding: 10px 18px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
@@ -207,28 +240,26 @@ with tab1:
 </div>
 </div>
 <div class="progress-bg"><div class="progress-fill"></div></div>
-<div class="stat-row">
-<span>🌕 До Полнолуния: <b>{fmt_h(l['to_full'])}</b></span>
-<span>🌑 До Новолуния: <b>{fmt_h(l['to_new'])}</b></span>
-</div>
+<div class="stat-row"><span>🌕 До Полнолуния: <b>{fmt_h(l['to_full'])}</b></span><span>🌑 До Новолуния: <b>{fmt_h(l['to_new'])}</b></span></div>
 {gandanta_html}
-<div class="moon-footer">
-💎 <b>Совет для AmK Луны:</b><br>
-{advice}
-</div>
+<div class="moon-footer">💎 <b>Совет для AmK Луны:</b><br>{advice}</div>
 </div>"""
     st.markdown(html_content, unsafe_allow_html=True)
 
-    # ДОБАВЛЕНО: Светила (Солнце и Луна с накшатрами и падами)
     st.subheader("☀️ Текущее положение Светил")
     sun_row = df[df['Planet'] == 'Sun'].iloc[0]
     moon_row = df[df['Planet'] == 'Moon'].iloc[0]
-    st.info(f"**Солнце:** {get_full_info(sun_row)}  \n**Луна:** {get_full_info(moon_row)}")
+    st.markdown(f"""
+    <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+        <div class="custom-metric-box" style="flex: 1;"><div class="custom-metric-title">Солнце</div><div class="custom-metric-value">{get_full_info(sun_row)}</div></div>
+        <div class="custom-metric-box" style="flex: 1;"><div class="custom-metric-title">Луна</div><div class="custom-metric-value">{get_full_info(moon_row)}</div></div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ДОБАВЛЕНО: Динамический график силы Луны
-    st.subheader("📈 Динамика силы Луны (Освещенность на 7 дней)")
+    # ИСПРАВЛЕНИЕ 5: Динамический график силы Луны на 30 дней
+    st.subheader("📈 Динамика силы Луны (Освещенность на 30 дней)")
     chart_data = []
-    for i in range(8):
+    for i in range(30):
         future_utc = now_utc + timedelta(days=i)
         t_future = ts.utc(future_utc.year, future_utc.month, future_utc.day)
         l_future = get_lunar_detailed_info(t_future)
@@ -237,28 +268,26 @@ with tab1:
 
     st.divider()
 
-    # ОСНОВНЫЕ МЕТРИКИ АК / AmK
+    # ИСПРАВЛЕНИЕ 4: Просторные блоки для Карак вместо обрезанных st.metric
     st.subheader("👑 Главные Караки")
     c1, c2 = st.columns(2)
     with c1:
-        st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
+        st.markdown(f"""<div class="custom-metric-box"><div class="custom-metric-title">💎 АК (Атма-карака)</div><div class="custom-metric-value">{get_full_info(df.iloc[0])}</div></div>""", unsafe_allow_html=True)
     with c2:
-        st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
+        st.markdown(f"""<div class="custom-metric-box"><div class="custom-metric-title">🥈 AmK (Аматья-карака)</div><div class="custom-metric-value">{get_full_info(df.iloc[1])}</div></div>""", unsafe_allow_html=True)
+    st.write("") # Небольшой отступ
 
-    # ТАБЛИЦА ЧАРА-КАРАК
     st.subheader("📊 Таблица Чара-карак")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
-    df_v['Накшатра'] = df_v['Lon'].apply(lambda x: f"{NAKSHATRAS[int(x/(360/27))%27]} ({NAK_LORDS[int(x/(360/27))%27]})")
+    df_v['Накшатра'] = df_v.apply(lambda row: f"{NAKSHATRAS[int(row['Lon']/(360/27))%27]}", axis=1)
     df_v['Градус'] = df_v['Deg'].apply(lambda x: f"{x:.4f}°")
     st.dataframe(df_v[['Role', 'Planet', 'Знак', 'Накшатра', 'Градус']], use_container_width=True, hide_index=True)
 
     st.divider()
 
-    # МОНИТОРИНГ РОТАЦИЙ
     st.subheader("🔄 Мониторинг ротаций")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
-    
     cols = st.columns(2)
     settings = [(-1, "⬅️ Предыдущая смена", "#415A77"), (1, "➡️ Следующая смена", "#778DA9")]
     for idx, (direct, label_rot, color_rot) in enumerate(settings):
@@ -269,14 +298,12 @@ with tab1:
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
                 df_t, _ = get_planet_data(t_t) 
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
-                    # ДОБАВЛЕНО: Указание дня недели в ротациях
                     target_sochi = target + timedelta(hours=3)
                     dow_rot = RU_DAYS[target_sochi.weekday()]
                     st.success(f"📅 {target_sochi.strftime(f'%d.%m ({dow_rot}) %H:%M')}")
                     st.caption(f"АК: {df_t.iloc[0]['Planet']} | AmK: {df_t.iloc[1]['Planet']}")
                     break
     
-    # МОДУЛЬ РАХУ
     ra_row = df[df['Planet'] == 'Rahu'].iloc[0]
     ra_deg = ra_row['Deg']
     if ra_deg < 2 or ra_deg > 28:
@@ -316,12 +343,13 @@ with tab2:
         
         last_pair = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
         
-        # ДОБАВЛЕНО: День недели для стартовой даты
-        dow_start = RU_DAYS[dt_start.weekday()]
+        # ИСПРАВЛЕНИЕ 3: Разделяем Дату, День недели и Время
         events.append({
-            "Время (Сочи)": dt_start.strftime(f"%d.%m.%Y ({dow_start}) %H:%M"), 
-            "💎 АК": get_full_info(df_i.iloc[0]), 
-            "🥈 AmK": get_full_info(df_i.iloc[1])
+            "Дата": dt_start.strftime("%d.%m.%Y"),
+            "День": RU_DAYS[dt_start.weekday()],
+            "Время": dt_start.strftime("%H:%M"), 
+            "💎 АК": get_full_info_text(df_i.iloc[0]), 
+            "🥈 AmK": get_full_info_text(df_i.iloc[1])
         })
 
         while curr_utc < end_utc:
@@ -332,12 +360,12 @@ with tab2:
             new_pair = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
             if new_pair != last_pair:
                 sochi_time = curr_utc + timedelta(hours=3)
-                # ДОБАВЛЕНО: День недели в цикле
-                dow_loop = RU_DAYS[sochi_time.weekday()]
                 events.append({
-                    "Время (Сочи)": sochi_time.strftime(f"%d.%m.%Y ({dow_loop}) %H:%M"), 
-                    "💎 АК": get_full_info(df_s.iloc[0]), 
-                    "🥈 AmK": get_full_info(df_s.iloc[1])
+                    "Дата": sochi_time.strftime("%d.%m.%Y"),
+                    "День": RU_DAYS[sochi_time.weekday()],
+                    "Время": sochi_time.strftime("%H:%M"), 
+                    "💎 АК": get_full_info_text(df_s.iloc[0]), 
+                    "🥈 AmK": get_full_info_text(df_s.iloc[1])
                 })
                 last_pair = new_pair
         
@@ -345,11 +373,34 @@ with tab2:
             df_events = pd.DataFrame(events)
             st.table(df_events)
             
-            # ДОБАВЛЕНО: Кнопка генерации файла на скачивание
-            csv = df_events.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Скачать бланк для печати (CSV)",
-                data=csv,
-                file_name="Astro_Planner_Rotations.csv",
-                mime="text/csv"
-            )
+            # ИСПРАВЛЕНИЕ 2: Генерация HTML для распечатки в новой вкладке
+            html_report = f"""
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>План Ротаций</title>
+                <style>
+                    body {{ font-family: sans-serif; padding: 20px; }}
+                    h2 {{ text-align: center; }}
+                    table {{ border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 20px; }}
+                    th, td {{ border: 1px solid #333; padding: 10px; text-align: left; }}
+                    th {{ background-color: #f2f2f2; }}
+                    @media print {{
+                        .no-print {{ display: none; }}
+                    }}
+                </style>
+            </head>
+            <body>
+                <button class="no-print" onclick="window.print()" style="padding: 10px 20px; font-size: 16px; margin-bottom: 20px; cursor: pointer;">🖨️ Распечатать таблицу</button>
+                <h2>Астрологический План Ротаций (Время: Сочи)</h2>
+                {df_events.to_html(index=False)}
+                <script>window.print();</script>
+            </body>
+            </html>
+            """
+            
+            # Кодируем HTML в base64 и создаем кнопку-ссылку, которая откроется в новой вкладке
+            b64_html = base64.b64encode(html_report.encode('utf-8')).decode()
+            link_html = f'<a href="data:text/html;base64,{b64_html}" target="_blank" style="display: inline-block; padding: 12px 24px; background-color: #415A77; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; text-align: center;">🖨️ Открыть удобную форму для печати</a>'
+            
+            st.markdown(link_html, unsafe_allow_html=True)
