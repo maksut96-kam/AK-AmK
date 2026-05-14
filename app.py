@@ -22,9 +22,7 @@ ts, eph = init_engine()
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 NAK_LORDS = ["Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"] * 3
-NAK_TEXT_SYMBOLS = [
-    "Голова лошади / Колесница / Целительство / Энергия", "Йони / Орган рождения / Очищение / Удача", "Лезвие / Пламя / Острие бритвы / Дух", "Повозка / Колесница / Храм / Росток / Жизнь", "Голова оленя / Сосуд с сомой / Поиск / Нектар", "Слеза / Алмаз / Буря / Влага / Хаос", "Лук / Стрелы / Саженец / Возврат / Обновление", "Вымя коровы / Цветок / Круг / Молоко / Питание", "Змея / Объятия / Узел / Скрытое / Интуиция", "Трон / Королевская палата / Предки / Власть", "Ножки кровати / Гамак / Слияние / Отдых", "Задние ножки / Кровать / Солнце / Процветание", "Ладонь / Кулак / Мастерство / Творчество / Сила", "Жемчужина / Сияющий камень / Зеркало / Красота", "Побег растения / Коралл / Ветер / Меч / Баланс", "Арка / Триумфальные ворота / Праздник / Успех", "Посох / Лотос / Круг / Порядок / Защита", "Амулет / Зонтик / Серьга / Защита / Лидер", "Связка корней / Лев / Слон / Глубина / Истина", "Веер / Сито / Корзина / Очищение / Выбор", "Бивень слона / Ножки кровати / Знание / Цель", "Ухо / Три следа / Стрела / Обучение / Слух", "Барабан / Музыка / Небо / Гром / Слава", "Пустой круг / 100 лекарей / Звезды / Магия", "Двуликий человек / Меч / Смерть / Переход", "Близнецы / Змея / Радуга / Поток / Глубина", "Рыба / Барабан / Море / Завершение / Вечность"
-]
+NAK_TEXT_SYMBOLS = ["Голова лошади / Колесница / Целительство / Энергия", "Йони / Орган рождения / Очищение / Удача", "Лезвие / Пламя / Острие бритвы / Дух", "Повозка / Колесница / Храм / Росток / Жизнь", "Голова оленя / Сосуд с сомой / Поиск / Нектар", "Слеза / Алмаз / Буря / Влага / Хаос", "Лук / Стрелы / Саженец / Возврат / Обновление", "Вымя коровы / Цветок / Круг / Молоко / Питание", "Змея / Объятия / Узел / Скрытое / Интуиция", "Трон / Королевская палата / Предки / Власть", "Ножки кровати / Гамак / Слияние / Отдых", "Задние ножки / Кровать / Солнце / Процветание", "Ладонь / Кулак / Мастерство / Творчество / Сила", "Жемчужина / Сияющий камень / Зеркало / Красота", "Побег растения / Коралл / Ветер / Меч / Баланс", "Арка / Триумфальные ворота / Праздник / Успех", "Посох / Лотос / Круг / Порядок / Защита", "Амулет / Зонтик / Серьга / Защита / Лидер", "Связка корней / Лев / Слон / Глубина / Истина", "Веер / Сито / Корзина / Очищение / Выбор", "Бивень слона / Ножки кровати / Знание / Цель", "Ухо / Три следа / Стрела / Обучение / Слух", "Барабан / Музыка / Небо / Гром / Слава", "Пустой круг / 100 лекарей / Звезды / Магия", "Двуликий человек / Меч / Смерть / Переход", "Близнецы / Змея / Радуга / Поток / Глубина", "Рыба / Барабан / Море / Завершение / Вечность"]
 PADA_LORDS_MAP = ["Марс", "Венера", "Меркурий", "Луна", "Солнце", "Меркурий", "Венера", "Марс", "Юпитер", "Сатурн", "Сатурн", "Юпитер"]
 P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat', 'Rahu': '🐉 Rahu'}
 Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
@@ -151,60 +149,38 @@ with t2:
     with cy: de = st.date_input("Конец", datetime.now() + timedelta(days=2)); te_i = st.time_input("Финиш", time(23, 59))
     
     if st.button("🚀 ПОСТРОИТЬ ТАБЛИЦУ РОТАЦИЙ"):
-        progress_bar = st.progress(0)
-        with st.spinner("Идет расчет планетарных позиций..."):
+        p_bar = st.progress(0)
+        with st.spinner("Синхронизация с эфемеридами..."):
             s_u = datetime.combine(ds, ts_i) - timedelta(hours=3)
             e_u = datetime.combine(de, te_i) - timedelta(hours=3)
             results = []; curr = s_u; last_p = ""
-            
-            # Расчет общего количества шагов для линии прогресса
-            total_minutes = int((e_u - s_u).total_seconds() / 60)
-            step_min = 15
-            total_steps = total_minutes // step_min
-            current_step = 0
-            
+            total_s = int((e_u - s_u).total_seconds() / 900)
+            step_c = 0
             while curr < e_u:
                 t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute)
                 df_ev = get_planet_data(t_ev)
                 new_p = f"{df_ev.iloc[0]['Planet']}-{df_ev.iloc[1]['Planet']}"
-                
                 if new_p != last_p:
-                    sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]
-                    moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
-                    results.append({
-                        "Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"),
-                        "Время": (curr + timedelta(hours=3)).strftime("%H:%M"),
-                        "💎 АК": format_cell(df_ev.iloc[0]),
-                        "🥈 AmK": format_cell(df_ev.iloc[1]),
-                        "☀️ Солнце": format_cell(sun),
-                        "🌙 Луна": format_cell(moon)
-                    })
+                    sun, moon = df_ev[df_ev['Planet']=='Sun'].iloc[0], df_ev[df_ev['Planet']=='Moon'].iloc[0]
+                    results.append({"Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"), "Время": (curr + timedelta(hours=3)).strftime("%H:%M"), "💎 АК": format_cell(df_ev.iloc[0]), "🥈 AmK": format_cell(df_ev.iloc[1]), "☀️ Солнце": format_cell(sun), "🌙 Луна": format_cell(moon)})
                     last_p = new_p
-                
-                curr += timedelta(minutes=step_min)
-                current_step += 1
-                if total_steps > 0:
-                    progress_bar.progress(min(current_step / total_steps, 1.0))
+                curr += timedelta(minutes=15); step_c += 1
+                if total_s > 0: p_bar.progress(min(step_c/total_s, 1.0))
             
             if results:
                 df_res = pd.DataFrame(results)
-                clean_html = df_res.to_html(escape=False, index=False).replace('\n', '').replace('"', '\\"')
-                
-                # Кнопка печати без лишних символов и с исправленным скриптом
+                clean_h = df_res.to_html(escape=False, index=False).replace('\n', '')
                 st.markdown(f"""
                 <script>
-                function printRotationTable() {{
+                function runPrint() {{
                     const win = window.open('', '_blank');
-                    win.document.write('<html><head><title>Печать ротаций</title>');
-                    win.document.write('<style>@page {{ size: landscape; margin: 10mm; }} table {{ border-collapse: collapse; width: 100%; font-family: sans-serif; }} th, td {{ border: 1px solid #000; padding: 6px; font-size: 10px; text-align: left; }} b {{ color: #000; }}</style>');
-                    win.document.write('</head><body>');
-                    win.document.write("{clean_html}");
+                    win.document.write('<html><head><title>Astro Print</title><style>@page{{size:landscape;margin:10mm;}}table{{border-collapse:collapse;width:100%;font-family:sans-serif;}}th,td{{border:1px solid #000;padding:5px;font-size:10px;}}</style></head><body>');
+                    win.document.write(`{clean_h}`);
                     win.document.write('</body></html>');
                     win.document.close();
-                    setTimeout(() => {{ win.print(); }}, 500);
+                    setTimeout(()=>win.print(), 300);
                 }}
                 </script>
-                <button onclick="printRotationTable()" style="width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1.2em; margin-top:20px; margin-bottom:20px;">🖨️ ПЕЧАТЬ (АЛЬБОМНЫЙ ФОРМАТ)</button>
+                <button onclick="runPrint()" style="width:100%;padding:18px;background:#28a745;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;margin:15px 0;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ</button>
                 """, unsafe_allow_html=True)
-                
                 st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
