@@ -168,7 +168,7 @@ with t2:
         results = []; curr = s_u; last_p = ""
         
         total_sec = (e_u - s_u).total_seconds()
-        step_min = 3  # Шаг расчета изменен на 3 минуты
+        step_min = 3 
         total_steps = max(int(total_sec / (step_min * 60)), 1)
         current_step = 0
         
@@ -198,7 +198,6 @@ with t2:
             curr += timedelta(minutes=step_min)
             current_step += 1
             
-            # Обновляем прогресс каждые 10 шагов, чтобы не перегружать интерфейс
             if current_step % 10 == 0 or current_step == total_steps:
                 progress_bar.progress(min(current_step / total_steps, 1.0))
         
@@ -209,24 +208,33 @@ with t2:
             df_res = pd.DataFrame(results)
             raw_html = df_res.to_html(escape=False, index=False).replace('\n', '')
             
-            # Кнопка печати через iframe
+            # Формируем динамический заголовок для печати
+            print_title = f"График ротаций с {ds.strftime('%d.%m.%Y')} по {de.strftime('%d.%m.%Y')}"
+            
+            # Кнопка печати через iframe с добавленным заголовком
             html_btn = f"""
             <script>
             function openPrint() {{
                 const win = window.open('', '_blank');
-                win.document.write(`<html><head><title>Печать таблицы</title>
+                win.document.write(`<html><head><title>Печать</title>
                 <style>
                     @page {{ size: landscape; margin: 10mm; }} 
-                    body {{ font-family: sans-serif; }}
+                    body {{ font-family: sans-serif; padding: 20px; }}
+                    h2 {{ text-align: center; color: #333; margin-bottom: 20px; }}
                     table {{ border-collapse: collapse; width: 100%; }} 
                     th, td {{ border: 1px solid #000; padding: 6px; font-size: 10px; text-align: left; }}
+                    th {{ background-color: #f2f2f2; }}
                 </style>
-                </head><body>{raw_html}</body></html>`);
+                </head><body>
+                    <h2>{print_title}</h2>
+                    {raw_html}
+                </body></html>`);
                 win.document.close();
                 setTimeout(() => {{ win.print(); }}, 500);
             }}
             </script>
-            <button onclick="openPrint()" style="width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; font-family:sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🖨️ ПЕЧАТЬ ТАБЛИЦЫ (АЛЬБОМНЫЙ ФОРМАТ)</button>
+            <button onclick="openPrint()" style="width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; font-family:sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ (АЛЬБОМНЫЙ ФОРМАТ)</button>
             """
-            components.html(html_btn, height=70)
+            import streamlit.components.v1 as components
+            components.html(html_btn, height=75)
             st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
