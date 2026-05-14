@@ -153,30 +153,58 @@ with t2:
     if st.button("🚀 ПОСТРОИТЬ ТАБЛИЦУ РОТАЦИЙ"):
         progress_bar = st.progress(0)
         with st.spinner("Идет расчет планетарных позиций..."):
-            s_u = datetime.combine(ds, ts_i) - timedelta(hours=3); e_u = datetime.combine(de, te_i) - timedelta(hours=3)
+            s_u = datetime.combine(ds, ts_i) - timedelta(hours=3)
+            e_u = datetime.combine(de, te_i) - timedelta(hours=3)
             results = []; curr = s_u; last_p = ""
-            total_steps = int((e_u - s_u).total_seconds() / 900); current_step = 0
+            
+            # Расчет общего количества шагов для линии прогресса
+            total_minutes = int((e_u - s_u).total_seconds() / 60)
+            step_min = 15
+            total_steps = total_minutes // step_min
+            current_step = 0
+            
             while curr < e_u:
-                t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute); df_ev = get_planet_data(t_ev)
+                t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute)
+                df_ev = get_planet_data(t_ev)
                 new_p = f"{df_ev.iloc[0]['Planet']}-{df_ev.iloc[1]['Planet']}"
+                
                 if new_p != last_p:
-                    sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]; moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
-                    results.append({"Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"), "Время": (curr + timedelta(hours=3)).strftime("%H:%M"), "💎 АК": format_cell(df_ev.iloc[0]), "🥈 AmK": format_cell(df_ev.iloc[1]), "☀️ Солнце": format_cell(sun), "🌙 Луна": format_cell(moon)})
+                    sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]
+                    moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
+                    results.append({
+                        "Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"),
+                        "Время": (curr + timedelta(hours=3)).strftime("%H:%M"),
+                        "💎 АК": format_cell(df_ev.iloc[0]),
+                        "🥈 AmK": format_cell(df_ev.iloc[1]),
+                        "☀️ Солнце": format_cell(sun),
+                        "🌙 Луна": format_cell(moon)
+                    })
                     last_p = new_p
-                curr += timedelta(minutes=15); current_step += 1
-                if total_steps > 0: progress_bar.progress(min(current_step / total_steps, 1.0))
+                
+                curr += timedelta(minutes=step_min)
+                current_step += 1
+                if total_steps > 0:
+                    progress_bar.progress(min(current_step / total_steps, 1.0))
             
             if results:
-                df_res = pd.DataFrame(results); clean_html = df_res.to_html(escape=False, index=False).replace('\n', '')
+                df_res = pd.DataFrame(results)
+                clean_html = df_res.to_html(escape=False, index=False).replace('\n', '').replace('"', '\\"')
+                
+                # Кнопка печати без лишних символов и с исправленным скриптом
                 st.markdown(f"""
                 <script>
-                function printT() {{
+                function printRotationTable() {{
                     const win = window.open('', '_blank');
-                    win.document.write('<html><head><title>Print</title><style>@page{{size: landscape; margin: 10mm;}} table{{border-collapse:collapse;width:100%;font-family:sans-serif;}}th,td{{border:1px solid #000;padding:6px;font-size:9px;}}b{{color:#000;}}</style></head><body>' + `{clean_html}` + '</body></html>');
+                    win.document.write('<html><head><title>Печать ротаций</title>');
+                    win.document.write('<style>@page {{ size: landscape; margin: 10mm; }} table {{ border-collapse: collapse; width: 100%; font-family: sans-serif; }} th, td {{ border: 1px solid #000; padding: 6px; font-size: 10px; text-align: left; }} b {{ color: #000; }}</style>');
+                    win.document.write('</head><body>');
+                    win.document.write("{clean_html}");
+                    win.document.write('</body></html>');
                     win.document.close();
-                    setTimeout(()=>win.print(), 500);
+                    setTimeout(() => {{ win.print(); }}, 500);
                 }}
                 </script>
-                <button onclick="printT()" style="width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1.2em; margin-bottom:20px;">🖨️ ПЕЧАТЬ (АЛЬБОМНЫЙ ФОРМАТ)</button>
+                <button onclick="printRotationTable()" style="width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1.2em; margin-top:20px; margin-bottom:20px;">🖨️ ПЕЧАТЬ (АЛЬБОМНЫЙ ФОРМАТ)</button>
                 """, unsafe_allow_html=True)
-                st.write(clean_html, unsafe_allow_html=True)
+                
+                st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
