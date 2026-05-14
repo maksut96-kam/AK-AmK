@@ -148,7 +148,7 @@ with t2:
     with cx: ds = st.date_input("Начало", datetime.now()); ts_i = st.time_input("Старт", time(0, 0))
     with cy: de = st.date_input("Конец", datetime.now() + timedelta(days=2)); te_i = st.time_input("Финиш", time(23, 59))
     
-    # 1. Отключаем "потемнение" (overlay) экрана с помощью CSS
+    # Отключаем "потемнение" (overlay) экрана с помощью CSS
     st.markdown("""
     <style>
         div[data-testid="stAppViewBlockContainer"] { opacity: 1 !important; filter: none !important; }
@@ -168,9 +168,11 @@ with t2:
         results = []; curr = s_u; last_p = ""
         
         total_sec = (e_u - s_u).total_seconds()
-        step_min = 15
+        step_min = 3  # Шаг расчета изменен на 3 минуты
         total_steps = max(int(total_sec / (step_min * 60)), 1)
         current_step = 0
+        
+        days_ru = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
         
         while curr < e_u:
             t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute)
@@ -180,9 +182,12 @@ with t2:
             if new_p != last_p:
                 sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]
                 moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
+                local_dt = curr + timedelta(hours=3)
+                
                 results.append({
-                    "Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"),
-                    "Время": (curr + timedelta(hours=3)).strftime("%H:%M"),
+                    "Дата": local_dt.strftime("%d.%m.%Y"),
+                    "День недели": days_ru[local_dt.weekday()],
+                    "Время": local_dt.strftime("%H:%M"),
                     "💎 АК": format_cell(df_ev.iloc[0]),
                     "🥈 AmK": format_cell(df_ev.iloc[1]),
                     "☀️ Солнце": format_cell(sun),
@@ -193,7 +198,7 @@ with t2:
             curr += timedelta(minutes=step_min)
             current_step += 1
             
-            # 2. Обновляем прогресс каждые 10 шагов (убирает тормоза и мерцание)
+            # Обновляем прогресс каждые 10 шагов, чтобы не перегружать интерфейс
             if current_step % 10 == 0 or current_step == total_steps:
                 progress_bar.progress(min(current_step / total_steps, 1.0))
         
@@ -204,7 +209,7 @@ with t2:
             df_res = pd.DataFrame(results)
             raw_html = df_res.to_html(escape=False, index=False).replace('\n', '')
             
-            # 3. Кнопка печати через iframe (components.html) - 100% гарантия работы JS
+            # Кнопка печати через iframe
             html_btn = f"""
             <script>
             function openPrint() {{
