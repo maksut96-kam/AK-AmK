@@ -149,38 +149,69 @@ with t2:
     with cy: de = st.date_input("Конец", datetime.now() + timedelta(days=2)); te_i = st.time_input("Финиш", time(23, 59))
     
     if st.button("🚀 ПОСТРОИТЬ ТАБЛИЦУ РОТАЦИЙ"):
-        p_bar = st.progress(0)
+        # Создаем пустой контейнер для прогресс-бара, чтобы он не пропадал
+        progress_placeholder = st.empty()
+        p_bar = progress_placeholder.progress(0)
+        
         with st.spinner("Синхронизация с эфемеридами..."):
             s_u = datetime.combine(ds, ts_i) - timedelta(hours=3)
             e_u = datetime.combine(de, te_i) - timedelta(hours=3)
             results = []; curr = s_u; last_p = ""
-            total_s = int((e_u - s_u).total_seconds() / 900)
-            step_c = 0
+            
+            # Точный расчет шагов
+            total_sec = (e_u - s_u).total_seconds()
+            step_min = 15
+            total_steps = max(int(total_sec / (step_min * 60)), 1)
+            current_step = 0
+            
             while curr < e_u:
                 t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute)
                 df_ev = get_planet_data(t_ev)
+                
+                # Проверка смены АК-AmK
                 new_p = f"{df_ev.iloc[0]['Planet']}-{df_ev.iloc[1]['Planet']}"
                 if new_p != last_p:
-                    sun, moon = df_ev[df_ev['Planet']=='Sun'].iloc[0], df_ev[df_ev['Planet']=='Moon'].iloc[0]
-                    results.append({"Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"), "Время": (curr + timedelta(hours=3)).strftime("%H:%M"), "💎 АК": format_cell(df_ev.iloc[0]), "🥈 AmK": format_cell(df_ev.iloc[1]), "☀️ Солнце": format_cell(sun), "🌙 Луна": format_cell(moon)})
+                    sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]
+                    moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
+                    results.append({
+                        "Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"),
+                        "Время": (curr + timedelta(hours=3)).strftime("%H:%M"),
+                        "💎 АК": format_cell(df_ev.iloc[0]),
+                        "🥈 AmK": format_cell(df_ev.iloc[1]),
+                        "☀️ Солнце": format_cell(sun),
+                        "🌙 Луна": format_cell(moon)
+                    })
                     last_p = new_p
-                curr += timedelta(minutes=15); step_c += 1
-                if total_s > 0: p_bar.progress(min(step_c/total_s, 1.0))
+                
+                curr += timedelta(minutes=step_min)
+                current_step += 1
+                # Обновляем прогресс плавно
+                p_percent = min(current_step / total_steps, 1.0)
+                p_bar.progress(p_percent)
             
+            # Убираем прогресс-бар после завершения
+            progress_placeholder.empty()
+
             if results:
                 df_res = pd.DataFrame(results)
-                clean_h = df_res.to_html(escape=False, index=False).replace('\n', '')
-                st.markdown(f"""
+                # Подготовка HTML без переносов строк для JS
+                raw_html = df_res.to_html(escape=False, index=False).replace('\n', '')
+                
+                # Безопасный вывод скрипта печати
+                print_script = f"""
+                <div id="print_data" style="display:none;">{raw_html}</div>
                 <script>
-                function runPrint() {{
+                function doPrint() {{
+                    const data = document.getElementById('print_data').innerHTML;
                     const win = window.open('', '_blank');
-                    win.document.write('<html><head><title>Astro Print</title><style>@page{{size:landscape;margin:10mm;}}table{{border-collapse:collapse;width:100%;font-family:sans-serif;}}th,td{{border:1px solid #000;padding:5px;font-size:10px;}}</style></head><body>');
-                    win.document.write(`{clean_h}`);
-                    win.document.write('</body></html>');
+                    win.document.write('<html><head><title>Astro Print</title>');
+                    win.document.write('<style>@page {{size:landscape; margin:10mm;}} table {{border-collapse:collapse; width:100%; font-family:sans-serif;}} th,td {{border:1px solid #000; padding:5px; font-size:10px;}}</style>');
+                    win.document.write('</head><body>' + data + '</body></html>');
                     win.document.close();
-                    setTimeout(()=>win.print(), 300);
+                    setTimeout(() => {{ win.print(); }}, 500);
                 }}
                 </script>
-                <button onclick="runPrint()" style="width:100%;padding:18px;background:#28a745;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;margin:15px 0;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ</button>
-                """, unsafe_allow_html=True)
+                <button onclick="doPrint()" style="width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1.2em; margin-top:10px;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ</button>
+                """
+                st.markdown(print_script, unsafe_allow_html=True)
                 st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
