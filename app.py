@@ -148,70 +148,80 @@ with t2:
     with cx: ds = st.date_input("Начало", datetime.now()); ts_i = st.time_input("Старт", time(0, 0))
     with cy: de = st.date_input("Конец", datetime.now() + timedelta(days=2)); te_i = st.time_input("Финиш", time(23, 59))
     
+    # 1. Отключаем "потемнение" (overlay) экрана с помощью CSS
+    st.markdown("""
+    <style>
+        div[data-testid="stAppViewBlockContainer"] { opacity: 1 !important; filter: none !important; }
+        [data-testid="stApp"]::before { display: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+    
     if st.button("🚀 ПОСТРОИТЬ ТАБЛИЦУ РОТАЦИЙ"):
-        # Создаем пустой контейнер для прогресс-бара, чтобы он не пропадал
-        progress_placeholder = st.empty()
-        p_bar = progress_placeholder.progress(0)
+        status_text = st.empty()
+        p_bar = st.empty()
         
-        with st.spinner("Синхронизация с эфемеридами..."):
-            s_u = datetime.combine(ds, ts_i) - timedelta(hours=3)
-            e_u = datetime.combine(de, te_i) - timedelta(hours=3)
-            results = []; curr = s_u; last_p = ""
+        status_text.markdown("⏳ **Идет синхронизация с эфемеридами и расчет. Пожалуйста, подождите...**")
+        progress_bar = p_bar.progress(0)
+        
+        s_u = datetime.combine(ds, ts_i) - timedelta(hours=3)
+        e_u = datetime.combine(de, te_i) - timedelta(hours=3)
+        results = []; curr = s_u; last_p = ""
+        
+        total_sec = (e_u - s_u).total_seconds()
+        step_min = 15
+        total_steps = max(int(total_sec / (step_min * 60)), 1)
+        current_step = 0
+        
+        while curr < e_u:
+            t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute)
+            df_ev = get_planet_data(t_ev)
             
-            # Точный расчет шагов
-            total_sec = (e_u - s_u).total_seconds()
-            step_min = 15
-            total_steps = max(int(total_sec / (step_min * 60)), 1)
-            current_step = 0
+            new_p = f"{df_ev.iloc[0]['Planet']}-{df_ev.iloc[1]['Planet']}"
+            if new_p != last_p:
+                sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]
+                moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
+                results.append({
+                    "Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"),
+                    "Время": (curr + timedelta(hours=3)).strftime("%H:%M"),
+                    "💎 АК": format_cell(df_ev.iloc[0]),
+                    "🥈 AmK": format_cell(df_ev.iloc[1]),
+                    "☀️ Солнце": format_cell(sun),
+                    "🌙 Луна": format_cell(moon)
+                })
+                last_p = new_p
             
-            while curr < e_u:
-                t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute)
-                df_ev = get_planet_data(t_ev)
-                
-                # Проверка смены АК-AmK
-                new_p = f"{df_ev.iloc[0]['Planet']}-{df_ev.iloc[1]['Planet']}"
-                if new_p != last_p:
-                    sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]
-                    moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
-                    results.append({
-                        "Дата": (curr + timedelta(hours=3)).strftime("%d.%m.%Y"),
-                        "Время": (curr + timedelta(hours=3)).strftime("%H:%M"),
-                        "💎 АК": format_cell(df_ev.iloc[0]),
-                        "🥈 AmK": format_cell(df_ev.iloc[1]),
-                        "☀️ Солнце": format_cell(sun),
-                        "🌙 Луна": format_cell(moon)
-                    })
-                    last_p = new_p
-                
-                curr += timedelta(minutes=step_min)
-                current_step += 1
-                # Обновляем прогресс плавно
-                p_percent = min(current_step / total_steps, 1.0)
-                p_bar.progress(p_percent)
+            curr += timedelta(minutes=step_min)
+            current_step += 1
             
-            # Убираем прогресс-бар после завершения
-            progress_placeholder.empty()
+            # 2. Обновляем прогресс каждые 10 шагов (убирает тормоза и мерцание)
+            if current_step % 10 == 0 or current_step == total_steps:
+                progress_bar.progress(min(current_step / total_steps, 1.0))
+        
+        status_text.empty()
+        p_bar.empty()
 
-            if results:
-                df_res = pd.DataFrame(results)
-                # Подготовка HTML без переносов строк для JS
-                raw_html = df_res.to_html(escape=False, index=False).replace('\n', '')
-                
-                # Безопасный вывод скрипта печати
-                print_script = f"""
-                <div id="print_data" style="display:none;">{raw_html}</div>
-                <script>
-                function doPrint() {{
-                    const data = document.getElementById('print_data').innerHTML;
-                    const win = window.open('', '_blank');
-                    win.document.write('<html><head><title>Astro Print</title>');
-                    win.document.write('<style>@page {{size:landscape; margin:10mm;}} table {{border-collapse:collapse; width:100%; font-family:sans-serif;}} th,td {{border:1px solid #000; padding:5px; font-size:10px;}}</style>');
-                    win.document.write('</head><body>' + data + '</body></html>');
-                    win.document.close();
-                    setTimeout(() => {{ win.print(); }}, 500);
-                }}
-                </script>
-                <button onclick="doPrint()" style="width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1.2em; margin-top:10px;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ</button>
-                """
-                st.markdown(print_script, unsafe_allow_html=True)
-                st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
+        if results:
+            df_res = pd.DataFrame(results)
+            raw_html = df_res.to_html(escape=False, index=False).replace('\n', '')
+            
+            # 3. Кнопка печати через iframe (components.html) - 100% гарантия работы JS
+            html_btn = f"""
+            <script>
+            function openPrint() {{
+                const win = window.open('', '_blank');
+                win.document.write(`<html><head><title>Печать таблицы</title>
+                <style>
+                    @page {{ size: landscape; margin: 10mm; }} 
+                    body {{ font-family: sans-serif; }}
+                    table {{ border-collapse: collapse; width: 100%; }} 
+                    th, td {{ border: 1px solid #000; padding: 6px; font-size: 10px; text-align: left; }}
+                </style>
+                </head><body>{raw_html}</body></html>`);
+                win.document.close();
+                setTimeout(() => {{ win.print(); }}, 500);
+            }}
+            </script>
+            <button onclick="openPrint()" style="width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; font-family:sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🖨️ ПЕЧАТЬ ТАБЛИЦЫ (АЛЬБОМНЫЙ ФОРМАТ)</button>
+            """
+            components.html(html_btn, height=70)
+            st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
