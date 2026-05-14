@@ -24,6 +24,10 @@ ts, eph = init_engine()
 ZODIAC_SIGNS = ["Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева", "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы"]
 NAKSHATRAS = ["Ашвини", "Бхарани", "Криттика", "Рохини", "Мригашира", "Аридра", "Пунарвасу", "Пушья", "Ашлеша", "Магха", "Пурва-пх", "Уттара-пх", "Хаста", "Читра", "Свати", "Вишакха", "Анурадха", "Джьештха", "Мула", "Пурва-аш", "Уттара-аш", "Шравана", "Дхаништха", "Шатабхиша", "Пурва-бх", "Уттара-бх", "Ревати"]
 NAK_LORDS = ["Кету", "Венера", "Солнце", "Луна", "Марс", "Раху", "Юпитер", "Сатурн", "Меркурий"] * 3
+# Добавлены символы Накшатр и дни недели
+NAK_SYMBOLS = ["🐎", "🐘", "🪒", "🐂", "🦌", "💧", "🏹", "🌸", "🐍", "👑", "🛏️", "🛏️", "✋", "💎", "🌾", "🌿", "🌸", "☂️", "🌱", "🌊", "🐘", "👂", "🥁", "⭕", "⚔️", "🐍", "🐟"]
+RU_DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
+
 P_ICONS = {'Sun': '☀️ Sun', 'Moon': '🌙 Moon', 'Mars': '🔴 Mars', 'Mercury': '☿️ Merc', 'Jupiter': '🔵 Jup', 'Venus': '♀️ Venus', 'Saturn': '🪐 Sat'}
 Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близнецы": "♊ Близн", "Рак": "♋ Рак", "Лев": "♌ Лев", "Дева": "♍ Дева", "Весы": "♎ Весы", "Скорпион": "♏ Скорп", "Стрелец": "♐ Стрел", "Козерог": "♑ Козег", "Водолей": "♒ Водол", "Рыбы": "♓ Рыбы"}
 
@@ -52,7 +56,6 @@ def get_planet_data(t):
     ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': 30 - (ra_lon % 30), 'Role': '-'}])
     df = pd.concat([df, ra_row], ignore_index=True)
     
-    # Возвращаем строго ДВА значения (таблицу и аянамшу)
     return df, ayan
 
 def get_lunar_detailed_info(t):
@@ -100,39 +103,23 @@ def get_lunar_detailed_info(t):
         "gandanta": gandanta
     }
 
-def get_xau_storms(dt_start, days=45):
-    storms = []
-    earth = eph['earth']
-    for i in range(days):
-        check_date = dt_start + timedelta(days=i)
-        t_check = ts.utc(check_date.year, check_date.month, check_date.day)
-        ayan = get_dynamic_ayanamsa(t_check)
-        sun_lon = (earth.at(t_check).observe(eph['sun']).ecliptic_latlon()[1].degrees - ayan) % 360
-        _, ra_lon_check, _ = get_planet_data(t_check)
-        diff = abs(sun_lon - ra_lon_check) % 360
-        for p in [0, 90, 180, 270]:
-            if abs(diff - p) < 3:
-                storms.append({"Дата": check_date.strftime("%d.%m"), "Тип": "⚠️ ШТОРМ" if p in [0, 180] else "⚡️ ВОЛАТИЛЬНОСТЬ", "Угол": f"{int(p)}°"})
-                break
-    seen, unique = set(), []
-    for s in storms:
-        if s["Дата"] not in seen:
-            unique.append(s)
-            seen.add(s["Дата"])
-    return unique[:5]
-
+# ОБНОВЛЕНО: Расчет Накшатр, Символов, Пад и Управителей для любой планеты
 def get_full_info(row):
-    sign = ZODIAC_SIGNS[int(row['Lon']/30)]
-    return f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
+    lon = row['Lon']
+    sign = ZODIAC_SIGNS[int(lon/30)]
+    nak_idx = int(lon / (360/27)) % 27
+    pada = int((lon % (360/27)) / (360/108)) + 1
+    nak = NAKSHATRAS[nak_idx]
+    nak_sym = NAK_SYMBOLS[nak_idx]
+    lord = NAK_LORDS[nak_idx]
+    
+    base_info = f"{P_ICONS.get(row['Planet'], row['Planet'])} | {Z_ICONS.get(sign, sign)} {row['Deg']:.2f}°"
+    nak_info = f"{nak_sym} {nak} (Пада {pada}, Упр: {lord})"
+    return f"{base_info} | {nak_info}"
 
 # ============================================================
 # ⛔ БЛОК 3: ПОЛНАЯ СБОРКА (БЕЗ ОШИБОК)
 # ============================================================
-import base64
-import os
-import streamlit as st
-import streamlit.components.v1 as components
-
 def get_base64_img(path):
     if os.path.exists(path):
         with open(path, "rb") as f:
@@ -141,71 +128,21 @@ def get_base64_img(path):
 
 logo_data = get_base64_img("logo.png")
 
-# 1. СТИЛИ (CSS)
+# 1. СТИЛИ (CSS) - ОСТАВЛЕНЫ БЕЗ ИЗМЕНЕНИЙ
 st.markdown(f"""
 <style>
-    /* Шапка: Лого + Текст */
-    .header-wrapper {{
-        display: flex;
-        align-items: center;
-        margin-bottom: 20px;
-    }}
-    .fish-logo {{
-        width: 60px; height: 60px;
-        background-image: url('data:image/png;base64,{logo_data}');
-        background-size: contain; background-repeat: no-repeat;
-        margin-right: 20px;
-    }}
-    .main-title {{
-        font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 2.8em;
-        text-transform: uppercase; color: white; margin: 0;
-    }}
-
-    /* Баннер и Полет планет */
-    .space-banner {{
-        position: relative; width: 100%; height: 300px;
-        border-radius: 20px; overflow: hidden;
-        background: black; border: 1px solid rgba(255,255,255,0.1);
-    }}
-    .planet {{
-        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-        transform: scale(0); opacity: 0;
-        animation: fly 3s infinite linear;
-    }}
+    .header-wrapper {{ display: flex; align-items: center; margin-bottom: 20px; }}
+    .fish-logo {{ width: 60px; height: 60px; background-image: url('data:image/png;base64,{logo_data}'); background-size: contain; background-repeat: no-repeat; margin-right: 20px; }}
+    .main-title {{ font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 2.8em; text-transform: uppercase; color: white; margin: 0; }}
+    .space-banner {{ position: relative; width: 100%; height: 300px; border-radius: 20px; overflow: hidden; background: black; border: 1px solid rgba(255,255,255,0.1); }}
+    .planet {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; transform: scale(0); opacity: 0; animation: fly 3s infinite linear; }}
     .p1 {{ background-image: radial-gradient(circle, #415A77 8px, transparent 15px); background-size: 400px 400px; animation-duration: 4s; }}
     .p2 {{ background-image: radial-gradient(circle, #778DA9 4px, transparent 10px); background-size: 300px 300px; animation-duration: 2.5s; animation-delay: 1s; }}
-    
-    @keyframes fly {{
-        0% {{ transform: scale(0.1); opacity: 0; }}
-        50% {{ opacity: 1; }}
-        100% {{ transform: scale(2.5); opacity: 0; }}
-    }}
-
-    /* Часы (Стекляшка) */
-    .clock-box {{
-        position: absolute; bottom: 20px; right: 20px;
-        background: rgba(13, 27, 42, 0.7); backdrop-filter: blur(10px);
-        padding: 10px 20px; border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.1); z-index: 99;
-    }}
+    @keyframes fly {{ 0% {{ transform: scale(0.1); opacity: 0; }} 50% {{ opacity: 1; }} 100% {{ transform: scale(2.5); opacity: 0; }} }}
+    .clock-box {{ position: absolute; bottom: 20px; right: 20px; background: rgba(13, 27, 42, 0.7); backdrop-filter: blur(10px); padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); z-index: 99; }}
 </style>
-
-<div class="header-wrapper">
-    <div class="fish-logo"></div>
-    <div>
-        <h1 class="main-title">Julia's Assistant</h1>
-        <div style="color: #778DA9; letter-spacing: 5px; font-size: 0.9em;">ASTRO COORDINATION CENTER</div>
-    </div>
-</div>
-
-<div class="space-banner">
-    <div class="planet p1"></div>
-    <div class="planet p2"></div>
-    <div class="clock-box">
-        <span id="live-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.5em;">00:00:00</span>
-        <div style="color: #778DA9; font-size: 0.7em; text-transform: uppercase;">Sochi Time</div>
-    </div>
-</div>
+<div class="header-wrapper"><div class="fish-logo"></div><div><h1 class="main-title">Julia's Assistant</h1><div style="color: #778DA9; letter-spacing: 5px; font-size: 0.9em;">ASTRO COORDINATION CENTER</div></div></div>
+<div class="space-banner"><div class="planet p1"></div><div class="planet p2"></div><div class="clock-box"><span id="live-clock" style="color: white; font-weight: bold; font-family: monospace; font-size: 1.5em;">00:00:00</span><div style="color: #778DA9; font-size: 0.7em; text-transform: uppercase;">Sochi Time</div></div></div>
 """, unsafe_allow_html=True)
 
 # 2. ОЖИВЛЕНИЕ ЧАСОВ (JS)
@@ -222,17 +159,15 @@ components.html("""
     setInterval(tick, 1000); tick();
     </script>
 """, height=0)
+
 # ============================================================
 # ⛔ БЛОК 4: ОПЕРАТИВНЫЙ МОНИТОРИНГ (ТАБЫ)
 # ============================================================
 tab1, tab2 = st.tabs(["📊 Прямой эфир", "📅 Высокоточный Планировщик"])
 
 with tab1:
-    # 1. Сбор актуальных данных
     now_utc = datetime.utcnow()
     t_now = ts.utc(now_utc.year, now_utc.month, now_utc.day, now_utc.hour, now_utc.minute, now_utc.second)
-    
-    # ПРАВИЛЬНЫЙ ВЫЗОВ: принимаем ровно 2 значения
     df, ayan_val = get_planet_data(t_now)
     l = get_lunar_detailed_info(t_now) 
 
@@ -241,7 +176,6 @@ with tab1:
         hrs = int(h % 24)
         return f"{d}д {hrs}ч"
 
-# === ПОЛНЫЙ ИСПРАВЛЕННЫЙ БЛОК ЛУННОГО АЛТАРЯ (БЕЗ ОТСТУПОВ) ===
     advice = "Время транслировать идеи и расширять контакты." if l['is_waxing'] else "Время анализа и завершения текущих стратегий."
     gandanta_html = f'<div class="gandanta-alert">⚠️ ГАНДАНТА: {l["gandanta"]}</div>' if l['gandanta'] else ''
 
@@ -272,32 +206,46 @@ with tab1:
 </div>
 </div>
 </div>
-
 <div class="progress-bg"><div class="progress-fill"></div></div>
-
 <div class="stat-row">
 <span>🌕 До Полнолуния: <b>{fmt_h(l['to_full'])}</b></span>
 <span>🌑 До Новолуния: <b>{fmt_h(l['to_new'])}</b></span>
 </div>
-
 {gandanta_html}
-
 <div class="moon-footer">
 💎 <b>Совет для AmK Луны:</b><br>
 {advice}
 </div>
 </div>"""
-
     st.markdown(html_content, unsafe_allow_html=True)
-    # === КОНЕЦ БЛОКА ===
-    # 3. ОСНОВНЫЕ МЕТРИКИ АК / AmK
+
+    # ДОБАВЛЕНО: Светила (Солнце и Луна с накшатрами и падами)
+    st.subheader("☀️ Текущее положение Светил")
+    sun_row = df[df['Planet'] == 'Sun'].iloc[0]
+    moon_row = df[df['Planet'] == 'Moon'].iloc[0]
+    st.info(f"**Солнце:** {get_full_info(sun_row)}  \n**Луна:** {get_full_info(moon_row)}")
+
+    # ДОБАВЛЕНО: Динамический график силы Луны
+    st.subheader("📈 Динамика силы Луны (Освещенность на 7 дней)")
+    chart_data = []
+    for i in range(8):
+        future_utc = now_utc + timedelta(days=i)
+        t_future = ts.utc(future_utc.year, future_utc.month, future_utc.day)
+        l_future = get_lunar_detailed_info(t_future)
+        chart_data.append({"Дата": (future_utc + timedelta(hours=3)).strftime("%d.%m"), "Свет %": l_future['illum']})
+    st.area_chart(pd.DataFrame(chart_data).set_index("Дата"))
+
+    st.divider()
+
+    # ОСНОВНЫЕ МЕТРИКИ АК / AmK
+    st.subheader("👑 Главные Караки")
     c1, c2 = st.columns(2)
     with c1:
         st.metric("💎 АК (Атма-карака)", get_full_info(df.iloc[0]))
     with c2:
         st.metric("🥈 AmK (Аматья-карака)", get_full_info(df.iloc[1]))
 
-    # 4. ТАБЛИЦА ЧАРА-КАРАК
+    # ТАБЛИЦА ЧАРА-КАРАК
     st.subheader("📊 Таблица Чара-карак")
     df_v = df.copy()
     df_v['Знак'] = df_v['Lon'].apply(lambda x: Z_ICONS[ZODIAC_SIGNS[int(x/30)]])
@@ -307,7 +255,7 @@ with tab1:
 
     st.divider()
 
-    # 5. МОНИТОРИНГ РОТАЦИЙ (ИСПРАВЛЕННЫЙ ВЫЗОВ)
+    # МОНИТОРИНГ РОТАЦИЙ
     st.subheader("🔄 Мониторинг ротаций")
     ak_now, amk_now = df.iloc[0]['Planet'], df.iloc[1]['Planet']
     
@@ -319,17 +267,18 @@ with tab1:
             for m in range(10, 2880, 10):
                 target = now_utc + timedelta(minutes=m*direct)
                 t_t = ts.utc(target.year, target.month, target.day, target.hour, target.minute)
-                # ИСПРАВЛЕНИЕ: Принимаем только 2 значения (df_t и ayan)
                 df_t, _ = get_planet_data(t_t) 
                 if df_t.iloc[0]['Planet'] != ak_now or df_t.iloc[1]['Planet'] != amk_now:
-                    st.success(f"📅 {(target + timedelta(hours=3)).strftime('%d.%m %H:%M')}")
+                    # ДОБАВЛЕНО: Указание дня недели в ротациях
+                    target_sochi = target + timedelta(hours=3)
+                    dow_rot = RU_DAYS[target_sochi.weekday()]
+                    st.success(f"📅 {target_sochi.strftime(f'%d.%m ({dow_rot}) %H:%M')}")
                     st.caption(f"АК: {df_t.iloc[0]['Planet']} | AmK: {df_t.iloc[1]['Planet']}")
                     break
     
-    # 6. МОДУЛЬ РАХУ
+    # МОДУЛЬ РАХУ
     ra_row = df[df['Planet'] == 'Rahu'].iloc[0]
     ra_deg = ra_row['Deg']
-    
     if ra_deg < 2 or ra_deg > 28:
         label, color, desc = "🔴 КРИТИЧЕСКИЙ ХАОС", "#FF4B4B", "Зона Ганданты. Рынок иррационален."
     elif ra_deg < 5 or ra_deg > 25:
@@ -358,7 +307,6 @@ with tab2:
     if st.button('🚀 Рассчитать и подготовить бланк'):
         dt_start = datetime.combine(d_s, t_s)
         dt_end = datetime.combine(d_e, t_e)
-        # Сочи UTC+3, для расчетов вычитаем 3 часа
         curr_utc = dt_start - timedelta(hours=3)
         end_utc = dt_end - timedelta(hours=3)
         events = []
@@ -367,8 +315,11 @@ with tab2:
         df_i, _ = get_planet_data(t_init)
         
         last_pair = f"{df_i.iloc[0]['Planet']}/{df_i.iloc[1]['Planet']}"
+        
+        # ДОБАВЛЕНО: День недели для стартовой даты
+        dow_start = RU_DAYS[dt_start.weekday()]
         events.append({
-            "Время (Сочи)": dt_start.strftime("%d.%m.%Y %H:%M"), 
+            "Время (Сочи)": dt_start.strftime(f"%d.%m.%Y ({dow_start}) %H:%M"), 
             "💎 АК": get_full_info(df_i.iloc[0]), 
             "🥈 AmK": get_full_info(df_i.iloc[1])
         })
@@ -381,12 +332,24 @@ with tab2:
             new_pair = f"{df_s.iloc[0]['Planet']}/{df_s.iloc[1]['Planet']}"
             if new_pair != last_pair:
                 sochi_time = curr_utc + timedelta(hours=3)
+                # ДОБАВЛЕНО: День недели в цикле
+                dow_loop = RU_DAYS[sochi_time.weekday()]
                 events.append({
-                    "Время (Сочи)": sochi_time.strftime("%d.%m.%Y %H:%M"), 
+                    "Время (Сочи)": sochi_time.strftime(f"%d.%m.%Y ({dow_loop}) %H:%M"), 
                     "💎 АК": get_full_info(df_s.iloc[0]), 
                     "🥈 AmK": get_full_info(df_s.iloc[1])
                 })
                 last_pair = new_pair
         
         if events:
-            st.table(pd.DataFrame(events))
+            df_events = pd.DataFrame(events)
+            st.table(df_events)
+            
+            # ДОБАВЛЕНО: Кнопка генерации файла на скачивание
+            csv = df_events.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Скачать бланк для печати (CSV)",
+                data=csv,
+                file_name="Astro_Planner_Rotations.csv",
+                mime="text/csv"
+            )
