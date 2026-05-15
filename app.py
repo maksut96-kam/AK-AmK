@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, time
 import pandas as pd
 import streamlit.components.v1 as components
 import math
-# 1. Сначала убедись, что эта функция стоит в начале файла (после импортов)
 import base64
 
 def get_image_base64(image_path):
@@ -12,7 +11,8 @@ def get_image_base64(image_path):
         with open(image_path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
     except Exception:
-        return "" # Если файла нет, скрипт не упадет
+        return "" 
+
 # ============================================================
 # ⛔ БЛОК 1: КОНФИГУРАЦИЯ И СТИЛИ
 # ============================================================
@@ -118,16 +118,17 @@ def find_rotations(start_dt):
 # ============================================================
 # ⛔ БЛОК 3: ИНТЕРФЕЙС
 # ============================================================
-st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>
-# 2. А это вставьте на место баннера. Код плоский, без сложных кавычек и скобок:
+# Восстановлен правильный закрывающий тег для заголовка
+st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>""", unsafe_allow_html=True)
+
+# --- АНИМИРОВАННЫЙ БАННЕР ---
 img_data = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
 
 if img_data:
-    part1 = "<style>.space-banner { width: 100%; height: 300px; border-radius: 15px; background-image: url('data:image/jpeg;base64,"
+    part1 = "<style>.space-banner-new { width: 100%; height: 300px; border-radius: 15px; background-image: url('data:image/jpeg;base64,"
     part2 = img_data
-    part3 = "'); background-size: 100%; background-position: center; background-repeat: no-repeat; box-shadow: 0 10px 20px rgba(0,0,0,0.6); margin-bottom: 25px; animation: spaceDrift 20s ease-in-out infinite alternate; } @keyframes spaceDrift { 0% { background-size: 100%; background-position: center; } 100% { background-size: 115%; background-position: center 60%; } }</style><div class='space-banner'></div>"
+    part3 = "'); background-size: 100%; background-position: center; background-repeat: no-repeat; box-shadow: 0 10px 20px rgba(0,0,0,0.6); margin-bottom: 25px; animation: spaceDrift 20s ease-in-out infinite alternate; } @keyframes spaceDrift { 0% { background-size: 100%; background-position: center; } 100% { background-size: 115%; background-position: center 60%; } }</style><div class='space-banner-new'></div>"
     
-    # Просто склеиваем три текста в один
     banner_html = part1 + part2 + part3
     st.markdown(banner_html, unsafe_allow_html=True)
 
@@ -252,6 +253,5 @@ with t2:
             </script>
             <button onclick="openPrint()" style="width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; font-family:sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ (АЛЬБОМНЫЙ ФОРМАТ)</button>
             """
-            import streamlit.components.v1 as components
             components.html(html_btn, height=75)
             st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
