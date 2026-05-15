@@ -119,31 +119,16 @@ def find_rotations(start_dt):
 # ⛔ БЛОК 3: ИНТЕРФЕЙС
 # ============================================================
 st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>
-# 2. А это вставь в то место, где должен быть баннер (вместо старого кода с ошибкой)
+# 2. А это вставьте на место баннера. Код плоский, без сложных кавычек и скобок:
 img_data = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
 
 if img_data:
-    banner_html = f"""
-    <style>
-        .space-banner {{
-            width: 100%;
-            height: 300px;
-            border-radius: 15px;
-            background-image: url("data:image/jpeg;base64,{img_data}");
-            background-size: 100%;
-            background-position: center;
-            background-repeat: no-repeat;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.6);
-            margin-bottom: 25px;
-            animation: spaceDrift 20s ease-in-out infinite alternate;
-        }}
-        @keyframes spaceDrift {{
-            0% {{ background-size: 100%; background-position: center; }}
-            100% {{ background-size: 115%; background-position: center 60%; }}
-        }}
-    </style>
-    <div class="space-banner"></div>
-    """
+    part1 = "<style>.space-banner { width: 100%; height: 300px; border-radius: 15px; background-image: url('data:image/jpeg;base64,"
+    part2 = img_data
+    part3 = "'); background-size: 100%; background-position: center; background-repeat: no-repeat; box-shadow: 0 10px 20px rgba(0,0,0,0.6); margin-bottom: 25px; animation: spaceDrift 20s ease-in-out infinite alternate; } @keyframes spaceDrift { 0% { background-size: 100%; background-position: center; } 100% { background-size: 115%; background-position: center 60%; } }</style><div class='space-banner'></div>"
+    
+    # Просто склеиваем три текста в один
+    banner_html = part1 + part2 + part3
     st.markdown(banner_html, unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
