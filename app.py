@@ -115,15 +115,15 @@ def find_rotations(start_dt):
 # ⛔ БЛОК 3: ИНТЕРФЕЙС
 # ============================================================
 st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>
-# Читаем нашу картинку (убедись, что название файла совпадает)
+# Читаем нашу картинку (убедись, что функция get_image_base64 добавлена в код)
 img_base64 = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
 
-# CSS и HTML для живого иллюминатора
+# ВАЖНО: Весь этот блок от f""" до """ должен оставаться монолитным
 animated_banner = f"""
 <style>
     .space-porthole-banner {{
         width: 100%;
-        height: 300px; /* Можешь отрегулировать высоту под свой вкус */
+        height: 300px;
         border-radius: 15px;
         background-image: url("data:image/jpeg;base64,{img_base64}");
         background-size: 100%;
@@ -131,7 +131,6 @@ animated_banner = f"""
         background-repeat: no-repeat;
         box-shadow: 0 10px 20px rgba(0,0,0,0.6);
         margin-bottom: 25px;
-        /* Магия движения: плавная пульсация и смещение */
         animation: spaceDrift 20s ease-in-out infinite alternate;
     }}
 
@@ -141,8 +140,8 @@ animated_banner = f"""
             background-position: center;
         }}
         100% {{
-            background-size: 115%; /* Легкий наезд камеры (zoom) */
-            background-position: center 60%; /* Небольшое смещение орбиты */
+            background-size: 115%;
+            background-position: center 60%;
         }}
     }}
 </style>
@@ -150,7 +149,7 @@ animated_banner = f"""
 <div class="space-porthole-banner"></div>
 """
 
-# Выводим баннер в интерфейс
+# Выводим живой баннер в интерфейс
 st.markdown(animated_banner, unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
