@@ -4,7 +4,11 @@ from datetime import datetime, timedelta, time
 import pandas as pd
 import streamlit.components.v1 as components
 import math
+import base64
 
+def get_image_base64(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
 # ============================================================
 # ⛔ БЛОК 1: КОНФИГУРАЦИЯ И СТИЛИ
 # ============================================================
@@ -111,8 +115,43 @@ def find_rotations(start_dt):
 # ⛔ БЛОК 3: ИНТЕРФЕЙС
 # ============================================================
 st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>
-<div class="space-banner"><div class="stars"></div><div class="clock-box" id="live-clock">00:00:00</div></div>""", unsafe_allow_html=True)
-components.html("<script>setInterval(()=>{let d=new Date();let s=new Date(d.getTime()+(d.getTimezoneOffset()*60000)+(3600000*3)).toTimeString().split(' ')[0];window.parent.document.getElementById('live-clock').innerHTML=s;},1000);</script>", height=0)
+# Читаем нашу картинку (убедись, что название файла совпадает)
+img_base64 = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
+
+# CSS и HTML для живого иллюминатора
+animated_banner = f"""
+<style>
+    .space-porthole-banner {{
+        width: 100%;
+        height: 300px; /* Можешь отрегулировать высоту под свой вкус */
+        border-radius: 15px;
+        background-image: url("data:image/jpeg;base64,{img_base64}");
+        background-size: 100%;
+        background-position: center;
+        background-repeat: no-repeat;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+        margin-bottom: 25px;
+        /* Магия движения: плавная пульсация и смещение */
+        animation: spaceDrift 20s ease-in-out infinite alternate;
+    }}
+
+    @keyframes spaceDrift {{
+        0% {{
+            background-size: 100%;
+            background-position: center;
+        }}
+        100% {{
+            background-size: 115%; /* Легкий наезд камеры (zoom) */
+            background-position: center 60%; /* Небольшое смещение орбиты */
+        }}
+    }}
+</style>
+
+<div class="space-porthole-banner"></div>
+"""
+
+# Выводим баннер в интерфейс
+st.markdown(animated_banner, unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
 
