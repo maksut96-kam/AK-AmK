@@ -68,19 +68,38 @@ def format_cell(row):
     return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {row['Deg']:.2f}°<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
 
 def get_planet_data(t):
-    ayan = get_dynamic_ayanamsa(t); earth = eph['earth']
-    p_map = {'Sun': eph['sun'], 'Moon': eph['moon'], 'Mars': eph['mars'], 'Mercury': eph['mercury'], 'Jupiter': eph['jupiter_barycenter'], 'Venus': eph['venus'], 'Saturn': eph['saturn_barycenter']}
+    # Включаем ведический зодиак (Лахири)
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    flags = swe.FLG_SIDEREAL | swe.FLG_SWIEPH
+    
+    # Словарь планет для швейцарских эфемерид
+    p_map = {
+        'Sun': swe.SUN, 
+        'Moon': swe.MOON, 
+        'Mars': swe.MARS, 
+        'Mercury': swe.MERCURY, 
+        'Jupiter': swe.JUPITER, 
+        'Venus': swe.VENUS, 
+        'Saturn': swe.SATURN
+    }
+    
     res = []
-    for name, obj in p_map.items():
-        lon = (earth.at(t).observe(obj).ecliptic_latlon()[1].degrees - ayan) % 360
+    for name, obj_id in p_map.items():
+        # t.ut1 — это точный Юлианский день, который swisseph понимает идеально
+        pos, _ = swe.calc_ut(t.ut1, obj_id, flags)
+        lon = pos[0]
         res.append({'Planet': name, 'Lon': lon, 'Deg': lon % 30})
+        
+    # Сортируем для ротаций АК, AmK и т.д.
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
     df['Role'] = (roles + ['-']*5)[:len(df)]
-    T = (t.tt - 2451545.0) / 36525.0
-    ra_mean_lon = (125.04455 - 1934.13618 * T + 0.002075 * T**2) % 360
-    ra_sid_lon = (ra_mean_lon - ayan) % 360
-    ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_sid_lon, 'Deg': ra_sid_lon % 30, 'Role': '-'}])
+    
+    # Точный расчет Истинного Раху (True Node)
+    pos_rahu, _ = swe.calc_ut(t.ut1, swe.TRUE_NODE, flags)
+    ra_lon = pos_rahu[0]
+    ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': ra_lon % 30, 'Role': '-'}])
+    
     return pd.concat([df, ra_row], ignore_index=True)
 
 def get_lunar_full_data(t_now):
