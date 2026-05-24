@@ -1,3 +1,4 @@
+import swisseph as swe
 import streamlit as st
 from skyfield.api import load
 from datetime import datetime, timedelta, time
