@@ -188,7 +188,36 @@ t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
 with t1:
     now_u = datetime.utcnow(); t_n = ts.utc(now_u.year, now_u.month, now_u.day, now_u.hour, now_u.minute)
     df_n = get_planet_data(t_n); l = get_lunar_full_data(t_n)
+    
+    # ==========================================
+    # 🌙 ЛУННЫЙ АЛТАРЬ + ИИ
+    # ==========================================
+    st.markdown("<h2 class='widget-title' style='color: white; margin-top: 0;'>🌙 Лунный Алтарь</h2>", unsafe_allow_html=True)
+    
+    # Твой HTML-дизайн алтаря (даты здесь уже выводятся динамически через l['full_dt'], проблема с "15 мая" решена)
     st.markdown(f"""<div class="moon-altar"><div style="display: flex; justify-content: space-between; align-items: center;"><div><div style="font-size: 5em; line-height:1;">{l['phase_icon']}</div><div style="font-size: 2.5em; font-weight: bold;">{l['tithi']} лунные сутки</div></div><div style="text-align: right;"><div style="font-size: 2.2em; font-weight: bold;">{l['sign']}</div><div style="color: #00d4ff; font-size:1.6em; font-weight:bold;">{l['nak']}</div></div></div><div style="margin: 25px 0 5px 0;"><small style="color:#778da9; text-transform: uppercase; font-size:1.1em;">Освещенность: {int(l['illum'])}%</small><div style="background: rgba(255,255,255,0.1); height: 18px; border-radius: 9px; margin-top:10px;"><div style="background: linear-gradient(to right, #00d4ff, #e0e1dd); width: {l['illum']}%; height: 18px; border-radius: 9px; box-shadow: 0 0 20px #00d4ff;"></div></div></div><div style="display: flex; justify-content: space-between; font-size: 1.25em; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top:20px;"><div>🌕 <b>Полнолуние:</b><br>{l['full_dt'].strftime('%d.%m %H:%M')}</div><div style="text-align: right;">🌑 <b>Новолуние:</b><br>{l['new_dt'].strftime('%d.%m %H:%M')}</div></div></div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True) # Небольшой визуальный отступ
+    
+    # Модуль ИИ
+    GOOGLE_API_KEY = "ТВОЙ_API_КЛЮЧ_СЮДА" # <-- ВАЖНО! Не забудь вставить ключ от Gemini
+    
+    if st.button("🤖 Сгенерировать ИИ-прогноз по Луне (Forex & XAUUSD)", use_container_width=True):
+        if GOOGLE_API_KEY == "AIzaSyCyxa_ooDPc49A2d5TB9fF3Eam93qUijgo":
+            st.error("⚠️ Ошибка: Техлид, не забудь вставить API-ключ Gemini в коде!")
+        else:
+            with st.spinner("Анализирую нейро-астрологические связи..."):
+                try:
+                    genai.configure(api_key=GOOGLE_API_KEY)
+                    model = genai.GenerativeModel('gemini-pro')
+                    prompt = f"Ты профессиональный финансовый астролог. Вводные данные на сегодня: Луна находится в знаке {l['sign']}, накшатра {l['nak']}, освещенность {l['illum']}%. Напиши аналитический комментарий (до 150 слов) по структуре: 1. Психологический фон и влияние на поведение толпы. 2. Ожидаемая волатильность и тенденции на рынке Forex. 3. Фокус на золото (XAUUSD)."
+                    response = model.generate_content(prompt)
+                    st.info(response.text)
+                except Exception as e:
+                    st.error(f"Сбой связи с ИИ-оракулом: {e}")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    # ==========================================
 
     st.subheader("👑 Основные Караки")
     c1, c2 = st.columns(2)
