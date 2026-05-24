@@ -61,11 +61,29 @@ def get_dynamic_ayanamsa(t):
     # swisseph мгновенно рассчитает точную прецессию с учетом всех астрономических колебаний.
     return swe.get_ayanamsa(t.tt)
 
+
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ КРАСИВЫХ ГРАДУСОВ ---
+def deg_to_dms(decimal_deg):
+    d = int(decimal_deg)
+    m = int(round((decimal_deg - d) * 60))
+    # Защита от переполнения (если округление даст 60 минут)
+    if m == 60:
+        d += 1
+        m = 0
+    return f"{d}° {m:02d}'"
+
+
 def format_cell(row):
     lon = row.get('Lon', 0)
     s_idx = int(lon/30); n_deg = 360/27; n_idx = int(lon / n_deg) % 27
     p_deg = n_deg / 4; pada = int((lon % n_deg) / p_deg) + 1; nav_idx = int((lon * 9) / 30) % 12
-    return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {row['Deg']:.2f}°<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
+    
+    # Применяем конвертер
+    deg_str = deg_to_dms(row['Deg'])
+    
+    # Заменили {row['Deg']:.2f}° на {deg_str}
+    return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {deg_str}<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
+
 
 def get_planet_data(t):
     # Включаем ведический зодиак (Лахири)
@@ -102,6 +120,7 @@ def get_planet_data(t):
     
     return pd.concat([df, ra_row], ignore_index=True)
 
+
 def get_lunar_full_data(t_now):
     earth = eph['earth']
     def get_diff(t_v):
@@ -122,6 +141,7 @@ def get_lunar_full_data(t_now):
     f_dt = find_nearest(180); n_dt = find_nearest(0); now_diff = get_diff(t_now); ayan = get_dynamic_ayanamsa(t_now)
     m_lon = (earth.at(t_now).observe(eph['moon']).ecliptic_latlon()[1].degrees - ayan) % 360
     return {"tithi": math.ceil(now_diff / 12) or 1, "phase_icon": ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(((now_diff + 22.5) % 360) / 45)], "illum": (1 - math.cos(math.radians(now_diff))) / 2 * 100, "sign": ZODIAC_SIGNS[int(m_lon/30)], "nak": NAKSHATRAS[int(m_lon/(360/27))%27], "full_dt": f_dt + timedelta(hours=3), "new_dt": n_dt + timedelta(hours=3)}
+
 
 def find_rotations(start_dt):
     events = []
