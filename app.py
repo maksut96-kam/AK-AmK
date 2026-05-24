@@ -199,12 +199,17 @@ with t1:
 
     st.markdown("<br>", unsafe_allow_html=True) # Небольшой визуальный отступ
     
-    # Модуль ИИ
-    GOOGLE_API_KEY = "ТВОЙ_API_КЛЮЧ_СЮДА" # <-- ВАЖНО! Не забудь вставить ключ от Gemini
+# ==========================================
+    # Модуль ИИ (БЕЗОПАСНЫЙ ВАРИАНТ)
+    # ==========================================
+    if "GOOGLE_API_KEY" in st.secrets:
+        GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    else:
+        GOOGLE_API_KEY = None
     
     if st.button("🤖 Сгенерировать ИИ-прогноз по Луне (Forex & XAUUSD)", use_container_width=True):
-        if GOOGLE_API_KEY == "AIzaSyCyxa_ooDPc49A2d5TB9fF3Eam93qUijgo":
-            st.error("⚠️ Ошибка: Техлид, не забудь вставить API-ключ Gemini в коде!")
+        if not GOOGLE_API_KEY:
+            st.error("⚠️ Ошибка: На сервере не настроен GOOGLE_API_KEY в разделе Secrets!")
         else:
             with st.spinner("Анализирую нейро-астрологические связи..."):
                 try:
