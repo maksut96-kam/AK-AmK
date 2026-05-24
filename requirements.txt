@@ -3,3 +3,4 @@ skyfield
 pandas
 streamlit-autorefresh
 pyswisseph
+google-generativeai
