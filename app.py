@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit.components.v1 as components
 import math
 import base64
+import google.generativeai as genai # Убедись, что библиотека установлена: pip install google-generativeai
 
 def get_image_base64(image_path):
     try:
