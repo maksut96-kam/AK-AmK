@@ -2,3 +2,4 @@ streamlit
 skyfield
 pandas
 streamlit-autorefresh
+pyswisseph
