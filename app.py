@@ -214,7 +214,7 @@ with t1:
             with st.spinner("Анализирую нейро-астрологические связи..."):
                 try:
                     genai.configure(api_key=GOOGLE_API_KEY)
-                    model = genai.GenerativeModel('gemini-pro')
+                    model = genai.GenerativeModel('gemini-1.5-pro')
                     prompt = f"Ты профессиональный финансовый астролог. Вводные данные на сегодня: Луна находится в знаке {l['sign']}, накшатра {l['nak']}, освещенность {l['illum']}%. Напиши аналитический комментарий (до 150 слов) по структуре: 1. Психологический фон и влияние на поведение толпы. 2. Ожидаемая волатильность и тенденции на рынке Forex. 3. Фокус на золото (XAUUSD)."
                     response = model.generate_content(prompt)
                     st.info(response.text)
