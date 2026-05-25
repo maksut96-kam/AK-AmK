@@ -154,16 +154,21 @@ def find_rotations(start_dt):
     events = []
     t_start = ts.utc(start_dt.year, start_dt.month, start_dt.day, start_dt.hour, start_dt.minute)
     df_now = get_planet_data(t_start); current_pair = f"{df_now.iloc[0]['Planet']}-{df_now.iloc[1]['Planet']}"
-    for i in range(1, 1500, 10):
+    
+    # Ищем на 14 дней назад с шагом 3 минуты
+    for i in range(1, 20160, 3):
         t_check_dt = start_dt - timedelta(minutes=i)
         df_p = get_planet_data(ts.utc(t_check_dt.year, t_check_dt.month, t_check_dt.day, t_check_dt.hour, t_check_dt.minute))
         if f"{df_p.iloc[0]['Planet']}-{df_p.iloc[1]['Planet']}" != current_pair:
             events.append({"type": "Прошлая", "dt": t_check_dt + timedelta(hours=3), "ak": df_p.iloc[0], "amk": df_p.iloc[1]}); break
-    for i in range(1, 1500, 10):
+            
+    # Ищем на 14 дней вперед с шагом 3 минуты
+    for i in range(1, 20160, 3):
         t_check_dt = start_dt + timedelta(minutes=i)
         df_f = get_planet_data(ts.utc(t_check_dt.year, t_check_dt.month, t_check_dt.day, t_check_dt.hour, t_check_dt.minute))
         if f"{df_f.iloc[0]['Planet']}-{df_f.iloc[1]['Planet']}" != current_pair:
             events.append({"type": "Следующая", "dt": t_check_dt + timedelta(hours=3), "ak": df_f.iloc[0], "amk": df_f.iloc[1]}); break
+            
     return events
 
 # ============================================================
@@ -199,7 +204,7 @@ with t1:
 
     st.markdown("<br>", unsafe_allow_html=True) # Небольшой визуальный отступ
     
-# ==========================================
+    # ==========================================
     # Модуль ИИ (БЕЗОПАСНЫЙ ВАРИАНТ)
     # ==========================================
     if "GOOGLE_API_KEY" in st.secrets:
