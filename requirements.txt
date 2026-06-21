@@ -1,6 +1,6 @@
 setuptools
 wheel
-pyswisseph==2.10.3.1
+pyswisseph
 streamlit
 streamlit-autorefresh
 skyfield
