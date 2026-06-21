@@ -1,8 +1,8 @@
---no-cache-dir
+setuptools
+wheel
+pyswisseph==2.21.0
 streamlit
+streamlit-autorefresh
 skyfield
 pandas
-streamlit-autorefresh
-pyswisseph
 google-generativeai
-
