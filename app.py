@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit.components.v1 as components
 import math
 import base64
-import google.generativeai as genai # Убедись, что библиотека установлена: pip install google-generativeai
+import google.generativeai as genai
 
 def get_image_base64(image_path):
     try:
@@ -19,6 +19,7 @@ def get_image_base64(image_path):
 # ⛔ БЛОК 1: КОНФИГУРАЦИЯ И СТИЛИ
 # ============================================================
 st.set_page_config(page_title="Julia Assistant", layout="wide")
+
 # --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА ---
 def add_video_background():
     video_html = """
@@ -64,8 +65,9 @@ def add_video_background():
     """
     st.markdown(video_html, unsafe_allow_html=True)
 
-# Вызываем функцию сразу после заголовка
+# Вызываем видео-фон
 add_video_background()
+
 @st.cache_resource
 def init_engine():
     ts = load.timescale()
@@ -93,15 +95,13 @@ st.markdown("""
 <style>
     .main-title { font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 3em; color: white; margin: 0; }
     .sub-title { color: #94a3b8; font-size: 1.3em; letter-spacing: 5px; text-transform: uppercase; font-weight: 600; margin-top: -5px; }
-    .space-banner { position: relative; width: 100%; height: 180px; background: #000814; border-radius: 15px; overflow: hidden; border: 1px solid #1b263b; margin: 15px 0; }
-    .stars { position: absolute; width: 200%; height: 200%; background: url('https://www.transparenttextures.com/patterns/stardust.png'); opacity: 0.9; animation: rotateStars 120s infinite linear; }
-    @keyframes rotateStars { from { transform: translate(-25%, -25%) rotate(0deg); } to { transform: translate(-25%, -25%) rotate(360deg); } }
-    .clock-box { position: absolute; bottom: 15px; right: 20px; background: rgba(13,27,42,0.9); padding: 10px 20px; border-radius: 10px; color: white; font-family: monospace; border: 1px solid #415a77; z-index: 10; font-size: 1.5em; }
-    .moon-altar { background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); border-radius: 20px; padding: 30px; border: 1px solid #415a77; color: #e0e1dd; }
+    .moon-altar { background: linear-gradient(135deg, rgba(13,27,42,0.8) 0%, rgba(27,38,59,0.8) 100%); border-radius: 20px; padding: 30px; border: 1px solid #415a77; color: #e0e1dd; }
     .widget-title { color:#778da9; font-size: 1.6em; font-weight: 800; margin-bottom: 15px; text-transform: uppercase; }
     .custom-metric-box { background: rgba(65, 90, 119, 0.25); padding: 25px; border-radius: 15px; border: 1px solid #778da9; height: 100%; }
 </style>
 """, unsafe_allow_html=True)
+
+# дальше весь твой блок расчетов (get_dynamic_ayanamsa, get_planet_data и т.д.) оставляешь без изменений!
 
 # ============================================================
 # ⛔ БЛОК 2: ЯДРО РАСЧЕТОВ
