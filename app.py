@@ -20,52 +20,56 @@ def get_image_base64(image_path):
 # ============================================================
 st.set_page_config(page_title="Julia Assistant", layout="wide")
 
-# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА ---
-def add_video_background():
-    video_html = """
-    <style>
-        /* Фиксируем видео на фоне */
-        [data-testid="stAppViewContainer"] {
-            background: transparent;
-        }
-        [data-testid="stMainBlockContainer"] {
-            background: transparent;
-        }
-        .video-bg {
-            position: fixed;
-            right: 0;
-            bottom: 0;
-            min-width: 100%;
-            min-height: 100%;
-            z-index: -1;
-            object-fit: cover;
-        }
-        /* Полупрозрачная маска для читаемости текста */
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: -1;
-        }
-        /* Делаем все карточки полупрозрачными */
-        [data-testid="stVerticalBlock"] {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-    </style>
-    <video autoplay loop muted playsinline class="video-bg">
-        <source src="https://raw.githubusercontent.com/maksut96-kam/ak-amk/main/space_background.mp4" type="video/mp4">
-    </video>
-    <div class="overlay"></div>
-    """
-    st.markdown(video_html, unsafe_allow_html=True)
+# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА (Локальная загрузка через Base64) ---
+def add_video_background(video_path="space_background.mp4"):
+    try:
+        with open(video_path, "rb") as f:
+            video_bytes = f.read()
+        b64_video = base64.b64encode(video_bytes).decode()
+        
+        video_html = f"""
+        <style>
+            [data-testid="stAppViewContainer"] {{
+                background: transparent !important;
+            }}
+            [data-testid="stMainBlockContainer"] {{
+                background: transparent !important;
+            }}
+            .video-bg {{
+                position: fixed;
+                right: 0;
+                bottom: 0;
+                min-width: 100%;
+                min-height: 100%;
+                z-index: -1;
+                object-fit: cover;
+            }}
+            .overlay {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: -1;
+            }}
+            [data-testid="stVerticalBlock"] {{
+                background: rgba(255, 255, 255, 0.05);
+                padding: 20px;
+                border-radius: 15px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }}
+        </style>
+        <video autoplay loop muted playsinline class="video-bg">
+            <source src="data:video/mp4;base64,{b64_video}" type="video/mp4">
+        </video>
+        <div class="overlay"></div>
+        """
+        st.markdown(video_html, unsafe_allow_html=True)
+    except Exception as e:
+        st.warning(f"Не удалось загрузить видео-фон: {e}")
 
-# Вызываем видео-фон
+# Вызываем функцию
 add_video_background()
 
 @st.cache_resource
