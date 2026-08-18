@@ -20,7 +20,7 @@ def get_image_base64(image_path):
 # ============================================================
 st.set_page_config(page_title="Julia Assistant", layout="wide")
 
-# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА (Локальная загрузка через Base64) ---
+# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА (С полной прозрачностью всех контейнеров) ---
 def add_video_background(video_path="space_background.mp4"):
     try:
         with open(video_path, "rb") as f:
@@ -29,45 +29,57 @@ def add_video_background(video_path="space_background.mp4"):
         
         video_html = f"""
         <style>
-            [data-testid="stAppViewContainer"] {{
+            /* 1. Делаем прозрачными абсолютно все базовые контейнеры Streamlit */
+            .stApp, 
+            [data-testid="stAppViewContainer"], 
+            [data-testid="stHeader"], 
+            [data-testid="stMain"], 
+            [data-testid="stMainBlockContainer"],
+            [data-testid="stToolbar"] {{
+                background-color: transparent !important;
                 background: transparent !important;
             }}
-            [data-testid="stMainBlockContainer"] {{
-                background: transparent !important;
-            }}
+
+            /* 2. Фиксируем видео-фон строго под всеми элементами */
             .video-bg {{
-                position: fixed;
-                right: 0;
-                bottom: 0;
-                min-width: 100%;
-                min-height: 100%;
-                z-index: -1;
-                object-fit: cover;
-            }}
-            .overlay {{
                 position: fixed;
                 top: 0;
                 left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.6);
-                z-index: -1;
+                width: 100vw;
+                height: 100vh;
+                object-fit: cover;
+                z-index: -9999;
+                pointer-events: none;
             }}
-            [data-testid="stVerticalBlock"] {{
-                background: rgba(255, 255, 255, 0.05);
-                padding: 20px;
-                border-radius: 15px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
+
+            /* 3. Легкое затемнение поверх видео для читаемости текста */
+            .video-overlay {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 8, 20, 0.55);
+                z-index: -9998;
+                pointer-events: none;
+            }}
+
+            /* 4. Стильные полупрозрачные карточки для блоков */
+            [data-testid="stVerticalBlock"] > div {{
+                background: rgba(13, 27, 42, 0.4) !important;
+                border-radius: 12px;
+                backdrop-filter: blur(4px);
             }}
         </style>
+
         <video autoplay loop muted playsinline class="video-bg">
             <source src="data:video/mp4;base64,{b64_video}" type="video/mp4">
         </video>
-        <div class="overlay"></div>
+        <div class="video-overlay"></div>
         """
         st.markdown(video_html, unsafe_allow_html=True)
     except Exception as e:
-        st.warning(f"Не удалось загрузить видео-фон: {e}")
+        st.warning(f"Ошибка загрузки видео-фона: {e}")
 
 # Вызываем функцию
 add_video_background()
