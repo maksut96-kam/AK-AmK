@@ -20,7 +20,7 @@ def get_image_base64(image_path):
 # ============================================================
 st.set_page_config(page_title="Julia Assistant", layout="wide")
 
-# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА (С полной прозрачностью всех контейнеров) ---
+# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА (Безопасный и аккуратный вариант) ---
 def add_video_background(video_path="space_background.mp4"):
     try:
         with open(video_path, "rb") as f:
@@ -29,18 +29,12 @@ def add_video_background(video_path="space_background.mp4"):
         
         video_html = f"""
         <style>
-            /* 1. Делаем прозрачными абсолютно все базовые контейнеры Streamlit */
-            .stApp, 
-            [data-testid="stAppViewContainer"], 
-            [data-testid="stHeader"], 
-            [data-testid="stMain"], 
-            [data-testid="stMainBlockContainer"],
-            [data-testid="stToolbar"] {{
-                background-color: transparent !important;
+            /* Прозрачный главный фон страницы */
+            .stApp {{
                 background: transparent !important;
             }}
-
-            /* 2. Фиксируем видео-фон строго под всеми элементами */
+            
+            /* Видео во весь экран на заднем плане */
             .video-bg {{
                 position: fixed;
                 top: 0;
@@ -48,27 +42,20 @@ def add_video_background(video_path="space_background.mp4"):
                 width: 100vw;
                 height: 100vh;
                 object-fit: cover;
-                z-index: -9999;
+                z-index: -2;
                 pointer-events: none;
             }}
 
-            /* 3. Легкое затемнение поверх видео для читаемости текста */
+            /* Легкая темная вуаль для сохранения контраста */
             .video-overlay {{
                 position: fixed;
                 top: 0;
                 left: 0;
                 width: 100vw;
                 height: 100vh;
-                background: rgba(0, 8, 20, 0.55);
-                z-index: -9998;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: -1;
                 pointer-events: none;
-            }}
-
-            /* 4. Стильные полупрозрачные карточки для блоков */
-            [data-testid="stVerticalBlock"] > div {{
-                background: rgba(13, 27, 42, 0.4) !important;
-                border-radius: 12px;
-                backdrop-filter: blur(4px);
             }}
         </style>
 
@@ -79,7 +66,7 @@ def add_video_background(video_path="space_background.mp4"):
         """
         st.markdown(video_html, unsafe_allow_html=True)
     except Exception as e:
-        st.warning(f"Ошибка загрузки видео-фона: {e}")
+        st.warning(f"Ошибка видео-фона: {e}")
 
 # Вызываем функцию
 add_video_background()
