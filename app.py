@@ -20,7 +20,7 @@ def get_image_base64(image_path):
 # ============================================================
 st.set_page_config(page_title="Julia Assistant", layout="wide")
 
-# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА (Безопасный и аккуратный вариант) ---
+# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА (С идеальной читаемостью текста) ---
 def add_video_background(video_path="space_background.mp4"):
     try:
         with open(video_path, "rb") as f:
@@ -29,12 +29,13 @@ def add_video_background(video_path="space_background.mp4"):
         
         video_html = f"""
         <style>
-            /* Прозрачный главный фон страницы */
+            /* 1. Главный фон страницы — прозрачный */
             .stApp {{
                 background: transparent !important;
+                color: #ffffff !important;
             }}
             
-            /* Видео во весь экран на заднем плане */
+            /* 2. Видео во весь экран */
             .video-bg {{
                 position: fixed;
                 top: 0;
@@ -46,16 +47,46 @@ def add_video_background(video_path="space_background.mp4"):
                 pointer-events: none;
             }}
 
-            /* Легкая темная вуаль для сохранения контраста */
+            /* 3. Оптимальное затемнение видео для читаемости (60% затемнения) */
             .video-overlay {{
                 position: fixed;
                 top: 0;
                 left: 0;
                 width: 100vw;
                 height: 100vh;
-                background: rgba(0, 0, 0, 0.5);
+                background: rgba(0, 5, 15, 0.65);
                 z-index: -1;
                 pointer-events: none;
+            }}
+
+            /* 4. Стильные полупрозрачные карточки с БЕЛЫМ контрастным текстом */
+            .custom-metric-box {{
+                background: rgba(15, 23, 42, 0.65) !important;
+                border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                border-radius: 15px !important;
+                padding: 20px !important;
+                color: #ffffff !important;
+                backdrop-filter: blur(8px);
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            }}
+
+            /* 5. Заголовки и тексты внутри карточек */
+            .widget-title {{
+                color: #38bdf8 !important; /* Яркий голубой цвет для заголовков */
+                font-size: 1.3em !important;
+                font-weight: 800 !important;
+                margin-bottom: 12px !important;
+            }}
+
+            /* 6. Делаем весь общий текст приложения светлым */
+            p, span, label, div {{
+                color: #f1f5f9;
+            }}
+            
+            /* 7. Подсветка названий накшатр */
+            span[style*="color:#00d4ff"] {{
+                color: #38bdf8 !important;
+                text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
             }}
         </style>
 
