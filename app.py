@@ -155,11 +155,8 @@ def deg_to_dms(decimal_deg):
     return f"{d}° {m:02d}'"
 
 def check_gandanta(lon):
-    # Ганданты: стыки водных и огненных знаков (Рыбы-Овен: 353-7 гр, Рак-Лев: 93-107 гр, Скорпион-Стрелец: 213-227 гр)
-    # Упрощенно проверяем первые 1 градус или последние 1 градус знака на стыках стихий
     deg_in_sign = lon % 30
     sign_idx = int(lon / 30)
-    # Стыки 4 стихий (Вода -> Огонь): Рыбы (11) -> Овен (0), Рак (3) -> Лев (4), Скорпион (7) -> Стрелец (8)
     is_gandanta = False
     if sign_idx in [0, 3, 7, 4, 8, 11]:
         if deg_in_sign <= 1.0 or deg_in_sign >= 29.0:
@@ -181,7 +178,8 @@ def format_cell(row):
         inv_deg = 30.0 - row['Deg']
         inv_d = int(inv_deg)
         inv_m = int((inv_deg - inv_d) * 60)
-        extra_str = f" <span style='color:#fca5a5; font-size:0.9em;'>(обр: {inv_d}°{inv_m:02d}'{" 🔥 ГАНДАНТА" if check_gandanta(lon) else ""})</span>"
+        rahu_gandanta_text = " 🔥 ГАНДАНТА" if check_gandanta(lon) else ""
+        extra_str = f" <span style='color:#fca5a5; font-size:0.9em;'>(обр: {inv_d}°{inv_m:02d}'{rahu_gandanta_text})</span>"
 
     return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {deg_str}{gandanta_mark}{extra_str}<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
 
@@ -211,9 +209,8 @@ def get_planet_data(t):
     
     pos_rahu, _ = swe.calc_ut(t.ut1, swe.TRUE_NODE, flags)
     ra_lon = pos_rahu[0]
-    ra_deg_inv = 30.0 - (ra_lon % 30) # инверсный градус Раху
+    ra_deg_inv = 30.0 - (ra_lon % 30)
     
-    # Проверяем, мощнее ли градус Раху (инверсный) относительно АК или AmK
     ak_deg = df.iloc[0]['Deg']
     amk_deg = df.iloc[1]['Deg']
     rahu_note = "-"
@@ -329,7 +326,6 @@ with t1:
                 except Exception as e:
                     st.error(f"Сбой связи с ИИ-оракулом: {e}")
 
-    # Кнопка печати ИИ-прогноза
     if 'last_ai_forecast' in st.session_state:
         ai_p_title = st.session_state.get('last_ai_period', '')
         ai_f_content = st.session_state['last_ai_forecast'].replace('\n', '<br>')
@@ -359,7 +355,7 @@ with t1:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 1. Сначала блок РАХУ (над Основными караками, т.к. влияет на золото)
+    # 1. Блок РАХУ (выше Основных карак)
     st.subheader("🐉 Раху (True Node)")
     ra_val = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
     wr1, wr2 = st.columns([1, 2])
@@ -368,7 +364,7 @@ with t1:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. Затем Основные караки
+    # 2. Основные караки
     st.subheader("👑 Основные Караки")
     c1, c2 = st.columns(2)
     with c1: st.markdown(f'<div class="custom-metric-box"><div class="widget-title">💎 ATMAKARAKA</div>{format_cell(df_n.iloc[0])}</div>', unsafe_allow_html=True)
@@ -384,7 +380,7 @@ with t1:
     df_v = df_n.copy(); df_v['Детализация'] = df_v.apply(format_cell, axis=1)
     st.write(df_v[['Role', 'Planet', 'Deg', 'Детализация']].to_html(escape=False, index=False).replace('\n', ''), unsafe_allow_html=True)
 
-    # 3. Баннер с планетами в самом низу
+    # 3. Баннер в самом низу
     img_data = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
     if img_data:
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -459,7 +455,6 @@ with t2:
             raw_html = df_res.to_html(escape=False, index=False).replace('\n', '')
             print_title = f"График ротаций с {ds.strftime('%d.%m.%Y')} по {de.strftime('%d.%m.%Y')}"
             
-            # Печать таблицы с местом для комментариев ручкой после каждой ротации
             html_btn = f"""
             <script>
             function openPrint() {{
@@ -472,12 +467,11 @@ with t2:
                     table {{ border-collapse: collapse; width: 100%; }} 
                     th, td {{ border: 1px solid #000; padding: 6px; font-size: 10px; text-align: left; }}
                     th {{ background-color: #f2f2f2; }}
-                    /* Пустое место для заметок ручкой после каждой строки */
                     tr {{ page-break-inside: avoid; }}
                     td::after {{
                         content: "";
                         display: block;
-                        height: 35px; /* Место для ручки */
+                        height: 35px;
                     }}
                 </style>
                 </head><body>
