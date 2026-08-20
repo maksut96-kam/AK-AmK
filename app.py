@@ -19,7 +19,7 @@ def get_image_base64(image_path):
 img_data = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
 
 # ============================================================
-# ⛔ БЛОК 1: КОНФИГУРАЦИЯ И СТИЛИ
+# БЛОК 1: КОНФИГУРАЦИЯ И СТИЛИ
 # ============================================================
 st.set_page_config(page_title="Julia Assistant", layout="wide")
 
@@ -251,10 +251,9 @@ def calculate_karakas(dt):
 GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", "")
 
 # ============================================================
-# ⛔ БЛОК 2: ПРЯМОЙ ЭФИР И ИИ-ПРОГНОЗ
+# БЛОК 2: ПРЯМОЙ ЭФИР И ИИ-ПРОГНОЗ
 # ============================================================
 
-# ВЕРХНИЙ ПРОЗРАЧНЫЙ БЛОК-«ВОЗДУХ» ДЛЯ ОБЗОРА ЧЕРНОЙ ДЫРЫ В ФОНЕ
 st.markdown("<div style='height: 180px;'></div>", unsafe_allow_html=True)
 
 now_utc = datetime.utcnow()
@@ -278,7 +277,6 @@ header_box = f"""
 """
 st.markdown(header_box, unsafe_allow_html=True)
 
-# ИИ-кнопка и генератор
 if st.button("🤖 Сгенерировать ИИ-прогноз по Луне и Каракам (Forex & XAUUSD)", use_container_width=True):
     if not GOOGLE_API_KEY:
         st.error("⚠️ Ошибка: В секретах не настроен GOOGLE_API_KEY!")
@@ -321,7 +319,7 @@ if st.button("🤖 Сгенерировать ИИ-прогноз по Луне 
                 st.error(f"Сбой связи с ИИ-оракулом: {e}")
 
 # ============================================================
-# ⛔ БЛОК 3: ИНТЕРАКТИВНЫЙ КАЛЬКУЛЯТОР ТАБЛИЦ
+# БЛОК 3: ИНТЕРАКТИВНЫЙ КАЛЬКУЛЯТОР ТАБЛИЦ
 # ============================================================
 st.markdown("<br>", unsafe_allow_html=True)
 st.subheader("📅 Интерактивный калькулятор Чара Карак")
@@ -374,7 +372,7 @@ df_table = build_display_table(df_res)
 st.write(df_table.to_html(escape=False, index=False), unsafe_allow_html=True)
 
 # ============================================================
-# ⛔ БЛОК 4: НИЖНИЙ БАННЕР (ПОД ВСЕМИ ТАБЛИЦАМИ)
+# БЛОК 4: НИЖНИЙ БАННЕР (ПОД ВСЕМИ ТАБЛИЦАМИ)
 # ============================================================
 st.markdown("<br><hr style='border-color: rgba(255,255,255,0.1);'><br>", unsafe_allow_html=True)
 
