@@ -29,13 +29,10 @@ def add_video_background(video_path="space_background.mp4"):
         
         video_html = f"""
         <style>
-            /* 1. Главный фон страницы — прозрачный */
             .stApp {{
                 background: transparent !important;
                 color: #ffffff !important;
             }}
-            
-            /* 2. Видео во весь экран */
             .video-bg {{
                 position: fixed;
                 top: 0;
@@ -46,8 +43,6 @@ def add_video_background(video_path="space_background.mp4"):
                 z-index: -2;
                 pointer-events: none;
             }}
-
-            /* 3. Оптимальное затемнение видео для читаемости (60% затемнения) */
             .video-overlay {{
                 position: fixed;
                 top: 0;
@@ -58,8 +53,6 @@ def add_video_background(video_path="space_background.mp4"):
                 z-index: -1;
                 pointer-events: none;
             }}
-
-            /* 4. Стильные полупрозрачные карточки с БЕЛЫМ контрастным текстом */
             .custom-metric-box {{
                 background: rgba(15, 23, 42, 0.65) !important;
                 border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -69,27 +62,19 @@ def add_video_background(video_path="space_background.mp4"):
                 backdrop-filter: blur(8px);
                 box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             }}
-
-            /* 5. Заголовки и тексты внутри карточек */
             .widget-title {{
-                color: #38bdf8 !important; /* Яркий голубой цвет для заголовков */
+                color: #38bdf8 !important;
                 font-size: 1.3em !important;
                 font-weight: 800 !important;
                 margin-bottom: 12px !important;
             }}
-
-            /* 6. Делаем весь общий текст приложения светлым */
             p, span, label, div {{
                 color: #f1f5f9;
             }}
-            
-            /* 7. Подсветка названий накшатр */
             span[style*="color:#00d4ff"] {{
                 color: #38bdf8 !important;
                 text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
             }}
-
-            /* Стилизация кнопки ИИ для максимальной читаемости */
             .stButton > button {{
                 width: 100% !important;
                 background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9)) !important;
@@ -102,7 +87,6 @@ def add_video_background(video_path="space_background.mp4"):
                 transition: all 0.3s ease-in-out !important;
                 box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
             }}
-
             .stButton > button:hover {{
                 background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(30, 41, 59, 0.9)) !important;
                 color: #ffffff !important;
@@ -111,7 +95,6 @@ def add_video_background(video_path="space_background.mp4"):
                 transform: translateY(-2px);
             }}
         </style>
-
         <video autoplay loop muted playsinline class="video-bg">
             <source src="data:video/mp4;base64,{b64_video}" type="video/mp4">
         </video>
@@ -121,7 +104,6 @@ def add_video_background(video_path="space_background.mp4"):
     except Exception as e:
         st.warning(f"Ошибка видео-фона: {e}")
 
-# Вызываем функцию
 add_video_background()
 
 @st.cache_resource
@@ -172,22 +154,36 @@ def deg_to_dms(decimal_deg):
         m = 0
     return f"{d}° {m:02d}'"
 
+def check_gandanta(lon):
+    # Ганданты: стыки водных и огненных знаков (Рыбы-Овен: 353-7 гр, Рак-Лев: 93-107 гр, Скорпион-Стрелец: 213-227 гр)
+    # Упрощенно проверяем первые 1 градус или последние 1 градус знака на стыках стихий
+    deg_in_sign = lon % 30
+    sign_idx = int(lon / 30)
+    # Стыки 4 стихий (Вода -> Огонь): Рыбы (11) -> Овен (0), Рак (3) -> Лев (4), Скорпион (7) -> Стрелец (8)
+    is_gandanta = False
+    if sign_idx in [0, 3, 7, 4, 8, 11]:
+        if deg_in_sign <= 1.0 or deg_in_sign >= 29.0:
+            is_gandanta = True
+    return is_gandanta
+
 def format_cell(row):
     lon = row.get('Lon', 0)
     s_idx = int(lon/30); n_deg = 360/27; n_idx = int(lon / n_deg) % 27
     p_deg = n_deg / 4; pada = int((lon % n_deg) / p_deg) + 1; nav_idx = int((lon * 9) / 30) % 12
     
     deg_str = deg_to_dms(row['Deg'])
+    gandanta_mark = ""
+    if check_gandanta(lon):
+        gandanta_mark = " <span style='background:#b91c1c; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;'>🔥 ГАНДАНТА</span>"
     
-    # Добавляем инфо по Раху, если это он
     extra_str = ""
     if row.get('Planet') == 'Rahu':
         inv_deg = 30.0 - row['Deg']
         inv_d = int(inv_deg)
         inv_m = int((inv_deg - inv_d) * 60)
-        extra_str = f" <span style='color:#fca5a5; font-size:0.9em;'>(обр: {inv_d}°{inv_m:02d}')</span>"
+        extra_str = f" <span style='color:#fca5a5; font-size:0.9em;'>(обр: {inv_d}°{inv_m:02d}'{" 🔥 ГАНДАНТА" if check_gandanta(lon) else ""})</span>"
 
-    return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {deg_str}{extra_str}<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
+    return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {deg_str}{gandanta_mark}{extra_str}<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
 
 def get_planet_data(t):
     swe.set_sid_mode(swe.SIDM_LAHIRI)
@@ -213,10 +209,20 @@ def get_planet_data(t):
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
     df['Role'] = (roles + ['-']*5)[:len(df)]
     
-    # Точный расчет Истинного Раху (True Node)
     pos_rahu, _ = swe.calc_ut(t.ut1, swe.TRUE_NODE, flags)
     ra_lon = pos_rahu[0]
-    ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': ra_lon % 30, 'Role': '-'}])
+    ra_deg_inv = 30.0 - (ra_lon % 30) # инверсный градус Раху
+    
+    # Проверяем, мощнее ли градус Раху (инверсный) относительно АК или AmK
+    ak_deg = df.iloc[0]['Deg']
+    amk_deg = df.iloc[1]['Deg']
+    rahu_note = "-"
+    if ra_deg_inv > ak_deg:
+        rahu_note = "⭐ Сверх-АК (Раху выше)"
+    elif ra_deg_inv > amk_deg:
+        rahu_note = "⭐ Сверх-AmK (Раху выше)"
+
+    ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': ra_lon % 30, 'Role': rahu_note}])
     
     return pd.concat([df, ra_row], ignore_index=True)
 
@@ -265,16 +271,8 @@ def find_rotations(start_dt):
 # ============================================================
 st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>""", unsafe_allow_html=True)
 
-# --- АНИМИРОВАННЫЙ БАННЕР ---
-img_data = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
-
-if img_data:
-    part1 = "<style>.space-banner-new { width: 100%; height: 300px; border-radius: 15px; background-image: url('data:image/jpeg;base64,"
-    part2 = img_data
-    part3 = "'); background-size: 100%; background-position: center; background-repeat: no-repeat; box-shadow: 0 10px 20px rgba(0,0,0,0.6); margin-bottom: 25px; animation: spaceDrift 20s ease-in-out infinite alternate; } @keyframes spaceDrift { 0% { background-size: 100%; background-position: center; } 100% { background-size: 115%; background-position: center 60%; } }</style><div class='space-banner-new'></div>"
-    
-    banner_html = part1 + part2 + part3
-    st.markdown(banner_html, unsafe_allow_html=True)
+# Отступ под логотипом (высота ~200 пикселей, чтобы была видна «дыра» на фоне)
+st.markdown("<div style='height: 200px;'></div>", unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
 
@@ -285,18 +283,20 @@ with t1:
     st.subheader("🌙 Лунный Алтарь")
     st.markdown(f"""<div class="moon-altar"><div style="display: flex; justify-content: space-between; align-items: center;"><div><div style="font-size: 5em; line-height:1;">{l['phase_icon']}</div><div style="font-size: 2.5em; font-weight: bold;">{l['tithi']} лунные сутки</div></div><div style="text-align: right;"><div style="font-size: 2.2em; font-weight: bold;">{l['sign']}</div><div style="color: #00d4ff; font-size:1.6em; font-weight:bold;">{l['nak']}</div></div></div><div style="margin: 25px 0 5px 0;"><small style="color:#778da9; text-transform: uppercase; font-size:1.1em;">Освещенность: {int(l['illum'])}%</small><div style="background: rgba(255,255,255,0.1); height: 18px; border-radius: 9px; margin-top:10px;"><div style="background: linear-gradient(to right, #00d4ff, #e0e1dd); width: {l['illum']}%; height: 18px; border-radius: 9px; box-shadow: 0 0 20px #00d4ff;"></div></div></div><div style="display: flex; justify-content: space-between; font-size: 1.25em; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top:20px;"><div>🌕 <b>Полнолуние:</b><br>{l['full_dt'].strftime('%d.%m %H:%M')}</div><div style="text-align: right;">🌑 <b>Новолуние:</b><br>{l['new_dt'].strftime('%d.%m %H:%M')}</div></div></div>""", unsafe_allow_html=True)
 
+    rots_for_ai = find_rotations(now_u)
+    ai_period_str = "Текущий момент"
+    if len(rots_for_ai) >= 2:
+        ai_period_str = f"С ротации {rots_for_ai[0]['dt'].strftime('%d.%m %H:%M')} по {rots_for_ai[1]['dt'].strftime('%d.%m %H:%M')}"
+
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # ==========================================
-    # Модуль ИИ (gemini-2.5-flash с учетом Раху и Карака)
-    # ==========================================
     GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", "")
     
     if st.button("🤖 Сгенерировать ИИ-прогноз по Луне и Каракам (Forex & XAUUSD)", use_container_width=True):
         if not GOOGLE_API_KEY:
             st.error("⚠️ Ошибка: На сервере не настроен GOOGLE_API_KEY в разделе Secrets!")
         else:
-            with st.spinner("Анализирую нейро-астрологические связи (AK, AmK, Раху)..."):
+            with st.spinner("Анализирую нейро-астрологические связи..."):
                 try:
                     genai.configure(api_key=GOOGLE_API_KEY)
                     model = genai.GenerativeModel('gemini-2.5-flash')
@@ -315,19 +315,60 @@ with t1:
 4. AMATYAKARAKA (AmK): {amk_p}.
 5. РАХУ: Активен в транзитах (фактор спекуляций, ложных пробоев и резких импульсов).
 
-Сформируй лаконичный отчёт (до 200 слов) по структуре:
-• 🧠 Психологический фон рынка (Луна + AK {ak_p}).
-• 👥 Поведение толпы и трейдеров (AmK {amk_p}).
-• ⚡ Forex & Волатильность (учет фактора Раху).
-• 🏆 Золото (XAUUSD): фокус через Солнце в {sun_sign}.
+Сформируй лаконичный отчёт (до 200 слов):
+• 🧠 Психологический фон рынка.
+• 👥 Поведение толпы и трейдеров.
+• ⚡ Forex & Волатильность (Раху).
+• 🏆 Золото (XAUUSD).
 """
                     response = model.generate_content(prompt)
-                    st.info(response.text)
+                    ai_text = response.text
+                    st.session_state['last_ai_forecast'] = ai_text
+                    st.session_state['last_ai_period'] = ai_period_str
+                    st.info(ai_text)
                 except Exception as e:
                     st.error(f"Сбой связи с ИИ-оракулом: {e}")
-    
+
+    # Кнопка печати ИИ-прогноза
+    if 'last_ai_forecast' in st.session_state:
+        ai_p_title = st.session_state.get('last_ai_period', '')
+        ai_f_content = st.session_state['last_ai_forecast'].replace('\n', '<br>')
+        ai_print_html = f"""
+        <script>
+        function printAI() {{
+            const win = window.open('', '_blank');
+            win.document.write(`<html><head><title>Печать ИИ-прогноза</title>
+            <style>
+                body {{ font-family: sans-serif; padding: 30px; color: #111; }}
+                h2 {{ color: #0284c7; border-bottom: 2px solid #0284c7; padding-bottom: 10px; }}
+                .period {{ font-weight: bold; color: #475569; margin-bottom: 20px; font-size: 14px; }}
+                .content {{ font-size: 16px; line-height: 1.6; }}
+            </style>
+            </head><body>
+                <h2>🤖 Финансово-астрологический ИИ-прогноз (Forex & XAUUSD)</h2>
+                <div class="period">⏱️ Период действия: {ai_p_title}</div>
+                <div class="content">{ai_f_content}</div>
+            </body></html>`);
+            win.document.close();
+            setTimeout(() => {{ win.print(); }}, 500);
+        }}
+        </script>
+        <button onclick="printAI()" style="width:100%; padding:12px; background:#0284c7; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-top: 10px; margin-bottom: 20px;">🖨️ ПЕЧАТЬ ИИ-ПРОГНОЗА (С УКАЗАНИЕМ ПЕРИОДА)</button>
+        """
+        components.html(ai_print_html, height=55)
+
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # 1. Сначала блок РАХУ (над Основными караками, т.к. влияет на золото)
+    st.subheader("🐉 Раху (True Node)")
+    ra_val = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
+    wr1, wr2 = st.columns([1, 2])
+    with wr1: st.markdown(f'<div class="custom-metric-box" style="border-color:#ff4b4b;"><div class="widget-title">ТЕКУЩИЙ РАХУ</div>{format_cell(ra_val)}</div>', unsafe_allow_html=True)
+    with wr2: st.markdown("""<div style="font-size:1.2em; padding:25px; background:rgba(255,75,75,0.05); border-radius:15px; border:1px solid #ff4b4b; line-height:1.6;"><b>Ингрессии Раху (Фактор золота и спекуляций):</b><br>• Рыбы: до 18.05.2025<br>• <b style='color:#00d4ff;'>Водолей: с 18.05.2025 по 05.12.2026</b><br>• Козерог: с 05.12.2026</div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 2. Затем Основные караки
     st.subheader("👑 Основные Караки")
     c1, c2 = st.columns(2)
     with c1: st.markdown(f'<div class="custom-metric-box"><div class="widget-title">💎 ATMAKARAKA</div>{format_cell(df_n.iloc[0])}</div>', unsafe_allow_html=True)
@@ -343,11 +384,14 @@ with t1:
     df_v = df_n.copy(); df_v['Детализация'] = df_v.apply(format_cell, axis=1)
     st.write(df_v[['Role', 'Planet', 'Deg', 'Детализация']].to_html(escape=False, index=False).replace('\n', ''), unsafe_allow_html=True)
 
-    st.subheader("🐉 Раху (True Node)")
-    ra_val = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
-    wr1, wr2 = st.columns([1, 2])
-    with wr1: st.markdown(f'<div class="custom-metric-box" style="border-color:#ff4b4b;"><div class="widget-title">ТЕКУЩИЙ РАХУ</div>{format_cell(ra_val)}</div>', unsafe_allow_html=True)
-    with wr2: st.markdown("""<div style="font-size:1.2em; padding:25px; background:rgba(255,75,75,0.05); border-radius:15px; border:1px solid #ff4b4b; line-height:1.6;"><b>Ингрессии Раху:</b><br>• Рыбы: до 18.05.2025<br>• <b style='color:#00d4ff;'>Водолей: с 18.05.2025 по 05.12.2026</b><br>• Козерог: с 05.12.2026</div>""", unsafe_allow_html=True)
+    # 3. Баннер с планетами в самом низу
+    img_data = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
+    if img_data:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        part1 = "<style>.space-banner-new { width: 100%; height: 300px; border-radius: 15px; background-image: url('data:image/jpeg;base64,"
+        part2 = img_data
+        part3 = "'); background-size: 100%; background-position: center; background-repeat: no-repeat; box-shadow: 0 10px 20px rgba(0,0,0,0.6); margin-bottom: 25px; animation: spaceDrift 20s ease-in-out infinite alternate; } @keyframes spaceDrift { 0% { background-size: 100%; background-position: center; } 100% { background-size: 115%; background-position: center 60%; } }</style><div class='space-banner-new'></div>"
+        st.markdown(part1 + part2 + part3, unsafe_allow_html=True)
 
 with t2:
     st.subheader("⚙️ Сетка планирования")
@@ -415,6 +459,7 @@ with t2:
             raw_html = df_res.to_html(escape=False, index=False).replace('\n', '')
             print_title = f"График ротаций с {ds.strftime('%d.%m.%Y')} по {de.strftime('%d.%m.%Y')}"
             
+            # Печать таблицы с местом для комментариев ручкой после каждой ротации
             html_btn = f"""
             <script>
             function openPrint() {{
@@ -427,6 +472,13 @@ with t2:
                     table {{ border-collapse: collapse; width: 100%; }} 
                     th, td {{ border: 1px solid #000; padding: 6px; font-size: 10px; text-align: left; }}
                     th {{ background-color: #f2f2f2; }}
+                    /* Пустое место для заметок ручкой после каждой строки */
+                    tr {{ page-break-inside: avoid; }}
+                    td::after {{
+                        content: "";
+                        display: block;
+                        height: 35px; /* Место для ручки */
+                    }}
                 </style>
                 </head><body>
                     <h2>{print_title}</h2>
@@ -436,7 +488,7 @@ with t2:
                 setTimeout(() => {{ win.print(); }}, 500);
             }}
             </script>
-            <button onclick="openPrint()" style="width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; font-family:sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ (АЛЬБОМНЫЙ ФОРМАТ)</button>
+            <button onclick="openPrint()" style="width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; font-family:sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ С МЕСТОМ ДЛЯ ЗАМЕТОК (АЛЬБОМНЫЙ ФОРМАТ)</button>
             """
             components.html(html_btn, height=75)
             st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
