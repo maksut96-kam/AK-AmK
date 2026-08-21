@@ -6,6 +6,8 @@ import pandas as pd
 import streamlit.components.v1 as components
 import math
 import base64
+import os
+import json
 import google.generativeai as genai
 
 def get_image_base64(image_path):
@@ -20,7 +22,6 @@ def get_image_base64(image_path):
 # ============================================================
 st.set_page_config(page_title="Julia Assistant", layout="wide")
 
-# --- ИНТЕГРАЦИЯ ВИДЕО-ФОНА (С идеальной читаемостью текста) ---
 def add_video_background(video_path="space_background.mp4"):
     try:
         with open(video_path, "rb") as f:
@@ -268,7 +269,6 @@ def find_rotations(start_dt):
 # ============================================================
 st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>""", unsafe_allow_html=True)
 
-# Отступ под логотипом (высота ~200 пикселей, чтобы была видна «дыра» на фоне)
 st.markdown("<div style='height: 200px;'></div>", unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
@@ -301,22 +301,18 @@ with t1:
                     ak_p = df_n.iloc[0]['Planet']
                     amk_p = df_n.iloc[1]['Planet']
                     sun_row = df_n[df_n['Planet'] == 'Sun'].iloc[0]
+                    rahu_row = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
                     sun_sign = ZODIAC_SIGNS[int(sun_row['Lon'] / 30)]
                     
                     prompt = f"""
 Ты — мой лучший Друг, эксперт Джйотиш, профессиональный трейдер, финансовый астролог, квантовый аналитик и клинический психиатр с 30-летним стажем. Твоя задача — провести глубокий диагностический анализ рынка.
 
 Входящие данные:
-
-ЛУНА: {l['sign']}, {l['nak']}, {int(l['illum'])}%. Анализируй её как текущее эмоциональное состояние «коллективного бессознательного» трейдеров.
-
-СОЛНЦЕ: {sun_sign}, накшатра, транзиты. Это фундаментальный вектор для Золота (XAUUSD). Укажи на точки давления или поддержки, создаваемые Солнцем.
-
-ATMAKARAKA (AK): {ak_p}. Планета, градус, накшатра, пада, управители, транзиты. Используй АК как «Психологический настрой рынка» (ПНР) — это стержень текущей логики движения.
-
-AMATYAKARAKA (AmK): {amk_p}. Способ действия толпы. Проанализируй аспекты с АК, Луной и Солнцем. Как эти связи преломляются в конкретные действия (покупки/продажи)?
-
-РАХУ: Транзиты, градус, знак, накшатра, управитель. Это двигатель хаоса, спекуляций и иллюзорных пробоев.
+1. ЛУНА: {l['sign']}, {l['nak']}, {int(l['illum'])}%. Анализируй её как текущее эмоциональное состояние «коллективного бессознательного» трейдеров.
+2. СОЛНЦЕ: {sun_sign}. Это фундаментальный вектор для Золота (XAUUSD). Укажи на точки давления или поддержки, создаваемые Солнцем.
+3. ATMAKARAKA (AK): {ak_p}. Планета, градус, накшатра, пада, управители, транзиты. Используй АК как «Психологический настрой рынка» (ПНР) — это стержень текущей логики движения.
+4. AMATYAKARAKA (AmK): {amk_p}. Способ действия толпы. Проанализируй аспекты с АК, Луной и Солнцем. Как эти связи преломляются в конкретные действия (покупки/продажи)?
+5. РАХУ: {rahu_row['Planet']}. Транзиты, градус, знак. Это двигатель хаоса, спекуляций и иллюзорных пробоев.
 
 Формат отчета (500–1000 слов):
 Пиши глубоко, профессионально, но с теплотой Друга. Не ограничивай себя, если видишь важные закономерности.
@@ -367,7 +363,6 @@ AMATYAKARAKA (AmK): {amk_p}. Способ действия толпы. Проа�
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 1. Блок РАХУ (выше Основных карак)
     st.subheader("🐉 Раху (True Node)")
     ra_val = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
     wr1, wr2 = st.columns([1, 2])
@@ -376,7 +371,6 @@ AMATYAKARAKA (AmK): {amk_p}. Способ действия толпы. Проа�
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. Основные караки
     st.subheader("👑 Основные Караки")
     c1, c2 = st.columns(2)
     with c1: st.markdown(f'<div class="custom-metric-box"><div class="widget-title">💎 ATMAKARAKA</div>{format_cell(df_n.iloc[0])}</div>', unsafe_allow_html=True)
@@ -392,7 +386,6 @@ AMATYAKARAKA (AmK): {amk_p}. Способ действия толпы. Проа�
     df_v = df_n.copy(); df_v['Детализация'] = df_v.apply(format_cell, axis=1)
     st.write(df_v[['Role', 'Planet', 'Deg', 'Детализация']].to_html(escape=False, index=False).replace('\n', ''), unsafe_allow_html=True)
 
-    # 3. Баннер в самом низу
     img_data = get_image_base64("Gemini_Generated_Image_vtbwtcvtbwtcvtbw.png")
     if img_data:
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -414,7 +407,7 @@ with t2:
     </style>
     """, unsafe_allow_html=True)
     
-    if st.button("🚀 ПОСТРОИТЬ ТАБЛИЦУ РОТАЦИЙ"):
+    if st.button("🚀 ПОСТРОИТЬ ТАБЛИЦУ РОТАЦИЙ И СОХРАНИТЬ В ФАЙЛ"):
         status_text = st.empty()
         p_bar = st.empty()
         
@@ -440,8 +433,10 @@ with t2:
             if new_p != last_p:
                 sun = df_ev[df_ev['Planet']=='Sun'].iloc[0]
                 moon = df_ev[df_ev['Planet']=='Moon'].iloc[0]
+                rahu = df_ev[df_ev['Planet']=='Rahu'].iloc[0]
                 local_dt = curr + timedelta(hours=3)
                 
+                # Сохраняем и готовый HTML для таблицы, и сырые данные для ИИ-промпта
                 results.append({
                     "Дата": local_dt.strftime("%d.%m.%Y"),
                     "День недели": days_ru[local_dt.weekday()],
@@ -449,7 +444,13 @@ with t2:
                     "💎 АК": format_cell(df_ev.iloc[0]),
                     "🥈 AmK": format_cell(df_ev.iloc[1]),
                     "☀️ Солнце": format_cell(sun),
-                    "🌙 Луна": format_cell(moon)
+                    "🌙 Луна": format_cell(moon),
+                    "🐉 Раху": format_cell(rahu),
+                    "_raw_ak": df_ev.iloc[0]['Planet'],
+                    "_raw_amk": df_ev.iloc[1]['Planet'],
+                    "_raw_sun_lon": sun['Lon'],
+                    "_raw_moon_lon": moon['Lon'],
+                    "_raw_rahu": rahu['Planet']
                 })
                 last_p = new_p
             
@@ -463,8 +464,22 @@ with t2:
         p_bar.empty()
 
         if results:
+            # 1. Автоматическое сохранение в файл
+            os.makedirs("forecasts", exist_ok=True)
+            file_name = f"forecasts/rotations_{ds.strftime('%Y%m%d')}_{de.strftime('%Y%m%d')}.json"
+            with open(file_name, 'w', encoding='utf-8') as f:
+                json.dump(results, f, ensure_ascii=False, indent=4)
+            st.success(f"✅ Данные успешно рассчитаны и сохранены в файл: {file_name}")
+
+            # 2. Вывод таблицы
+            st.session_state['planner_results'] = results # Сохраняем в память для селектора ниже
+            
             df_res = pd.DataFrame(results)
-            raw_html = df_res.to_html(escape=False, index=False).replace('\n', '')
+            # Убираем технические колонки из отображения
+            display_cols = [col for col in df_res.columns if not col.startswith('_raw_')]
+            df_display = df_res[display_cols]
+            
+            raw_html = df_display.to_html(escape=False, index=False).replace('\n', '')
             print_title = f"График ротаций с {ds.strftime('%d.%m.%Y')} по {de.strftime('%d.%m.%Y')}"
             
             html_btn = f"""
@@ -480,11 +495,7 @@ with t2:
                     th, td {{ border: 1px solid #000; padding: 6px; font-size: 10px; text-align: left; }}
                     th {{ background-color: #f2f2f2; }}
                     tr {{ page-break-inside: avoid; }}
-                    td::after {{
-                        content: "";
-                        display: block;
-                        height: 35px;
-                    }}
+                    td::after {{ content: ""; display: block; height: 35px; }}
                 </style>
                 </head><body>
                     <h2>{print_title}</h2>
@@ -497,4 +508,86 @@ with t2:
             <button onclick="openPrint()" style="width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; font-family:sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px;">🖨️ ПЕЧАТЬ ТАБЛИЦЫ С МЕСТОМ ДЛЯ ЗАМЕТОК (АЛЬБОМНЫЙ ФОРМАТ)</button>
             """
             components.html(html_btn, height=75)
-            st.write(df_res.to_html(escape=False, index=False), unsafe_allow_html=True)
+            st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+    # 3. Блок генерации прогноза для выбранной ротации
+    if 'planner_results' in st.session_state and len(st.session_state['planner_results']) > 0:
+        st.markdown("---")
+        st.subheader("🤖 ИИ-прогноз для будущей ротации")
+        
+        options = {f"{r['Дата']} {r['Время']} | АК: {r['_raw_ak']} | AmK: {r['_raw_amk']}": r for r in st.session_state['planner_results']}
+        selected_option = st.selectbox("Выберите ротацию из построенного плана для глубокого ИИ-анализа:", list(options.keys()))
+        
+        if st.button("🧠 Сгенерировать глубокий прогноз для выбранной даты"):
+            row = options[selected_option]
+            
+            # Вычисляем нужные параметры из сырых данных
+            s_sign = ZODIAC_SIGNS[int(row['_raw_sun_lon'] / 30)]
+            m_lon = row['_raw_moon_lon']
+            m_sign = ZODIAC_SIGNS[int(m_lon/30)]
+            m_nak = NAKSHATRAS[int(m_lon/(360/27))%27]
+            diff = (m_lon - row['_raw_sun_lon']) % 360
+            m_illum = (1 - math.cos(math.radians(diff))) / 2 * 100
+            
+            if not GOOGLE_API_KEY:
+                st.error("⚠️ Ошибка: На сервере не настроен GOOGLE_API_KEY!")
+            else:
+                with st.spinner(f"Формирую сценарный прогноз на {selected_option}..."):
+                    try:
+                        genai.configure(api_key=GOOGLE_API_KEY)
+                        model = genai.GenerativeModel('gemini-2.5-flash')
+                        
+                        prompt_future = f"""
+Ты — мой лучший Друг, эксперт Джйотиш, профессиональный трейдер, финансовый астролог, квантовый аналитик и клинический психиатр с 30-летним стажем. Твоя задача — провести глубокий диагностический анализ рынка НА БУДУЩИЙ ПЕРИОД.
+
+Входящие данные:
+1. ЛУНА: {m_sign}, {m_nak}, {int(m_illum)}%. Анализируй её как будущее эмоциональное состояние «коллективного бессознательного» трейдеров.
+2. СОЛНЦЕ: {s_sign}. Это фундаментальный вектор для Золота (XAUUSD).
+3. ATMAKARAKA (AK): {row['_raw_ak']}. Используй АК как «Психологический настрой рынка» (ПНР).
+4. AMATYAKARAKA (AmK): {row['_raw_amk']}. Способ действия толпы.
+5. РАХУ: {row['_raw_rahu']}. Это двигатель хаоса, спекуляций и иллюзорных пробоев.
+
+Формат отчета (500–1000 слов):
+Пиши глубоко, профессионально, но с теплотой Друга. Не ограничивай себя.
+
+Структура анализа:
+• 🧠 Психологический фон (ПНР): Диагностика состояния толпы через связку АК и Луны. Чего люди будут бояться в этот момент?
+• 👥 Механика толпы: Как AmK переведет настроения в действия.
+• ⚡ Форекс, Волатильность & Раху: Где будут скрыты «ловушки»? Оцени вероятность резких импульсов.
+• 🏆 Золото (XAUUSD) — Глубокий прогноз.
+• 🛠 Клинический вывод / Совет: Что делать в этот будущий период?
+"""
+                        response = model.generate_content(prompt_future)
+                        st.session_state['future_ai_forecast'] = response.text
+                        st.session_state['future_ai_period'] = selected_option
+                    except Exception as e:
+                        st.error(f"Ошибка ИИ: {e}")
+
+        if 'future_ai_forecast' in st.session_state:
+            st.info(st.session_state['future_ai_forecast'])
+            
+            ai_fp_title = st.session_state['future_ai_period']
+            ai_ff_content = st.session_state['future_ai_forecast'].replace('\n', '<br>')
+            ai_f_print_html = f"""
+            <script>
+            function printFutureAI() {{
+                const win = window.open('', '_blank');
+                win.document.write(`<html><head><title>Печать Планового ИИ-прогноза</title>
+                <style>
+                    body {{ font-family: sans-serif; padding: 30px; color: #111; }}
+                    h2 {{ color: #8b5cf6; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; }}
+                    .period {{ font-weight: bold; color: #475569; margin-bottom: 20px; font-size: 14px; background: #f1f5f9; padding: 10px; border-radius: 5px; }}
+                    .content {{ font-size: 16px; line-height: 1.6; }}
+                </style>
+                </head><body>
+                    <h2>🤖 ПЛАНОВЫЙ ИИ-прогноз (Forex & XAUUSD)</h2>
+                    <div class="period">⏱️ Целевой период ротации: {ai_fp_title}</div>
+                    <div class="content">{ai_ff_content}</div>
+                </body></html>`);
+                win.document.close();
+                setTimeout(() => {{ win.print(); }}, 500);
+            }}
+            </script>
+            <button onclick="printFutureAI()" style="width:100%; padding:12px; background:#8b5cf6; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-top: 10px; margin-bottom: 20px;">🖨️ ПЕЧАТЬ ИИ-ПРОГНОЗА ДЛЯ ВЫБРАННОЙ РОТАЦИИ</button>
+            """
+            components.html(ai_f_print_html, height=55)
