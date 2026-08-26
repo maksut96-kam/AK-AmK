@@ -137,6 +137,22 @@ st.markdown("""
     .moon-altar { background: linear-gradient(135deg, rgba(13,27,42,0.8) 0%, rgba(27,38,59,0.8) 100%); border-radius: 20px; padding: 30px; border: 1px solid #415a77; color: #e0e1dd; }
     .widget-title { color:#778da9; font-size: 1.6em; font-weight: 800; margin-bottom: 15px; text-transform: uppercase; }
     .custom-metric-box { background: rgba(65, 90, 119, 0.25); padding: 25px; border-radius: 15px; border: 1px solid #778da9; height: 100%; }
+    
+    /* Фикс контрастности выпадающего списка (st.selectbox) */
+    div[data-baseweb="popover"] ul {
+        background-color: #0f172a !important;
+    }
+    div[data-baseweb="popover"] li {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+    }
+    div[data-baseweb="popover"] li:hover {
+        background-color: #1e293b !important;
+        color: #38bdf8 !important;
+    }
+    div[data-baseweb="popover"] li * {
+        color: #ffffff !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
