@@ -138,20 +138,27 @@ st.markdown("""
     .widget-title { color:#778da9; font-size: 1.6em; font-weight: 800; margin-bottom: 15px; text-transform: uppercase; }
     .custom-metric-box { background: rgba(65, 90, 119, 0.25); padding: 25px; border-radius: 15px; border: 1px solid #778da9; height: 100%; }
     
-    /* Фикс контрастности выпадающего списка (st.selectbox) */
-    div[data-baseweb="popover"] ul {
-        background-color: #0f172a !important;
-    }
-    div[data-baseweb="popover"] li {
-        background-color: #0f172a !important;
-        color: #ffffff !important;
-    }
-    div[data-baseweb="popover"] li:hover {
+    /* Жесткий фикс выпадающего списка (st.selectbox) */
+    div[data-baseweb="popover"], 
+    div[data-baseweb="menu"],
+    ul[role="listbox"] {
         background-color: #1e293b !important;
-        color: #38bdf8 !important;
     }
-    div[data-baseweb="popover"] li * {
+    
+    div[data-baseweb="popover"] li, 
+    div[data-baseweb="menu"] li,
+    ul[role="listbox"] li,
+    ul[role="listbox"] li div {
+        background-color: #1e293b !important;
         color: #ffffff !important;
+        font-weight: 500 !important;
+    }
+
+    div[data-baseweb="popover"] li:hover, 
+    div[data-baseweb="menu"] li:hover,
+    ul[role="listbox"] li:hover {
+        background-color: #334155 !important;
+        color: #38bdf8 !important;
     }
 </style>
 """, unsafe_allow_html=True)
