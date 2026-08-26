@@ -155,34 +155,73 @@ def deg_to_dms(decimal_deg):
         m = 0
     return f"{d}° {m:02d}'"
 
+def deg_to_dms_full(decimal_deg):
+    """Возвращает градусы, минуты и секунды для передачи ИИ"""
+    d = int(decimal_deg)
+    rem = (decimal_deg - d) * 60
+    m = int(rem)
+    s = int(round((rem - m) * 60))
+    if s == 60: m += 1; s = 0
+    if m == 60: d += 1; m = 0
+    return f"{d}° {m:02d}' {s:02d}\""
+
+def get_full_planet_info_for_ai(planet_name, lon):
+    """Формирует полную астрологическую строку с точными координатами для ИИ"""
+    s_idx = int(lon/30)
+    n_deg = 360/27
+    n_idx = int(lon / n_deg) % 27
+    p_deg = n_deg / 4
+    pada = int((lon % n_deg) / p_deg) + 1
+    deg_in_sign = lon % 30
+    
+    if planet_name == 'Rahu':
+        inv_deg = 30.0 - deg_in_sign
+        return f"{planet_name} в {ZODIAC_SIGNS[s_idx]} (Обратные координаты: {deg_to_dms_full(inv_deg)}, Накшатра: {NAKSHATRAS[n_idx]}, Пада: {pada})"
+    else:
+        return f"{planet_name} в {ZODIAC_SIGNS[s_idx]} ({deg_to_dms_full(deg_in_sign)}, Накшатра: {NAKSHATRAS[n_idx]}, Пада: {pada})"
+
 def check_gandanta(lon):
+    """Ганданта только для последних 3°20' водных знаков (Рак, Скорпион, Рыбы)"""
     deg_in_sign = lon % 30
     sign_idx = int(lon / 30)
-    is_gandanta = False
-    if sign_idx in [0, 3, 7, 4, 8, 11]:
-        if deg_in_sign <= 1.0 or deg_in_sign >= 29.0:
-            is_gandanta = True
-    return is_gandanta
+    # Водные знаки: 3 (Рак), 7 (Скорпион), 11 (Рыбы)
+    # 26 градусов 40 минут = 26.6666...
+    if sign_idx in [3, 7, 11] and deg_in_sign >= (26 + 40/60.0):
+        return True
+    return False
 
 def format_cell(row):
     lon = row.get('Lon', 0)
     s_idx = int(lon/30); n_deg = 360/27; n_idx = int(lon / n_deg) % 27
     p_deg = n_deg / 4; pada = int((lon % n_deg) / p_deg) + 1; nav_idx = int((lon * 9) / 30) % 12
     
-    deg_str = deg_to_dms(row['Deg'])
+    deg_in_sign = row['Deg']
     gandanta_mark = ""
+    bg_style = ""
+    
+    # Если Ганданта — добавляем плашку и диагональную штриховку для ячейки (видимую и в вебе, и в PDF)
     if check_gandanta(lon):
         gandanta_mark = " <span style='background:#b91c1c; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;'>🔥 ГАНДАНТА</span>"
+        bg_style = "background: repeating-linear-gradient(45deg, rgba(185, 28, 28, 0.1), rgba(185, 28, 28, 0.1) 10px, transparent 10px, transparent 20px); border-radius: 8px; padding: 4px;"
     
     extra_str = ""
     if row.get('Planet') == 'Rahu':
-        inv_deg = 30.0 - row['Deg']
+        # Раху: обратные координаты выводим как основные
+        inv_deg = 30.0 - deg_in_sign
         inv_d = int(inv_deg)
-        inv_m = int((inv_deg - inv_d) * 60)
-        rahu_gandanta_text = " 🔥 ГАНДАНТА" if check_gandanta(lon) else ""
-        extra_str = f" <span style='color:#fca5a5; font-size:0.9em;'>(обр: {inv_d}°{inv_m:02d}'{rahu_gandanta_text})</span>"
+        inv_m = int(round((inv_deg - inv_d) * 60))
+        if inv_m == 60: inv_d += 1; inv_m = 0
+        deg_str = f"{inv_d}° {inv_m:02d}'"
+        
+        # Прямые выводим мелко в скобках
+        norm_d = int(deg_in_sign)
+        norm_m = int(round((deg_in_sign - norm_d) * 60))
+        if norm_m == 60: norm_d += 1; norm_m = 0
+        extra_str = f" <br><span style='color:#fca5a5; font-size:0.85em;'>(Прямые: {norm_d}°{norm_m:02d}')</span>"
+    else:
+        deg_str = deg_to_dms(deg_in_sign)
 
-    return f"""<div style='font-size:1.25em; line-height:1.4;'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {deg_str}{gandanta_mark}{extra_str}<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
+    return f"""<div style='font-size:1.25em; line-height:1.4; {bg_style}'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {deg_str}{gandanta_mark}{extra_str}<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
 
 def get_planet_data(t):
     swe.set_sid_mode(swe.SIDM_LAHIRI)
@@ -289,7 +328,7 @@ with t1:
     
     GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", "")
     
-    if st.button("🤖 Сгенерировать ИИ-прогноз по Луне и Каракам (Forex & XAUUSD)", use_container_width=True):
+    if st.button("🤖 Астро-аналитическая дирекция (Forex & XAUUSD)", use_container_width=True):
         if not GOOGLE_API_KEY:
             st.error("⚠️ Ошибка: На сервере не настроен GOOGLE_API_KEY в разделе Secrets!")
         else:
@@ -298,33 +337,39 @@ with t1:
                     genai.configure(api_key=GOOGLE_API_KEY)
                     model = genai.GenerativeModel('gemini-2.5-flash')
                     
-                    ak_p = df_n.iloc[0]['Planet']
-                    amk_p = df_n.iloc[1]['Planet']
+                    ak_row = df_n.iloc[0]
+                    amk_row = df_n.iloc[1]
                     sun_row = df_n[df_n['Planet'] == 'Sun'].iloc[0]
+                    moon_row = df_n[df_n['Planet'] == 'Moon'].iloc[0]
                     rahu_row = df_n[df_n['Planet'] == 'Rahu'].iloc[0]
-                    sun_sign = ZODIAC_SIGNS[int(sun_row['Lon'] / 30)]
+                    
+                    ak_info = get_full_planet_info_for_ai(ak_row['Planet'], ak_row['Lon'])
+                    amk_info = get_full_planet_info_for_ai(amk_row['Planet'], amk_row['Lon'])
+                    sun_info = get_full_planet_info_for_ai('Sun', sun_row['Lon'])
+                    moon_info = get_full_planet_info_for_ai('Moon', moon_row['Lon'])
+                    rahu_info = get_full_planet_info_for_ai('Rahu', rahu_row['Lon'])
+                    
+                    angle_ak_amk = abs(ak_row['Lon'] - amk_row['Lon'])
+                    if angle_ak_amk > 180: angle_ak_amk = 360 - angle_ak_amk
                     
                     prompt = f"""
-Ты — мой лучший Друг, эксперт Джйотиш, профессиональный трейдер, финансовый астролог, квантовый аналитик и клинический психиатр с 30-летним стажем. Твоя задача — провести глубокий диагностический анализ рынка.
+Ты — строгий аналитик, эксперт Джйотиш, профессиональный трейдер, финансовый астролог и квантовый специалист. 
+Твоя задача — составить максимально сухой, лаконичный и точный диагностический отчет рынка без воды, лишних приветствий, метафор и эмоций.
 
-Входящие данные:
-1. ЛУНА: {l['sign']}, {l['nak']}, {int(l['illum'])}%. Анализируй её как текущее эмоциональное состояние «коллективного бессознательного» трейдеров.
-2. СОЛНЦЕ: {sun_sign}. Это фундаментальный вектор для Золота (XAUUSD). Укажи на точки давления или поддержки, создаваемые Солнцем.
-3. ATMAKARAKA (AK): {ak_p}. Планета, градус, накшатра, пада, управители, транзиты. Используй АК как «Психологический настрой рынка» (ПНР) — это стержень текущей логики движения.
-4. AMATYAKARAKA (AmK): {amk_p}. Способ действия толпы. Проанализируй аспекты с АК, Луной и Солнцем. Как эти связи преломляются в конкретные действия (покупки/продажи)?
-5. РАХУ: {rahu_row['Planet']}. Транзиты, градус, знак. Это двигатель хаоса, спекуляций и иллюзорных пробоев.
+Входящие точные астро-данные:
+1. ЛУНА: {moon_info}. Освещенность: {int(l['illum'])}%. Текущий эмоциональный фон толпы трейдеров, универсальный психологический настрой рынка.
+2. СОЛНЦЕ: {sun_info}. Способы проявления публичной активности, фундаментальный вектор ликвидности для Золота XAUUSD.
+3. ATMAKARAKA (AK): {ak_info}. Главная цель и идея рынка.
+4. AMATYAKARAKA (AmK): {amk_info}. Советник толпы, как лучше поступить, реальный способ действия толпы.
+   * Угловое расстояние (аспект) между АК и AmK: {angle_ak_amk:.2f} градусов.
+5. РАХУ: {rahu_info}. (Двигатель хаоса, спекуляций и иллюзорных пробоев).
 
-Формат отчета (500–1000 слов):
-Пиши глубоко, профессионально, но с теплотой Друга. Не ограничивай себя, если видишь важные закономерности.
-
-Структура анализа:
-• 🧠 Психологический фон (ПНР): Диагностика состояния толпы через связку АК и Луны. Чего люди боятся? Во что они слепо верят?
-• 👥 Механика толпы: Как AmK переводит настроения в действия. Какие паттерны поведения сейчас доминируют?
-• ⚡ Форекс, Волатильность & Раху: Где скрыты «ловушки»? Оцени вероятность резких импульсов и ложных пробоев.
-• 🏆 Золото (XAUUSD) — Глубокий прогноз: Синтез влияния Солнца и текущей астро-конфигурации. Сценарии движения цены.
-• 🛠 Клинический вывод / Совет: Что делать в этой ситуации? Дай рекомендацию, основываясь на твоей экспертизе психиатра и трейдера.
-
-Используй профессиональную терминологию рынков (ликвидность, импульс, пробой, коррекция) в связке с астрологическими терминами. Ищи скрытые корреляции.
+Формат ответа — тезисы (bullet-points). Обязательная структура (при подготовке ответа использовать все данные: Положение, градус, зодиак, накшатра, пада итд):
+• Психологический фон (ПНР): Диагностика состояния толпы через точные координаты Луны. Чего боятся, во что верят?
+• Механика толпы: Как AmK и его геометрическая связь (угол) с АК переводят настроения в рыночные действия.
+• Форекс и Волатильность (Раху): Вероятность резких импульсов, точки ложных пробоев и "ловушки" на основе координат Раху.
+• Золото (XAUUSD): Сценарии движения цены (синтез транзита Солнца и общей конфигурации карак).
+• Аналитический вывод: Конкретные выводы и рекомендации (покупать/продавать/ожидать/хеджировать).
 """
                     response = model.generate_content(prompt)
                     ai_text = response.text
@@ -436,7 +481,7 @@ with t2:
                 rahu = df_ev[df_ev['Planet']=='Rahu'].iloc[0]
                 local_dt = curr + timedelta(hours=3)
                 
-                # Сохраняем и готовый HTML для таблицы, и сырые данные для ИИ-промпта
+                # Сохраняем и готовый HTML для таблицы, и сырые данные (только долготу и планеты) для ИИ-промпта
                 results.append({
                     "Дата": local_dt.strftime("%d.%m.%Y"),
                     "День недели": days_ru[local_dt.weekday()],
@@ -446,11 +491,13 @@ with t2:
                     "☀️ Солнце": format_cell(sun),
                     "🌙 Луна": format_cell(moon),
                     "🐉 Раху": format_cell(rahu),
-                    "_raw_ak": df_ev.iloc[0]['Planet'],
-                    "_raw_amk": df_ev.iloc[1]['Planet'],
+                    "_raw_ak_planet": df_ev.iloc[0]['Planet'],
+                    "_raw_ak_lon": df_ev.iloc[0]['Lon'],
+                    "_raw_amk_planet": df_ev.iloc[1]['Planet'],
+                    "_raw_amk_lon": df_ev.iloc[1]['Lon'],
                     "_raw_sun_lon": sun['Lon'],
                     "_raw_moon_lon": moon['Lon'],
-                    "_raw_rahu": rahu['Planet']
+                    "_raw_rahu_lon": rahu['Lon']
                 })
                 last_p = new_p
             
@@ -482,6 +529,8 @@ with t2:
             raw_html = df_display.to_html(escape=False, index=False).replace('\n', '')
             print_title = f"График ротаций с {ds.strftime('%d.%m.%Y')} по {de.strftime('%d.%m.%Y')}"
             
+            # Увеличили height для td::after с 35px до 70px (в 2 раза больше места для заметок)
+            # Добавлен флаг -webkit-print-color-adjust для печати фонов (Ганданты)
             html_btn = f"""
             <script>
             function openPrint() {{
@@ -489,13 +538,14 @@ with t2:
                 win.document.write(`<html><head><title>Печать</title>
                 <style>
                     @page {{ size: landscape; margin: 10mm; }} 
+                    * {{ -webkit-print-color-adjust: exact !important; color-adjust: exact !important; print-color-adjust: exact !important; }}
                     body {{ font-family: sans-serif; padding: 20px; }}
                     h2 {{ text-align: center; color: #333; margin-bottom: 20px; }}
                     table {{ border-collapse: collapse; width: 100%; }} 
                     th, td {{ border: 1px solid #000; padding: 6px; font-size: 10px; text-align: left; }}
                     th {{ background-color: #f2f2f2; }}
                     tr {{ page-break-inside: avoid; }}
-                    td::after {{ content: ""; display: block; height: 35px; }}
+                    td::after {{ content: ""; display: block; height: 70px; }}
                 </style>
                 </head><body>
                     <h2>{print_title}</h2>
@@ -515,18 +565,25 @@ with t2:
         st.markdown("---")
         st.subheader("🤖 ИИ-прогноз для будущей ротации")
         
-        options = {f"{r['Дата']} {r['Время']} | АК: {r['_raw_ak']} | AmK: {r['_raw_amk']}": r for r in st.session_state['planner_results']}
+        options = {f"{r['Дата']} {r['Время']} | АК: {r['_raw_ak_planet']} | AmK: {r['_raw_amk_planet']}": r for r in st.session_state['planner_results']}
         selected_option = st.selectbox("Выберите ротацию из построенного плана для глубокого ИИ-анализа:", list(options.keys()))
         
         if st.button("🧠 Сгенерировать глубокий прогноз для выбранной даты"):
             row = options[selected_option]
             
-            # Вычисляем нужные параметры из сырых данных
-            s_sign = ZODIAC_SIGNS[int(row['_raw_sun_lon'] / 30)]
-            m_lon = row['_raw_moon_lon']
-            m_sign = ZODIAC_SIGNS[int(m_lon/30)]
-            m_nak = NAKSHATRAS[int(m_lon/(360/27))%27]
-            diff = (m_lon - row['_raw_sun_lon']) % 360
+            # Собираем точные данные для ИИ
+            ak_info = get_full_planet_info_for_ai(row['_raw_ak_planet'], row['_raw_ak_lon'])
+            amk_info = get_full_planet_info_for_ai(row['_raw_amk_planet'], row['_raw_amk_lon'])
+            sun_info = get_full_planet_info_for_ai('Sun', row['_raw_sun_lon'])
+            moon_info = get_full_planet_info_for_ai('Moon', row['_raw_moon_lon'])
+            rahu_info = get_full_planet_info_for_ai('Rahu', row['_raw_rahu_lon'])
+            
+            # Угол между AK и AmK
+            angle_ak_amk = abs(row['_raw_ak_lon'] - row['_raw_amk_lon'])
+            if angle_ak_amk > 180: angle_ak_amk = 360 - angle_ak_amk
+            
+            # Освещенность Луны
+            diff = (row['_raw_moon_lon'] - row['_raw_sun_lon']) % 360
             m_illum = (1 - math.cos(math.radians(diff))) / 2 * 100
             
             if not GOOGLE_API_KEY:
@@ -538,24 +595,23 @@ with t2:
                         model = genai.GenerativeModel('gemini-2.5-flash')
                         
                         prompt_future = f"""
-Ты — мой лучший Друг, эксперт Джйотиш, профессиональный трейдер, финансовый астролог, квантовый аналитик и клинический психиатр с 30-летним стажем. Твоя задача — провести глубокий диагностический анализ рынка НА БУДУЩИЙ ПЕРИОД.
+Ты — строгий аналитик, эксперт Джйотиш, профессиональный трейдер, финансовый астролог и квантовый специалист. 
+Твоя задача — составить максимально сухой, лаконичный и точный диагностический отчет рынка НА БУДУЩИЙ ПЕРИОД без воды, лишних приветствий, метафор и эмоций.
 
-Входящие данные:
-1. ЛУНА: {m_sign}, {m_nak}, {int(m_illum)}%. Анализируй её как будущее эмоциональное состояние «коллективного бессознательного» трейдеров.
-2. СОЛНЦЕ: {s_sign}. Это фундаментальный вектор для Золота (XAUUSD).
-3. ATMAKARAKA (AK): {row['_raw_ak']}. Используй АК как «Психологический настрой рынка» (ПНР).
-4. AMATYAKARAKA (AmK): {row['_raw_amk']}. Способ действия толпы.
-5. РАХУ: {row['_raw_rahu']}. Это двигатель хаоса, спекуляций и иллюзорных пробоев.
+Входящие точные астро-данные:
+1. ЛУНА: {moon_info}. Освещенность: {int(m_illum)}%. (Будущий эмоциональный фон толпы трейдеров).
+2. СОЛНЦЕ: {sun_info}. (Фундаментальный вектор ликвидности для Золота XAUUSD).
+3. ATMAKARAKA (AK): {ak_info}. (Психологический настрой рынка - ПНР).
+4. AMATYAKARAKA (AmK): {amk_info}. (Реальный способ действия толпы).
+   * Угловое расстояние (аспект) между АК и AmK: {angle_ak_amk:.2f} градусов.
+5. РАХУ: {rahu_info}. (Двигатель хаоса, спекуляций и иллюзорных пробоев).
 
-Формат отчета (500–1000 слов):
-Пиши глубоко, профессионально, но с теплотой Друга. Не ограничивай себя.
-
-Структура анализа:
-• 🧠 Психологический фон (ПНР): Диагностика состояния толпы через связку АК и Луны. Чего люди будут бояться в этот момент?
-• 👥 Механика толпы: Как AmK переведет настроения в действия.
-• ⚡ Форекс, Волатильность & Раху: Где будут скрыты «ловушки»? Оцени вероятность резких импульсов.
-• 🏆 Золото (XAUUSD) — Глубокий прогноз.
-• 🛠 Клинический вывод / Совет: Что делать в этот будущий период?
+Формат ответа — строгие тезисы (bullet-points). Обязательная структура:
+• Психологический фон (ПНР): Диагностика состояния толпы через точные координаты АК и Луны. Чего будут бояться, во что верить?
+• Механика толпы: Как AmK и его геометрическая связь (угол) с АК переведут настроения в рыночные действия.
+• Форекс и Волатильность (Раху): Вероятность резких импульсов, точки ложных пробоев и "ловушки" на основе координат Раху.
+• Золото (XAUUSD): Сценарии движения цены (синтез транзита Солнца и общей конфигурации карак).
+• Аналитический вывод: Конкретная, сухая рекомендация для действий в этот период.
 """
                         response = model.generate_content(prompt_future)
                         st.session_state['future_ai_forecast'] = response.text
