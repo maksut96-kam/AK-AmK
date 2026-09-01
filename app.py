@@ -137,56 +137,79 @@ st.markdown("""
     .moon-altar { background: linear-gradient(135deg, rgba(13,27,42,0.8) 0%, rgba(27,38,59,0.8) 100%); border-radius: 20px; padding: 30px; border: 1px solid #415a77; color: #e0e1dd; }
     .widget-title { color:#778da9; font-size: 1.6em; font-weight: 800; margin-bottom: 15px; text-transform: uppercase; }
     .custom-metric-box { background: rgba(65, 90, 119, 0.25); padding: 25px; border-radius: 15px; border: 1px solid #778da9; height: 100%; }
-    
-    /* Жесткий фикс выпадающего списка (st.selectbox) */
-    div[data-baseweb="popover"], 
-    div[data-baseweb="menu"],
-    ul[role="listbox"] {
-        background-color: #1e293b !important;
-    }
-    
-    div[data-baseweb="popover"] li, 
-    div[data-baseweb="menu"] li,
-    ul[role="listbox"] li,
-    ul[role="listbox"] li div {
-        background-color: #1e293b !important;
-        color: #ffffff !important;
-        font-weight: 500 !important;
+
+    /* ==========================================
+       ЖЕСТКИЙ СБРОС СТИЛЕЙ ДЛЯ SELECTBOX, DATE, TIME & CALENDAR
+       ========================================== */
+
+    /* 1. Поля ввода (Selectbox, Date, Time) - Сами инпуты */
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="input"] > div,
+    div[aria-haspopup="listbox"] {
+        background-color: #0f172a !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+        border-radius: 8px !important;
     }
 
-    div[data-baseweb="popover"] li:hover, 
-    div[data-baseweb="menu"] li:hover,
-    ul[role="listbox"] li:hover {
-        background-color: #334155 !important;
-        color: #38bdf8 !important;
-    }
-
-    /* ФИКС ТЕКСТА И ФОНА ПОЛЕЙ ВВОДА И КАЛЕНДАРЯ */
-    div[data-baseweb="select"] > div {
-        background-color: #1e293b !important;
-    }
-    div[data-baseweb="select"] span {
+    /* Цвет текста внутри полей ввода */
+    div[data-baseweb="select"] *, 
+    div[data-baseweb="input"] input,
+    div[aria-haspopup="listbox"] * {
         color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-    
-    div[data-baseweb="input"] > div {
-        background-color: #1e293b !important;
-    }
-    div[data-baseweb="input"] input {
-        color: #ffffff !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         -webkit-text-fill-color: #ffffff !important;
     }
 
-    div[data-baseweb="calendar"] {
-        background-color: #1e293b !important;
-    }
-    div[data-baseweb="calendar"] * {
+    /* 2. Выпадающее меню (Popover / Dropdown List) */
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    ul[role="listbox"],
+    ul[role="listbox"] * {
+        background-color: #0f172a !important;
         color: #ffffff !important;
     }
-    div[data-baseweb="calendar"] div[role="button"]:hover {
-        background-color: #334155 !important;
+
+    /* Пункты выпадающего списка */
+    li[role="option"], 
+    div[role="option"] {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    /* Эффект при наведении на пункт списка */
+    li[role="option"]:hover, 
+    div[role="option"]:hover,
+    li[aria-selected="true"],
+    div[aria-selected="true"] {
+        background-color: #1e293b !important;
+        color: #38bdf8 !important;
+    }
+
+    /* 3. Выпадающий Календарь (DatePicker Calendar) */
+    div[data-baseweb="calendar"],
+    div[data-baseweb="calendar"] * {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+    }
+
+    /* Дни недели и стрелки в календаре */
+    div[data-baseweb="calendar"] header *,
+    div[data-baseweb="calendar"] [role="button"] {
+        color: #38bdf8 !important;
+        font-weight: bold !important;
+    }
+
+    /* Наведение на день в календаре */
+    div[data-baseweb="calendar"] [role="gridcell"]:hover {
+        background-color: #38bdf8 !important;
+        color: #000000 !important;
+    }
+
+    /* Подписи над инпутами (Labels) */
+    label, div[data-testid="stMarkdownContainer"] p {
+        color: #f1f5f9 !important;
+        font-weight: 600 !important;
     }
 </style>
 """, unsafe_allow_html=True)
