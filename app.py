@@ -139,77 +139,78 @@ st.markdown("""
     .custom-metric-box { background: rgba(65, 90, 119, 0.25); padding: 25px; border-radius: 15px; border: 1px solid #778da9; height: 100%; }
 
     /* ==========================================
-       ЖЕСТКИЙ СБРОС СТИЛЕЙ ДЛЯ SELECTBOX, DATE, TIME & CALENDAR
+       ТОЧЕЧНЫЙ ФИКС КАЛЕНДАРЯ И СПИСКОВ STREAMLIT
        ========================================== */
 
-    /* 1. Поля ввода (Selectbox, Date, Time) - Сами инпуты */
+    /* 1. ПОЛЯ ВВОДА на самой странице */
     div[data-baseweb="select"] > div,
-    div[data-baseweb="input"] > div,
-    div[aria-haspopup="listbox"] {
+    div[data-baseweb="input"] > div {
         background-color: #0f172a !important;
         border: 1px solid rgba(56, 189, 248, 0.4) !important;
-        border-radius: 8px !important;
     }
-
-    /* Цвет текста внутри полей ввода */
+    
     div[data-baseweb="select"] *, 
-    div[data-baseweb="input"] input,
-    div[aria-haspopup="listbox"] * {
+    div[data-baseweb="input"] input {
         color: #ffffff !important;
-        font-weight: 700 !important;
         -webkit-text-fill-color: #ffffff !important;
     }
 
-    /* 2. Выпадающее меню (Popover / Dropdown List) */
-    div[data-baseweb="popover"],
-    div[data-baseweb="menu"],
-    ul[role="listbox"],
-    ul[role="listbox"] * {
+    /* 2. ФОН ВСПЛЫВАЮЩИХ ОКОН (Списки и Календари) */
+    /* Именно вложенный div держит белый фон, перекрываем его */
+    div[data-baseweb="popover"] > div {
         background-color: #0f172a !important;
-        color: #ffffff !important;
+        border: 1px solid #38bdf8 !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
     }
 
-    /* Пункты выпадающего списка */
-    li[role="option"], 
-    div[role="option"] {
+    /* 3. КАЛЕНДАРЬ: Цвета текста */
+    /* Заголовок календаря (сентябрь 2026, пн, вт...) */
+    div[data-baseweb="calendar"] header, 
+    div[data-baseweb="calendar"] header * {
+        color: #38bdf8 !important;
         background-color: #0f172a !important;
-        color: #ffffff !important;
-        font-weight: 600 !important;
     }
 
-    /* Эффект при наведении на пункт списка */
-    li[role="option"]:hover, 
-    div[role="option"]:hover,
-    li[aria-selected="true"],
-    div[aria-selected="true"] {
+    /* Дни текущего месяца */
+    div[data-baseweb="calendar"] [role="gridcell"] {
+        color: #ffffff !important;
+        background-color: transparent !important;
+    }
+
+    /* При наведении на день */
+    div[data-baseweb="calendar"] [role="gridcell"]:hover {
         background-color: #1e293b !important;
         color: #38bdf8 !important;
     }
 
-    /* 3. Выпадающий Календарь (DatePicker Calendar) */
-    div[data-baseweb="calendar"],
-    div[data-baseweb="calendar"] * {
-        background-color: #0f172a !important;
+    /* ВЫБРАННЫЙ день (красный/синий кружок) */
+    div[data-baseweb="calendar"] [role="gridcell"][aria-selected="true"] {
+        background-color: #ef4444 !important; /* Оставил красный, как на твоем скрине */
         color: #ffffff !important;
     }
 
-    /* Дни недели и стрелки в календаре */
-    div[data-baseweb="calendar"] header *,
-    div[data-baseweb="calendar"] [role="button"] {
+    /* Дни не из текущего месяца (делаем их тускло-синими/серыми) */
+    div[data-baseweb="calendar"] [role="gridcell"][aria-disabled="true"],
+    div[data-baseweb="calendar"] [role="gridcell"][aria-selected="false"]:not(:hover) {
+        /* Этот фильтр поможет приглушить неактивные дни */
+    }
+
+    /* 4. ВЫПАДАЮЩИЙ СПИСОК (Ротации) */
+    ul[role="listbox"] {
+        background-color: #0f172a !important;
+    }
+
+    ul[role="listbox"] li {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+        font-weight: 500 !important;
+        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+    }
+
+    ul[role="listbox"] li:hover,
+    ul[role="listbox"] li[aria-selected="true"] {
+        background-color: #1e293b !important;
         color: #38bdf8 !important;
-        font-weight: bold !important;
-    }
-
-    /* Наведение на день в календаре */
-    div[data-baseweb="calendar"] [role="gridcell"]:hover {
-        background-color: #38bdf8 !important;
-        color: #000000 !important;
-    }
-
-    /* Подписи над инпутами (Labels) */
-    label, div[data-testid="stMarkdownContainer"] p {
-        color: #f1f5f9 !important;
-        font-weight: 600 !important;
     }
 </style>
 """, unsafe_allow_html=True)
