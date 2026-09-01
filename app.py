@@ -138,11 +138,7 @@ st.markdown("""
     .widget-title { color:#778da9; font-size: 1.6em; font-weight: 800; margin-bottom: 15px; text-transform: uppercase; }
     .custom-metric-box { background: rgba(65, 90, 119, 0.25); padding: 25px; border-radius: 15px; border: 1px solid #778da9; height: 100%; }
 
-    /* ==========================================
-       УЛЬТИМАТИВНЫЙ ФИКС БЕЛОГО ФОНА ПОПОВЕРОВ И КАЛЕНДАРЕЙ
-       ========================================== */
-    
-    /* Основные поля ввода */
+    /* Поля ввода */
     div[data-baseweb="select"] > div,
     div[data-baseweb="input"] > div {
         background-color: #0f172a !important;
@@ -153,50 +149,19 @@ st.markdown("""
         -webkit-text-fill-color: #ffffff !important;
     }
 
-    /* ВСЕ всплывающие окна, порталы и выпадающие меню Streamlit (BaseWeb) */
-    div[data-baseweb="popover"],
-    div[data-baseweb="menu"],
-    div[data-baseweb="calendar"],
-    div[class*="baseui-portal"],
-    [data-baseweb="popover"] > div,
-    [data-baseweb="menu"] > div {
-        background-color: #0f172a !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(56, 189, 248, 0.3) !important;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.9) !important;
-    }
-
-    /* Весь текст внутри выпадающих окон и календаря */
-    div[data-baseweb="popover"] *,
-    div[data-baseweb="menu"] *,
-    div[data-baseweb="calendar"] * {
-        color: #ffffff !important;
-    }
-
-    /* Элементы списков (опции выбора ротаций) */
-    li[role="option"], div[role="option"] {
-        background-color: #0f172a !important;
-        color: #ffffff !important;
-        padding: 10px 15px !important;
+    /* Принудительно темно-серый шрифт для выпадающих списков и календаря на светлом фоне */
+    div[data-baseweb="calendar"] [role="gridcell"],
+    ul[role="listbox"] li, 
+    div[role="option"] {
+        color: #1e293b !important;
+        -webkit-text-fill-color: #1e293b !important;
     }
     
-    li[role="option"]:hover, div[role="option"]:hover,
-    li[aria-selected="true"], div[aria-selected="true"] {
-        background-color: #1e293b !important;
-        color: #38bdf8 !important;
-    }
-
-    /* Календарь: шапка и дни */
-    div[data-baseweb="calendar"] header {
-        background-color: #0f172a !important;
-    }
-    div[data-baseweb="calendar"] [role="gridcell"]:hover {
-        background-color: #38bdf8 !important;
-        color: #000000 !important;
-    }
+    /* Выбранный день в календаре оставляем с белым текстом для контраста */
     div[data-baseweb="calendar"] [role="gridcell"][aria-selected="true"] {
-        background-color: #ef4444 !important;
         color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        background-color: #ef4444 !important;
     }
 </style>
 """, unsafe_allow_html=True)
