@@ -139,78 +139,64 @@ st.markdown("""
     .custom-metric-box { background: rgba(65, 90, 119, 0.25); padding: 25px; border-radius: 15px; border: 1px solid #778da9; height: 100%; }
 
     /* ==========================================
-       ТОЧЕЧНЫЙ ФИКС КАЛЕНДАРЯ И СПИСКОВ STREAMLIT
+       УЛЬТИМАТИВНЫЙ ФИКС БЕЛОГО ФОНА ПОПОВЕРОВ И КАЛЕНДАРЕЙ
        ========================================== */
-
-    /* 1. ПОЛЯ ВВОДА на самой странице */
+    
+    /* Основные поля ввода */
     div[data-baseweb="select"] > div,
     div[data-baseweb="input"] > div {
         background-color: #0f172a !important;
         border: 1px solid rgba(56, 189, 248, 0.4) !important;
     }
-    
-    div[data-baseweb="select"] *, 
-    div[data-baseweb="input"] input {
+    div[data-baseweb="select"] *, div[data-baseweb="input"] input {
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
     }
 
-    /* 2. ФОН ВСПЛЫВАЮЩИХ ОКОН (Списки и Календари) */
-    /* Именно вложенный div держит белый фон, перекрываем его */
-    div[data-baseweb="popover"] > div {
+    /* ВСЕ всплывающие окна, порталы и выпадающие меню Streamlit (BaseWeb) */
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    div[data-baseweb="calendar"],
+    div[class*="baseui-portal"],
+    [data-baseweb="popover"] > div,
+    [data-baseweb="menu"] > div {
         background-color: #0f172a !important;
-        border: 1px solid #38bdf8 !important;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
-    }
-
-    /* 3. КАЛЕНДАРЬ: Цвета текста */
-    /* Заголовок календаря (сентябрь 2026, пн, вт...) */
-    div[data-baseweb="calendar"] header, 
-    div[data-baseweb="calendar"] header * {
-        color: #38bdf8 !important;
-        background-color: #0f172a !important;
-    }
-
-    /* Дни текущего месяца */
-    div[data-baseweb="calendar"] [role="gridcell"] {
         color: #ffffff !important;
-        background-color: transparent !important;
+        border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.9) !important;
     }
 
-    /* При наведении на день */
+    /* Весь текст внутри выпадающих окон и календаря */
+    div[data-baseweb="popover"] *,
+    div[data-baseweb="menu"] *,
+    div[data-baseweb="calendar"] * {
+        color: #ffffff !important;
+    }
+
+    /* Элементы списков (опции выбора ротаций) */
+    li[role="option"], div[role="option"] {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+        padding: 10px 15px !important;
+    }
+    
+    li[role="option"]:hover, div[role="option"]:hover,
+    li[aria-selected="true"], div[aria-selected="true"] {
+        background-color: #1e293b !important;
+        color: #38bdf8 !important;
+    }
+
+    /* Календарь: шапка и дни */
+    div[data-baseweb="calendar"] header {
+        background-color: #0f172a !important;
+    }
     div[data-baseweb="calendar"] [role="gridcell"]:hover {
-        background-color: #1e293b !important;
-        color: #38bdf8 !important;
+        background-color: #38bdf8 !important;
+        color: #000000 !important;
     }
-
-    /* ВЫБРАННЫЙ день (красный/синий кружок) */
     div[data-baseweb="calendar"] [role="gridcell"][aria-selected="true"] {
-        background-color: #ef4444 !important; /* Оставил красный, как на твоем скрине */
+        background-color: #ef4444 !important;
         color: #ffffff !important;
-    }
-
-    /* Дни не из текущего месяца (делаем их тускло-синими/серыми) */
-    div[data-baseweb="calendar"] [role="gridcell"][aria-disabled="true"],
-    div[data-baseweb="calendar"] [role="gridcell"][aria-selected="false"]:not(:hover) {
-        /* Этот фильтр поможет приглушить неактивные дни */
-    }
-
-    /* 4. ВЫПАДАЮЩИЙ СПИСОК (Ротации) */
-    ul[role="listbox"] {
-        background-color: #0f172a !important;
-    }
-
-    ul[role="listbox"] li {
-        background-color: #0f172a !important;
-        color: #ffffff !important;
-        font-weight: 500 !important;
-        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-    }
-
-    ul[role="listbox"] li:hover,
-    ul[role="listbox"] li[aria-selected="true"] {
-        background-color: #1e293b !important;
-        color: #38bdf8 !important;
     }
 </style>
 """, unsafe_allow_html=True)
