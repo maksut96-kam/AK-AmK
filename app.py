@@ -160,6 +160,34 @@ st.markdown("""
         background-color: #334155 !important;
         color: #38bdf8 !important;
     }
+
+    /* ФИКС ТЕКСТА И ФОНА ПОЛЕЙ ВВОДА И КАЛЕНДАРЯ */
+    div[data-baseweb="select"] > div {
+        background-color: #1e293b !important;
+    }
+    div[data-baseweb="select"] span {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+    
+    div[data-baseweb="input"] > div {
+        background-color: #1e293b !important;
+    }
+    div[data-baseweb="input"] input {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #ffffff !important;
+    }
+
+    div[data-baseweb="calendar"] {
+        background-color: #1e293b !important;
+    }
+    div[data-baseweb="calendar"] * {
+        color: #ffffff !important;
+    }
+    div[data-baseweb="calendar"] div[role="button"]:hover {
+        background-color: #334155 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
