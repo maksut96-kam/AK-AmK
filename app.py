@@ -55,39 +55,34 @@ def add_video_background(video_path="space_background.mp4"):
                 pointer-events: none;
             }}
             
-            /* VIP HEADER STYLES */
+            /* CLEAN VIP MINIMAL HEADER */
             .header-box {{
-                background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.85));
-                border: 1px solid rgba(56, 189, 248, 0.35);
-                border-radius: 20px;
-                padding: 25px 35px;
-                text-align: center;
-                backdrop-filter: blur(12px);
-                box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(56, 189, 248, 0.15);
-                margin-bottom: 25px;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 10px 0 0 0 !important;
+                margin-bottom: 200px !important; /* Отступ 200px для обзора черной дыры */
+                text-align: left !important;
             }}
             .main-title {{
                 font-size: 3.2rem !important;
-                font-weight: 900 !important;
-                letter-spacing: 5px !important;
-                background: linear-gradient(90deg, #38bdf8, #818cf8, #ffffff) !important;
-                -webkit-background-clip: text !important;
-                -webkit-text-fill-color: transparent !important;
+                font-weight: 800 !important;
+                letter-spacing: 2px !important;
+                color: #ffffff !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                text-transform: uppercase;
-                filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.65));
+                text-transform: uppercase !important;
                 line-height: 1.1 !important;
+                -webkit-text-fill-color: #ffffff !important;
             }}
             .sub-title {{
                 font-size: 1.1rem !important;
-                color: #38bdf8 !important;
-                letter-spacing: 6px !important;
-                text-transform: uppercase !important;
+                color: #cbd5e1 !important;
+                letter-spacing: 0.5px !important;
                 margin-top: 10px !important;
-                font-weight: 600 !important;
+                font-weight: 400 !important;
                 opacity: 0.9;
-                text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+                text-transform: none !important;
             }}
             
             /* HIDE ANCHOR LINKS */
@@ -401,7 +396,7 @@ def find_rotations(start_dt):
 st.markdown("""
 <div class="header-box">
     <div class="main-title">JULIA ASSISTANT</div>
-    <div class="sub-title">Astro Coordination Center</div>
+    <div class="sub-title">Astro coordination center</div>
 </div>
 """, unsafe_allow_html=True)
 
