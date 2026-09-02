@@ -273,6 +273,25 @@ st.markdown("""
     label {
         color: #cbd5e1 !important;
     }
+    /* === 1. ШРИФТ ЗАГОЛОВКОВ БЛОКОВ (Ближайшие смены, Таблица карак и т.д.) === */
+            .stMarkdown h3, .stMarkdown h2, h2, h3 {{
+                font-family: 'Space Grotesk', sans-serif !important;
+                letter-spacing: 2px !important;
+                text-transform: uppercase !important;
+                color: #f8fafc !important;
+            }}
+
+            /* === 2. ВЫСОКИЙ КОНТРАСТ ДЛЯ МЕЛКОГО ТЕКСТА (Описание, Пада, Управляющий) === */
+            .stMarkdown div, .stMarkdown p, span, small {{
+                color: #cbd5e1 !important; /* Яркий светло-серый вместо тёмного */
+            }}
+
+            /* === 3. МОНОШИРИННЫЙ СТИЛЬ ДЛЯ ТОЧНЫХ ГРАДУСОВ (Колонка Deg) === */
+            table td:nth-child(3) {{
+                font-family: 'Courier New', Courier, monospace !important;
+                color: #38bdf8 !important; /* Подсветка точных данных голубым акцентом */
+                font-weight: 600 !important;
+            }}
 </style>
 """, unsafe_allow_html=True)
 
