@@ -54,6 +54,47 @@ def add_video_background(video_path="space_background.mp4"):
                 z-index: -1;
                 pointer-events: none;
             }}
+            
+            /* VIP HEADER STYLES */
+            .header-box {{
+                background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.85));
+                border: 1px solid rgba(56, 189, 248, 0.35);
+                border-radius: 20px;
+                padding: 25px 35px;
+                text-align: center;
+                backdrop-filter: blur(12px);
+                box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(56, 189, 248, 0.15);
+                margin-bottom: 25px;
+            }}
+            .main-title {{
+                font-size: 3.2rem !important;
+                font-weight: 900 !important;
+                letter-spacing: 5px !important;
+                background: linear-gradient(90deg, #38bdf8, #818cf8, #ffffff) !important;
+                -webkit-background-clip: text !important;
+                -webkit-text-fill-color: transparent !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                text-transform: uppercase;
+                filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.65));
+                line-height: 1.1 !important;
+            }}
+            .sub-title {{
+                font-size: 1.1rem !important;
+                color: #38bdf8 !important;
+                letter-spacing: 6px !important;
+                text-transform: uppercase !important;
+                margin-top: 10px !important;
+                font-weight: 600 !important;
+                opacity: 0.9;
+                text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+            }}
+            
+            /* HIDE ANCHOR LINKS */
+            .stMarkdown a.header-anchor, a.anchor-link {{
+                display: none !important;
+            }}
+
             .custom-metric-box {{
                 background: rgba(15, 23, 42, 0.65) !important;
                 border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -244,13 +285,11 @@ def format_cell(row):
         gandanta_mark = " <span style='background:#b91c1c; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;'>🔥 ГАНДАНТА</span>"
         bg_style = "background: repeating-linear-gradient(45deg, rgba(185, 28, 28, 0.1), rgba(185, 28, 28, 0.1) 10px, transparent 10px, transparent 20px); border-radius: 8px; padding: 4px;"
     
-    # --- Плашка роли ---
     role_mark = ""
     role_val = str(row.get('Role', '-'))
     if role_val and role_val != '-':
         role_mark = f" <span style='background:#7c3aed; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold; white-space:nowrap;'>{role_val}</span>"
 
-    # --- Плашка "⚠️ Раху выше" для АК / AmK если Раху превосходит их по градусу ---
     if row.get('RahuAbove', False):
         role_mark += " <span style='background:#dc2626; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold; white-space:nowrap;'>⚠️ Раху выше</span>"
 
@@ -306,11 +345,11 @@ def get_planet_data(t):
     
     if ra_deg_inv > ak_deg:
         rahu_note = "⭐ Сверх-АК (Раху выше)"
-        df.at[0, 'RahuAbove'] = True  # АК ниже Раху
-        df.at[1, 'RahuAbove'] = True  # AmK ниже Раху
+        df.at[0, 'RahuAbove'] = True
+        df.at[1, 'RahuAbove'] = True
     elif ra_deg_inv > amk_deg:
         rahu_note = "⭐ Сверх-AmK (Раху выше)"
-        df.at[1, 'RahuAbove'] = True  # AmK ниже Раху
+        df.at[1, 'RahuAbove'] = True
 
     ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': ra_lon % 30, 'Role': rahu_note, 'RahuAbove': False}])
     
@@ -359,9 +398,12 @@ def find_rotations(start_dt):
 # ============================================================
 # ⛔ БЛОК 3: ИНТЕРФЕЙС
 # ============================================================
-st.markdown(f"""<div class="header-box"><h1 class="main-title">JULIA ASSISTANT</h1><div class="sub-title">Astro coordination center</div></div>""", unsafe_allow_html=True)
-
-st.markdown("<div style='height: 200px;'></div>", unsafe_allow_html=True)
+st.markdown("""
+<div class="header-box">
+    <div class="main-title">JULIA ASSISTANT</div>
+    <div class="sub-title">Astro Coordination Center</div>
+</div>
+""", unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
 
