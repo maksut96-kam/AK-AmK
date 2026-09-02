@@ -132,38 +132,28 @@ Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близ
 
 st.markdown("""
 <style>
-    /* 1. Глобальный тёмный фон страницы */
     .stApp {
         background-color: #0e1117;
         color: #f1f5f9;
     }
-
-    /* 2. Поля ввода текста и чисел */
     div[data-baseweb="input"] > div {
         background-color: #1e293b !important;
         border-color: #334155 !important;
         color: #f1f5f9 !important;
     }
-    
     div[data-baseweb="input"] input {
         color: #f1f5f9 !important;
         -webkit-text-fill-color: #f1f5f9 !important;
     }
-
-    /* 3. Выпадающие списки (Selectbox) и Селектор дат (DatePicker) */
     div[data-baseweb="select"] > div {
         background-color: #1e293b !important;
         border-color: #334155 !important;
     }
-
-    /* Значения внутри полей выпадающих списков */
     div[data-baseweb="select"] span,
     div[data-baseweb="select"] div {
         color: #f1f5f9 !important;
         -webkit-text-fill-color: #f1f5f9 !important;
     }
-
-    /* 4. Выпадающие меню (Drop-down menu) и календарь */
     div[data-baseweb="popover"],
     div[data-baseweb="menu"],
     div[data-baseweb="calendar"],
@@ -171,35 +161,25 @@ st.markdown("""
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
     }
-
-    /* Текст пунктов списка и дат календаря (Светлый шрифт) */
     div[data-baseweb="calendar"] [role="gridcell"],
     ul[role="listbox"] li, 
     div[role="option"] {
         color: #f1f5f9 !important;
         -webkit-text-fill-color: #f1f5f9 !important;
     }
-
-    /* Шапка календаря (месяц, год) и названия дней недели */
     div[data-baseweb="calendar"] header,
     div[data-baseweb="calendar"] [role="columnheader"] {
         color: #94a3b8 !important;
         -webkit-text-fill-color: #94a3b8 !important;
     }
-
-    /* Стрелки навигации по месяцам в календаре */
     div[data-baseweb="calendar"] button {
         color: #f1f5f9 !important;
     }
-
-    /* Эффект наведения курсора на пункт списка или дату */
     ul[role="listbox"] li:hover,
     div[role="option"]:hover,
     div[data-baseweb="calendar"] [role="gridcell"]:hover {
         background-color: #334155 !important;
     }
-
-    /* 5. Подписи к полям ввода (Labels) */
     label {
         color: #cbd5e1 !important;
     }
@@ -222,7 +202,6 @@ def deg_to_dms(decimal_deg):
     return f"{d}° {m:02d}'"
 
 def deg_to_dms_full(decimal_deg):
-    """Возвращает градусы, минуты и секунды для передачи ИИ"""
     d = int(decimal_deg)
     rem = (decimal_deg - d) * 60
     m = int(rem)
@@ -232,7 +211,6 @@ def deg_to_dms_full(decimal_deg):
     return f"{d}° {m:02d}' {s:02d}\""
 
 def get_full_planet_info_for_ai(planet_name, lon):
-    """Формирует полную астрологическую строку с точными координатами для ИИ"""
     s_idx = int(lon/30)
     n_deg = 360/27
     n_idx = int(lon / n_deg) % 27
@@ -247,11 +225,8 @@ def get_full_planet_info_for_ai(planet_name, lon):
         return f"{planet_name} в {ZODIAC_SIGNS[s_idx]} ({deg_to_dms_full(deg_in_sign)}, Накшатра: {NAKSHATRAS[n_idx]}, Пада: {pada})"
 
 def check_gandanta(lon):
-    """Ганданта только для последних 3°20' водных знаков (Рак, Скорпион, Рыбы)"""
     deg_in_sign = lon % 30
     sign_idx = int(lon / 30)
-    # Водные знаки: 3 (Рак), 7 (Скорпион), 11 (Рыбы)
-    # 26 градусов 40 минут = 26.6666...
     if sign_idx in [3, 7, 11] and deg_in_sign >= (26 + 40/60.0):
         return True
     return False
@@ -265,21 +240,24 @@ def format_cell(row):
     gandanta_mark = ""
     bg_style = ""
     
-    # Если Ганданта — добавляем плашку и диагональную штриховку для ячейки (видимую и в вебе, и в PDF)
     if check_gandanta(lon):
         gandanta_mark = " <span style='background:#b91c1c; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;'>🔥 ГАНДАНТА</span>"
         bg_style = "background: repeating-linear-gradient(45deg, rgba(185, 28, 28, 0.1), rgba(185, 28, 28, 0.1) 10px, transparent 10px, transparent 20px); border-radius: 8px; padding: 4px;"
     
+    # --- Плашка роли (включая Сверх-АК / Сверх-AmK для Раху) ---
+    role_mark = ""
+    role_val = str(row.get('Role', '-'))
+    if role_val and role_val != '-':
+        role_mark = f" <span style='background:#7c3aed; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold; white-space:nowrap;'>{role_val}</span>"
+
     extra_str = ""
     if row.get('Planet') == 'Rahu':
-        # Раху: обратные координаты выводим как основные
         inv_deg = 30.0 - deg_in_sign
         inv_d = int(inv_deg)
         inv_m = int(round((inv_deg - inv_d) * 60))
         if inv_m == 60: inv_d += 1; inv_m = 0
         deg_str = f"{inv_d}° {inv_m:02d}'"
         
-        # Прямые выводим мелко в скобках
         norm_d = int(deg_in_sign)
         norm_m = int(round((deg_in_sign - norm_d) * 60))
         if norm_m == 60: norm_d += 1; norm_m = 0
@@ -287,7 +265,7 @@ def format_cell(row):
     else:
         deg_str = deg_to_dms(deg_in_sign)
 
-    return f"""<div style='font-size:1.25em; line-height:1.4; {bg_style}'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {deg_str}{gandanta_mark}{extra_str}<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
+    return f"""<div style='font-size:1.25em; line-height:1.4; {bg_style}'><b>{P_ICONS.get(row['Planet'], row['Planet'])}</b> | {Z_ICONS[ZODIAC_SIGNS[s_idx]]} {deg_str}{role_mark}{gandanta_mark}{extra_str}<br><span style='color:#00d4ff; font-weight:800; font-size:1.05em;'>{NAKSHATRAS[n_idx]}</span> ({NAK_LORDS[n_idx]})<br><span style='font-size:0.85em; color:#64748b;'>{NAK_TEXT_SYMBOLS[n_idx]}</span><br><span style='color:#475569; font-size:0.85em; font-weight:600;'>Пада {pada} | Упр: {PADA_LORDS_MAP[nav_idx]}</span></div>"""
 
 def get_planet_data(t):
     swe.set_sid_mode(swe.SIDM_LAHIRI)
@@ -428,7 +406,7 @@ with t1:
 3. ATMAKARAKA (AK): {ak_info}. Главная цель и идея рынка.
 4. AMATYAKARAKA (AmK): {amk_info}. Советник толпы, как лучше поступить, реальный способ действия толпы.
    * Угловое расстояние (аспект) между АК и AmK: {angle_ak_amk:.2f} градусов.
-5. РАХУ: {rahu_info}. (Двигатель хаоса, спекуляций и иллюзорных пробоев).
+5. РАХУ: {rahu_info}. (Двигатель хаоса, спекуляций и иллюзорных пробоев). Статус Раху относительно карак: {rahu_row.get('Role', '-')}.
 
 Формат ответа — тезисы (bullet-points). Обязательная структура (при подготовке ответа использовать все данные: Положение, градус, зодиак, накшатра, пада итд):
 • Психологический фон (ПНР): Диагностика состояния толпы через точные координаты Луны. Чего боятся, во что верят?
@@ -547,7 +525,6 @@ with t2:
                 rahu = df_ev[df_ev['Planet']=='Rahu'].iloc[0]
                 local_dt = curr + timedelta(hours=3)
                 
-                # Сохраняем и готовый HTML для таблицы, и сырые данные (только долготу и планеты) для ИИ-промпта
                 results.append({
                     "Дата": local_dt.strftime("%d.%m.%Y"),
                     "День недели": days_ru[local_dt.weekday()],
@@ -563,7 +540,8 @@ with t2:
                     "_raw_amk_lon": df_ev.iloc[1]['Lon'],
                     "_raw_sun_lon": sun['Lon'],
                     "_raw_moon_lon": moon['Lon'],
-                    "_raw_rahu_lon": rahu['Lon']
+                    "_raw_rahu_lon": rahu['Lon'],
+                    "_raw_rahu_role": rahu.get('Role', '-')
                 })
                 last_p = new_p
             
@@ -577,26 +555,21 @@ with t2:
         p_bar.empty()
 
         if results:
-            # 1. Автоматическое сохранение в файл
             os.makedirs("forecasts", exist_ok=True)
             file_name = f"forecasts/rotations_{ds.strftime('%Y%m%d')}_{de.strftime('%Y%m%d')}.json"
             with open(file_name, 'w', encoding='utf-8') as f:
                 json.dump(results, f, ensure_ascii=False, indent=4)
             st.success(f"✅ Данные успешно рассчитаны и сохранены в файл: {file_name}")
 
-            # 2. Вывод таблицы
-            st.session_state['planner_results'] = results # Сохраняем в память для селектора ниже
+            st.session_state['planner_results'] = results
             
             df_res = pd.DataFrame(results)
-            # Убираем технические колонки из отображения
             display_cols = [col for col in df_res.columns if not col.startswith('_raw_')]
             df_display = df_res[display_cols]
             
             raw_html = df_display.to_html(escape=False, index=False).replace('\n', '')
             print_title = f"График ротаций с {ds.strftime('%d.%m.%Y')} по {de.strftime('%d.%m.%Y')}"
             
-            # Увеличили height для td::after с 35px до 70px (в 2 раза больше места для заметок)
-            # Добавлен флаг -webkit-print-color-adjust для печати фонов (Ганданты)
             html_btn = f"""
             <script>
             function openPrint() {{
@@ -626,7 +599,6 @@ with t2:
             components.html(html_btn, height=75)
             st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-    # 3. Блок генерации прогноза для выбранной ротации
     if 'planner_results' in st.session_state and len(st.session_state['planner_results']) > 0:
         st.markdown("---")
         st.subheader("🤖 ИИ-прогноз для будущей ротации")
@@ -637,18 +609,15 @@ with t2:
         if st.button("🧠 Сгенерировать глубокий прогноз для выбранной даты"):
             row = options[selected_option]
             
-            # Собираем точные данные для ИИ
             ak_info = get_full_planet_info_for_ai(row['_raw_ak_planet'], row['_raw_ak_lon'])
             amk_info = get_full_planet_info_for_ai(row['_raw_amk_planet'], row['_raw_amk_lon'])
             sun_info = get_full_planet_info_for_ai('Sun', row['_raw_sun_lon'])
             moon_info = get_full_planet_info_for_ai('Moon', row['_raw_moon_lon'])
             rahu_info = get_full_planet_info_for_ai('Rahu', row['_raw_rahu_lon'])
             
-            # Угол между AK и AmK
             angle_ak_amk = abs(row['_raw_ak_lon'] - row['_raw_amk_lon'])
             if angle_ak_amk > 180: angle_ak_amk = 360 - angle_ak_amk
             
-            # Освещенность Луны
             diff = (row['_raw_moon_lon'] - row['_raw_sun_lon']) % 360
             m_illum = (1 - math.cos(math.radians(diff))) / 2 * 100
             
@@ -670,7 +639,7 @@ with t2:
 3. ATMAKARAKA (AK): {ak_info}. (Психологический настрой рынка - ПНР).
 4. AMATYAKARAKA (AmK): {amk_info}. (Реальный способ действия толпы).
    * Угловое расстояние (аспект) между АК и AmK: {angle_ak_amk:.2f} градусов.
-5. РАХУ: {rahu_info}. (Двигатель хаоса, спекуляций и иллюзорных пробоев).
+5. РАХУ: {rahu_info}. (Двигатель хаоса, спекуляций и иллюзорных пробоев). Статус Раху относительно карак: {row.get('_raw_rahu_role', '-')}.
 
 Формат ответа — строгие тезисы (bullet-points). Обязательная структура:
 • Психологический фон (ПНР): Диагностика состояния толпы через точные координаты АК и Луны. Чего будут бояться, во что верить?
