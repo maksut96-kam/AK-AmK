@@ -222,6 +222,9 @@ Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близ
 
 st.markdown("""
 <style>
+    /* 1. ПОДКЛЮЧЕНИЕ ШРИФТОВ (Строго на первой строчке!) */
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap');
+
     .stApp {
         background-color: #0e1117;
         color: #f1f5f9;
@@ -273,35 +276,33 @@ st.markdown("""
     label {
         color: #cbd5e1 !important;
     }
-    /* 1. Импорт шрифтов с ПОЛНОЙ поддержкой кириллицы */
-            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap');
 
-            /* 2. Заголовки блоков (Теперь работают на русском благодаря Unbounded) */
-            .stMarkdown h3, .stMarkdown h2, h2, h3 {{
-                font-family: 'Unbounded', sans-serif !important;
-                font-size: 1.1rem !important;
-                font-weight: 700 !important;
-                letter-spacing: 1.5px !important;
-                text-transform: uppercase !important;
-                color: #f8fafc !important;
-            }}
+    /* 2. Заголовки блоков (Unbounded с поддержкой кириллицы) */
+    .stMarkdown h3, .stMarkdown h2, h2, h3 {
+        font-family: 'Unbounded', sans-serif !important;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 1.5px !important;
+        text-transform: uppercase !important;
+        color: #f8fafc !important;
+    }
 
-            /* 3. Основной текст, названия планет и описания */
-            div, p, span, small {{
-                font-family: 'Montserrat', sans-serif !important;
-            }}
+    /* 3. Основной текст и подписи */
+    div, p, span, small {
+        font-family: 'Montserrat', sans-serif !important;
+    }
 
-            /* 4. Повышаем контраст мелкого серого текста (Накшатры, описания) */
-            div[style*="color"], span[style*="color"], small {{
-                color: #cbd5e1 !important; /* Яркий читаемый светло-серый */
-            }}
+    /* 4. Повышение контраста мелкого серого текста */
+    div[style*="color"], span[style*="color"], small {
+        color: #cbd5e1 !important;
+    }
 
-            /* 5. Моноширинные точные градусы */
-            table td:nth-child(3) {{
-                font-family: monospace !important;
-                color: #38bdf8 !important;
-                font-weight: 600 !important;
-            }}
+    /* 5. Моноширинный шрифт для точных градусов */
+    table td:nth-child(3) {
+        font-family: monospace !important;
+        color: #38bdf8 !important;
+        font-weight: 600 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
