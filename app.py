@@ -132,36 +132,76 @@ Z_ICONS = {"Овен": "♈ Овен", "Телец": "♉ Телец", "Близ
 
 st.markdown("""
 <style>
-    .main-title { font-family: 'Lexend', sans-serif; font-weight: 800; font-size: 3em; color: white; margin: 0; }
-    .sub-title { color: #94a3b8; font-size: 1.3em; letter-spacing: 5px; text-transform: uppercase; font-weight: 600; margin-top: -5px; }
-    .moon-altar { background: linear-gradient(135deg, rgba(13,27,42,0.8) 0%, rgba(27,38,59,0.8) 100%); border-radius: 20px; padding: 30px; border: 1px solid #415a77; color: #e0e1dd; }
-    .widget-title { color:#778da9; font-size: 1.6em; font-weight: 800; margin-bottom: 15px; text-transform: uppercase; }
-    .custom-metric-box { background: rgba(65, 90, 119, 0.25); padding: 25px; border-radius: 15px; border: 1px solid #778da9; height: 100%; }
+    /* 1. Глобальный тёмный фон страницы */
+    .stApp {
+        background-color: #0e1117;
+        color: #f1f5f9;
+    }
 
-    /* Поля ввода */
-    div[data-baseweb="select"] > div,
+    /* 2. Поля ввода текста и чисел */
     div[data-baseweb="input"] > div {
-        background-color: #0f172a !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
     }
-    div[data-baseweb="select"] *, div[data-baseweb="input"] input {
-        color: #ffffff !important;
-        -webkit-text-fill-color: #ffffff !important;
+    
+    div[data-baseweb="input"] input {
+        color: #f1f5f9 !important;
+        -webkit-text-fill-color: #f1f5f9 !important;
     }
 
-    /* Принудительно темно-серый шрифт для выпадающих списков и календаря на светлом фоне */
+    /* 3. Выпадающие списки (Selectbox) и Селектор дат (DatePicker) */
+    div[data-baseweb="select"] > div {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+    }
+
+    /* Значения внутри полей выпадающих списков */
+    div[data-baseweb="select"] span,
+    div[data-baseweb="select"] div {
+        color: #f1f5f9 !important;
+        -webkit-text-fill-color: #f1f5f9 !important;
+    }
+
+    /* 4. Выпадающие меню (Drop-down menu) и календарь */
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    div[data-baseweb="calendar"],
+    ul[role="listbox"] {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+    }
+
+    /* Текст пунктов списка и дат календаря (Светлый шрифт) */
     div[data-baseweb="calendar"] [role="gridcell"],
     ul[role="listbox"] li, 
     div[role="option"] {
-        color: #1e293b !important;
-        -webkit-text-fill-color: #1e293b !important;
+        color: #f1f5f9 !important;
+        -webkit-text-fill-color: #f1f5f9 !important;
     }
-    
-    /* Выбранный день в календаре оставляем с белым текстом для контраста */
-    div[data-baseweb="calendar"] [role="gridcell"][aria-selected="true"] {
-        color: #ffffff !important;
-        -webkit-text-fill-color: #ffffff !important;
-        background-color: #ef4444 !important;
+
+    /* Шапка календаря (месяц, год) и названия дней недели */
+    div[data-baseweb="calendar"] header,
+    div[data-baseweb="calendar"] [role="columnheader"] {
+        color: #94a3b8 !important;
+        -webkit-text-fill-color: #94a3b8 !important;
+    }
+
+    /* Стрелки навигации по месяцам в календаре */
+    div[data-baseweb="calendar"] button {
+        color: #f1f5f9 !important;
+    }
+
+    /* Эффект наведения курсора на пункт списка или дату */
+    ul[role="listbox"] li:hover,
+    div[role="option"]:hover,
+    div[data-baseweb="calendar"] [role="gridcell"]:hover {
+        background-color: #334155 !important;
+    }
+
+    /* 5. Подписи к полям ввода (Labels) */
+    label, p {
+        color: #cbd5e1 !important;
     }
 </style>
 """, unsafe_allow_html=True)
