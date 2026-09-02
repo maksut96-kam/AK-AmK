@@ -244,11 +244,15 @@ def format_cell(row):
         gandanta_mark = " <span style='background:#b91c1c; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;'>🔥 ГАНДАНТА</span>"
         bg_style = "background: repeating-linear-gradient(45deg, rgba(185, 28, 28, 0.1), rgba(185, 28, 28, 0.1) 10px, transparent 10px, transparent 20px); border-radius: 8px; padding: 4px;"
     
-    # --- Плашка роли (включая Сверх-АК / Сверх-AmK для Раху) ---
+    # --- Плашка роли ---
     role_mark = ""
     role_val = str(row.get('Role', '-'))
     if role_val and role_val != '-':
         role_mark = f" <span style='background:#7c3aed; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold; white-space:nowrap;'>{role_val}</span>"
+
+    # --- Плашка "⚠️ Раху выше" для АК / AmK если Раху превосходит их по градусу ---
+    if row.get('RahuAbove', False):
+        role_mark += " <span style='background:#dc2626; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold; white-space:nowrap;'>⚠️ Раху выше</span>"
 
     extra_str = ""
     if row.get('Planet') == 'Rahu':
@@ -290,6 +294,7 @@ def get_planet_data(t):
     df = pd.DataFrame(res).sort_values(by='Deg', ascending=False).reset_index(drop=True)
     roles = ['AK', 'AmK', 'BK', 'MK', 'PiK', 'GK', 'DK']
     df['Role'] = (roles + ['-']*5)[:len(df)]
+    df['RahuAbove'] = False
     
     pos_rahu, _ = swe.calc_ut(t.ut1, swe.TRUE_NODE, flags)
     ra_lon = pos_rahu[0]
@@ -298,12 +303,16 @@ def get_planet_data(t):
     ak_deg = df.iloc[0]['Deg']
     amk_deg = df.iloc[1]['Deg']
     rahu_note = "-"
+    
     if ra_deg_inv > ak_deg:
         rahu_note = "⭐ Сверх-АК (Раху выше)"
+        df.at[0, 'RahuAbove'] = True  # АК ниже Раху
+        df.at[1, 'RahuAbove'] = True  # AmK ниже Раху
     elif ra_deg_inv > amk_deg:
         rahu_note = "⭐ Сверх-AmK (Раху выше)"
+        df.at[1, 'RahuAbove'] = True  # AmK ниже Раху
 
-    ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': ra_lon % 30, 'Role': rahu_note}])
+    ra_row = pd.DataFrame([{'Planet': 'Rahu', 'Lon': ra_lon, 'Deg': ra_lon % 30, 'Role': rahu_note, 'RahuAbove': False}])
     
     return pd.concat([df, ra_row], ignore_index=True)
 
