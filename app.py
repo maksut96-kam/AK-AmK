@@ -30,9 +30,63 @@ def add_video_background(video_path="space_background.mp4"):
         
         video_html = f"""
         <style>
+            @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Montserrat:wght@300;400;600&family=Rajdhani:wght@600;700&family=Space+Grotesk:wght@600;700&display=swap');
+
             .stApp {{
                 background: transparent !important;
                 color: #ffffff !important;
+            }}
+            .video-bg {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                object-fit: cover;
+                z-index: -2;
+                pointer-events: none;
+            }}
+            .video-overlay {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 5, 15, 0.65);
+                z-index: -1;
+                pointer-events: none;
+            }}
+            
+            /* CLEAN VIP MINIMAL HEADER */
+            .header-box {{
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 10px 0 0 0 !important;
+                margin-bottom: 200px !important;
+                text-align: left !important;
+            }}
+            .main-title {{
+                font-family: 'Space Grotesk', sans-serif !important;
+                font-size: 3.2rem !important;
+                font-weight: 700 !important;
+                letter-spacing: 4px !important;
+                color: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                text-transform: uppercase !important;
+                line-height: 1.1 !important;
+                -webkit-text-fill-color: #ffffff !important;
+            }}
+            .sub-title {{
+                font-family: 'Montserrat', sans-serif !important;
+                font-size: 0.85rem !important;
+                font-weight: 400 !important;
+                letter-spacing: 6px !important;
+                color: #94a3b8 !important;
+                margin-top: 10px !important;
+                opacity: 0.9;
+                text-transform: uppercase !important;
             }}
             .video-bg {{
                 position: fixed;
