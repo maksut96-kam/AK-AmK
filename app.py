@@ -200,7 +200,7 @@ st.markdown("""
     }
 
     /* 5. Подписи к полям ввода (Labels) */
-    label, p {
+    label {
         color: #cbd5e1 !important;
     }
 </style>
