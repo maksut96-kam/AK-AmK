@@ -273,23 +273,33 @@ st.markdown("""
     label {
         color: #cbd5e1 !important;
     }
-    /* === 1. ШРИФТ ЗАГОЛОВКОВ БЛОКОВ (Ближайшие смены, Таблица карак и т.д.) === */
+    /* 1. Импорт шрифтов с ПОЛНОЙ поддержкой кириллицы */
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap');
+
+            /* 2. Заголовки блоков (Теперь работают на русском благодаря Unbounded) */
             .stMarkdown h3, .stMarkdown h2, h2, h3 {{
-                font-family: 'Space Grotesk', sans-serif !important;
-                letter-spacing: 2px !important;
+                font-family: 'Unbounded', sans-serif !important;
+                font-size: 1.1rem !important;
+                font-weight: 700 !important;
+                letter-spacing: 1.5px !important;
                 text-transform: uppercase !important;
                 color: #f8fafc !important;
             }}
 
-            /* === 2. ВЫСОКИЙ КОНТРАСТ ДЛЯ МЕЛКОГО ТЕКСТА (Описание, Пада, Управляющий) === */
-            .stMarkdown div, .stMarkdown p, span, small {{
-                color: #cbd5e1 !important; /* Яркий светло-серый вместо тёмного */
+            /* 3. Основной текст, названия планет и описания */
+            div, p, span, small {{
+                font-family: 'Montserrat', sans-serif !important;
             }}
 
-            /* === 3. МОНОШИРИННЫЙ СТИЛЬ ДЛЯ ТОЧНЫХ ГРАДУСОВ (Колонка Deg) === */
+            /* 4. Повышаем контраст мелкого серого текста (Накшатры, описания) */
+            div[style*="color"], span[style*="color"], small {{
+                color: #cbd5e1 !important; /* Яркий читаемый светло-серый */
+            }}
+
+            /* 5. Моноширинные точные градусы */
             table td:nth-child(3) {{
-                font-family: 'Courier New', Courier, monospace !important;
-                color: #38bdf8 !important; /* Подсветка точных данных голубым акцентом */
+                font-family: monospace !important;
+                color: #38bdf8 !important;
                 font-weight: 600 !important;
             }}
 </style>
