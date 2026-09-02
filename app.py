@@ -130,13 +130,13 @@ def add_video_background(video_path="space_background.mp4"):
                 -webkit-text-fill-color: #ffffff !important;
             }}
             .sub-title {{
-                font-size: 1.1rem !important;
-                color: #cbd5e1 !important;
-                letter-spacing: 0.5px !important;
-                margin-top: 10px !important;
-                font-weight: 400 !important;
-                opacity: 0.9;
-                text-transform: none !important;
+                font-family: 'Montserrat', sans-serif !important;
+                font-size: 0.75rem !important;
+                font-weight: 600 !important;
+                letter-spacing: 6px !important;
+                color: #94a3b8 !important;
+                margin-top: 8px !important;
+                text-transform: uppercase !important;
             }}
             
             /* HIDE ANCHOR LINKS */
@@ -450,7 +450,7 @@ def find_rotations(start_dt):
 st.markdown("""
 <div class="header-box">
     <div class="main-title">JULIA ASSISTANT</div>
-    <div class="sub-title">Astro coordination center</div>
+    <div class="sub-title">ASTRO COORDINATION CENTER</div>
 </div>
 """, unsafe_allow_html=True)
 
