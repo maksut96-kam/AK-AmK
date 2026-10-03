@@ -225,10 +225,13 @@ st.markdown("""
     /* 1. ПОДКЛЮЧЕНИЕ ШРИФТОВ (Строго на первой строчке!) */
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap');
 
-    .stApp {
-        background-color: #0e1117;
-        color: #f1f5f9;
+    /* ГАРАНТИЯ ИЗБАВЛЕНИЯ ОТ БЕЛОЙ ПОЛОСЫ СНИЗУ */
+    html, body, [data-testid="stAppViewContainer"], .stApp {
+        background-color: #0e1117 !important;
+        color: #f1f5f9 !important;
+        min-height: 100vh !important;
     }
+
     div[data-baseweb="input"] > div {
         background-color: #1e293b !important;
         border-color: #334155 !important;
@@ -350,6 +353,42 @@ def check_gandanta(lon):
     if sign_idx in [3, 7, 11] and deg_in_sign >= (26 + 40/60.0):
         return True
     return False
+
+def scan_gandanta_range(start_dt, end_dt, step_hours=6):
+    """
+    Сканирование диапазона дат на наличие планет в Ганданте
+    """
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    
+    events = []
+    curr = start_dt
+    
+    while curr <= end_dt:
+        t_ev = ts.utc(curr.year, curr.month, curr.day, curr.hour, curr.minute)
+        df_planets = get_planet_data(t_ev)
+        
+        for idx, row in df_planets.iterrows():
+            lon = row['Lon']
+            if check_gandanta(lon):
+                p_name = row['Planet']
+                role = row['Role'] if p_name != 'Rahu' else 'Рычаг спекуляций'
+                s_idx = int(lon / 30)
+                n_deg = 360 / 27
+                n_idx = int(lon / n_deg) % 27
+                pada = int((lon % n_deg) / (n_deg / 4)) + 1
+                
+                events.append({
+                    "datetime": curr + timedelta(hours=3), # Перевод в локальное время
+                    "planet": p_name,
+                    "role": role,
+                    "deg_exact": lon % 30,
+                    "sign": ZODIAC_SIGNS[s_idx],
+                    "nakshatra": NAKSHATRAS[n_idx],
+                    "pada": pada
+                })
+        curr += timedelta(hours=step_hours)
+        
+    return events
 
 def format_cell(row):
     lon = row.get('Lon', 0)
@@ -855,71 +894,95 @@ with t2:
             components.html(ai_f_print_html, height=55)
             # --- ДОБАВЬТЕ В САМЫЙ КОНЕЦ ФАЙЛА APP.PY ---
 with t3:
-    st.subheader("⚡ Анализ Гандант (Критические зоны риска)")
+    st.subheader("⚡ Мониторинг Гандант (Диапазон дат)")
     st.markdown(
         "<p style='color: #cbd5e1; font-size: 0.95rem; margin-bottom:20px;'>"
-        "Мониторинг перехода планет-Карак, Солнца, Луны и Раху через 4-ю паду водных знаков "
-        "(Рыбы, Рак, Скорпион). Зоны повышенной волатильности и смены трендов."
+        "Поиск и фиксация планет в 4-й паде водных знаков (Рыбы, Рак, Скорпион). "
+        "Критические зоны турбулентности рынка, повышенная волатильность и развороты."
         "</p>", 
         unsafe_allow_html=True
     )
 
-    col_g1, col_g2 = st.columns([1, 1])
+    col_g1, col_g2 = st.columns(2)
     with col_g1:
-        g_date = st.date_input("Выберите дату для анализа", datetime.now(), key="gandanta_date")
+        g_start_date = st.date_input("Дата НАЧАЛА диапазона", datetime.now(), key="g_start")
     with col_g2:
-        g_time = st.time_input("Время расчета (UTC+3)", time(12, 0), key="gandanta_time")
+        g_end_date = st.date_input("Дата ОКОНЧАНИЯ диапазона", datetime.now() + timedelta(days=7), key="g_end")
 
-    if st.button("🔍 РАССЧИТАТЬ ГАНДАНТЫ НА ВЫБРАННУЮ ДАТУ", use_container_width=True):
-        calc_dt = datetime.combine(g_date, g_time) - timedelta(hours=3) # Перевод в UTC
-        results = calculate_gandanta_for_date(calc_dt)
+    if st.button("🚀 СКАНИРОВАТЬ ДИАПАЗОН НА ГАНДАНТЫ", use_container_width=True):
+        s_dt = datetime.combine(g_start_date, time(0, 0)) - timedelta(hours=3)
+        e_dt = datetime.combine(g_end_date, time(23, 59)) - timedelta(hours=3)
         
+        with st.spinner("Идет сканирование эфемерид..."):
+            g_events = scan_gandanta_range(s_dt, e_dt, step_hours=6)
+
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"#### 📊 Результаты анализа на {(calc_dt + timedelta(hours=3)).strftime('%d.%m.%Y %H:%M')}")
+        st.markdown(f"#### 📊 Отчет по Гандантам с {g_start_date.strftime('%d.%m.%Y')} по {g_end_date.strftime('%d.%m.%Y')}")
 
-        # Считаем количество планет в Ганданте
-        g_count = sum(1 for item in results if item['is_gandanta'])
-        if g_count > 0:
-            st.error(f"🚨 ВНИМАНИЕ: Обнаружено планет в Ганданте: **{g_count}**. Высокий риск разворота тренда / волатильности!")
+        if not g_events:
+            st.success("✅ За выбранный период планет в критических зонах Ганданты не обнаружено.")
         else:
-            st.success("✅ Все исследуемые объекты находятся вне критических зон Ганданты.")
+            st.warning(f"🚨 Найдено фиксаций в Ганданте: **{len(g_events)}**. Рекомендуется учет при торговле!")
 
-        # HTML Таблица в нашем VIP-стиле
-        html_g_table = """
-        <table style="width:100%; border-collapse:collapse; background-color:#111827; border-radius:10px; overflow:hidden; margin-top:15px;">
-            <thead>
-                <tr style="background-color:#1e293b; color:#94a3b8; font-family:'Unbounded', sans-serif; font-size:0.75rem; text-align:left;">
-                    <th style="padding:12px;">ОБЪЕКТ</th>
-                    <th style="padding:12px;">РОЛЬ</th>
-                    <th style="padding:12px;">ПОЛОЖЕНИЕ В ЗОДИАКЕ</th>
-                    <th style="padding:12px;">НАКШАТРА & ПАДА</th>
-                    <th style="padding:12px;">СТАТУС ГАНДАНТЫ</th>
-                </tr>
-            </thead>
-            <tbody>
-        """
-
-        for item in results:
-            if item['is_gandanta']:
-                status_badge = '<span style="background-color:#b91c1c; color:#ffffff; font-size:0.75rem; padding:4px 8px; border-radius:4px; font-weight:bold; letter-spacing:0.5px;">🔥 ГАНДАНТА (4 Пада)</span>'
-                row_bg = 'background-color: rgba(185, 28, 28, 0.15);'
-            else:
-                status_badge = '<span style="background-color:#1e293b; color:#64748b; font-size:0.75rem; padding:4px 8px; border-radius:4px;">Штатно</span>'
-                row_bg = ''
-
-            p_icon = P_ICONS.get(item['planet'], item['planet'])
-            z_icon = Z_ICONS.get(item['sign'], item['sign'])
-            deg_str = deg_to_dms(item['deg_in_sign'])
-
-            html_g_table += f"""
-            <tr style="border-bottom:1px solid #1e293b; font-family:'Montserrat', sans-serif; font-size:0.85rem; {row_bg}">
-                <td style="padding:12px;"><b style="color:#ffffff; font-size:0.95rem;">{p_icon}</b></td>
-                <td style="padding:12px;"><span style="background:#7c3aed; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">{item['role']}</span></td>
-                <td style="padding:12px; color:#f1f5f9;"><b>{z_icon}</b> <span style="font-family:monospace; color:#38bdf8; font-weight:600;">{deg_str}</span></td>
-                <td style="padding:12px; color:#cbd5e1;"><b>{item['nakshatra']}</b> (Пада {item['pada']})</td>
-                <td style="padding:12px;">{status_badge}</td>
-            </tr>
+            # Формирование HTML Таблицы
+            html_g_table = """
+            <table id="gandanta-table" style="width:100%; border-collapse:collapse; background-color:#111827; border-radius:10px; overflow:hidden; margin-top:15px;">
+                <thead>
+                    <tr style="background-color:#1e293b; color:#94a3b8; font-family:'Unbounded', sans-serif; font-size:0.75rem; text-align:left;">
+                        <th style="padding:12px;">ДАТА И ВРЕМЯ</th>
+                        <th style="padding:12px;">ОБЪЕКТ</th>
+                        <th style="padding:12px;">РОЛЬ</th>
+                        <th style="padding:12px;">ПОЛОЖЕНИЕ В ЗОДИАКЕ</th>
+                        <th style="padding:12px;">НАКШАТРА & ПАДА</th>
+                        <th style="padding:12px;">СТАТУС</th>
+                    </tr>
+                </thead>
+                <tbody>
             """
 
-        html_g_table += "</tbody></table>"
-        st.markdown(html_g_table, unsafe_allow_html=True)
+            for item in g_events:
+                p_icon = P_ICONS.get(item['planet'], item['planet'])
+                z_icon = Z_ICONS.get(item['sign'], item['sign'])
+                deg_str = deg_to_dms(item['deg_exact'])
+
+                html_g_table += f"""
+                <tr style="border-bottom:1px solid #1e293b; font-family:'Montserrat', sans-serif; font-size:0.85rem; background-color: rgba(185, 28, 28, 0.15);">
+                    <td style="padding:12px; font-weight:bold; color:#fca5a5;">{item['datetime'].strftime('%d.%m.%Y %H:%M')}</td>
+                    <td style="padding:12px;"><b style="color:#ffffff; font-size:0.95rem;">{p_icon}</b></td>
+                    <td style="padding:12px;"><span style="background:#7c3aed; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">{item['role']}</span></td>
+                    <td style="padding:12px; color:#f1f5f9;"><b>{z_icon}</b> <span style="font-family:monospace; color:#38bdf8; font-weight:600;">{deg_str}</span></td>
+                    <td style="padding:12px; color:#cbd5e1;"><b>{item['nakshatra']}</b> (Пада {item['pada']})</td>
+                    <td style="padding:12px;"><span style="background-color:#b91c1c; color:#ffffff; font-size:0.75rem; padding:4px 8px; border-radius:4px; font-weight:bold;">🔥 ГАНДАНТА</span></td>
+                </tr>
+                """
+
+            html_g_table += "</tbody></table>"
+            
+            # Кнопка печати
+            print_g_title = f"Отчет по Гандантам ({g_start_date.strftime('%d.%m.%Y')} - {g_end_date.strftime('%d.%m.%Y')})"
+            g_print_html = f"""
+            <script>
+            function printGandanta() {{
+                const win = window.open('', '_blank');
+                win.document.write(`<html><head><title>Печать отчета по Гандантам</title>
+                <style>
+                    @page {{ size: landscape; margin: 10mm; }}
+                    body {{ font-family: sans-serif; padding: 20px; color: #111; }}
+                    h2 {{ color: #b91c1c; border-bottom: 2px solid #b91c1c; padding-bottom: 10px; text-align: center; }}
+                    table {{ border-collapse: collapse; width: 100%; margin-top: 15px; }}
+                    th, td {{ border: 1px solid #333; padding: 8px; font-size: 11px; text-align: left; }}
+                    th {{ background-color: #f8fafc; color: #1e293b; }}
+                    tr {{ page-break-inside: avoid; }}
+                </style>
+                </head><body>
+                    <h2>⚡ {print_g_title}</h2>
+                    {html_g_table}
+                </body></html>`);
+                win.document.close();
+                setTimeout(() => {{ win.print(); }}, 500);
+            }}
+            </script>
+            <button onclick="printGandanta()" style="width:100%; padding:14px; background:#dc2626; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-bottom:15px;">🖨️ ПЕЧАТЬ ОТЧЕТА ПО ГАНДАНТАМ (АЛЬБОМНЫЙ ФОРМАТ)</button>
+            """
+            components.html(g_print_html, height=60)
+            st.markdown(html_g_table, unsafe_allow_html=True)
