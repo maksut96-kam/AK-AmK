@@ -985,4 +985,4 @@ with t3:
             <button onclick="printGandanta()" style="width:100%; padding:14px; background:#dc2626; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-bottom:15px;">🖨️ ПЕЧАТЬ ОТЧЕТА ПО ГАНДАНТАМ (АЛЬБОМНЫЙ ФОРМАТ)</button>
             """
             components.html(g_print_html, height=60)
-            st.markdown(html_g_table, unsafe_allow_html=True)
+            st.write(html_g_table, unsafe_allow_html=True)
