@@ -354,7 +354,7 @@ def check_gandanta(lon):
         return True
     return False
 
-def scan_gandanta_range(start_dt, end_dt, step_hours=6):
+def scan_gandanta_range(start_dt, end_dt, step_hours=1):
     """
     Сканирование диапазона дат на наличие планет в Ганданте
     """
@@ -914,7 +914,7 @@ with t3:
         e_dt = datetime.combine(g_end_date, time(23, 59)) - timedelta(hours=3)
         
         with st.spinner("Идет сканирование эфемерид..."):
-            g_events = scan_gandanta_range(s_dt, e_dt, step_hours=6)
+            g_events = scan_gandanta_range(s_dt, e_dt, step_hours=1)
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(f"#### 📊 Отчет по Гандантам с {g_start_date.strftime('%d.%m.%Y')} по {g_end_date.strftime('%d.%m.%Y')}")
