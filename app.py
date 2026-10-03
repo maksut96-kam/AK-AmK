@@ -455,6 +455,47 @@ def get_lunar_full_data(t_now):
     m_lon = (earth.at(t_now).observe(eph['moon']).ecliptic_latlon()[1].degrees - ayan) % 360
     return {"tithi": math.ceil(now_diff / 12) or 1, "phase_icon": ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"][int(((now_diff + 22.5) % 360) / 45)], "illum": (1 - math.cos(math.radians(now_diff))) / 2 * 100, "sign": ZODIAC_SIGNS[int(m_lon/30)], "nak": NAKSHATRAS[int(m_lon/(360/27))%27], "full_dt": f_dt + timedelta(hours=3), "new_dt": n_dt + timedelta(hours=3)}
 
+def calculate_gandanta_for_date(target_dt):
+    """
+    Расчет положений планет-карак, Солнца, Луны и Раху с детальной проверкой Ганданты.
+    """
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    flags = swe.FLG_SIDEREAL | swe.FLG_SWIEPH
+    
+    t_ev = ts.utc(target_dt.year, target_dt.month, target_dt.day, target_dt.hour, target_dt.minute)
+    df_planets = get_planet_data(t_ev)
+    
+    # Сбор и размещение всех требуемых объектов
+    objects_to_check = []
+    
+    # 1. Добавляем Караки (AK, AmK, BK, MK, PiK, GK, DK)
+    for idx, row in df_planets.iterrows():
+        p_name = row['Planet']
+        role = row['Role']
+        lon = row['Lon']
+        
+        # Получаем данные о знаке и паде
+        s_idx = int(lon / 30)
+        n_deg = 360 / 27
+        n_idx = int(lon / n_deg) % 27
+        p_deg = n_deg / 4
+        pada = int((lon % n_deg) / p_deg) + 1
+        
+        is_g = check_gandanta(lon)
+        
+        objects_to_check.append({
+            "planet": p_name,
+            "role": role if p_name != 'Rahu' else 'Рычаг спекуляций',
+            "lon": lon,
+            "deg_in_sign": lon % 30,
+            "sign": ZODIAC_SIGNS[s_idx],
+            "nakshatra": NAKSHATRAS[n_idx],
+            "pada": pada,
+            "is_gandanta": is_g
+        })
+        
+    return objects_to_check
+
 def find_rotations(start_dt):
     events = []
     t_start = ts.utc(start_dt.year, start_dt.month, start_dt.day, start_dt.hour, start_dt.minute)
@@ -484,7 +525,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-t1, t2 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК"])
+t1, t2, t3 = st.tabs(["📊 ПРЯМОЙ ЭФИР", "📅 ПЛАНИРОВЩИК", "⚡ ГАНДАНТЫ"])
 
 with t1:
     now_u = datetime.utcnow(); t_n = ts.utc(now_u.year, now_u.month, now_u.day, now_u.hour, now_u.minute)
@@ -812,3 +853,73 @@ with t2:
             <button onclick="printFutureAI()" style="width:100%; padding:12px; background:#8b5cf6; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-top: 10px; margin-bottom: 20px;">🖨️ ПЕЧАТЬ ИИ-ПРОГНОЗА ДЛЯ ВЫБРАННОЙ РОТАЦИИ</button>
             """
             components.html(ai_f_print_html, height=55)
+            # --- ДОБАВЬТЕ В САМЫЙ КОНЕЦ ФАЙЛА APP.PY ---
+with t3:
+    st.subheader("⚡ Анализ Гандант (Критические зоны риска)")
+    st.markdown(
+        "<p style='color: #cbd5e1; font-size: 0.95rem; margin-bottom:20px;'>"
+        "Мониторинг перехода планет-Карак, Солнца, Луны и Раху через 4-ю паду водных знаков "
+        "(Рыбы, Рак, Скорпион). Зоны повышенной волатильности и смены трендов."
+        "</p>", 
+        unsafe_allow_html=True
+    )
+
+    col_g1, col_g2 = st.columns([1, 1])
+    with col_g1:
+        g_date = st.date_input("Выберите дату для анализа", datetime.now(), key="gandanta_date")
+    with col_g2:
+        g_time = st.time_input("Время расчета (UTC+3)", time(12, 0), key="gandanta_time")
+
+    if st.button("🔍 РАССЧИТАТЬ ГАНДАНТЫ НА ВЫБРАННУЮ ДАТУ", use_container_width=True):
+        calc_dt = datetime.combine(g_date, g_time) - timedelta(hours=3) # Перевод в UTC
+        results = calculate_gandanta_for_date(calc_dt)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"#### 📊 Результаты анализа на {(calc_dt + timedelta(hours=3)).strftime('%d.%m.%Y %H:%M')}")
+
+        # Считаем количество планет в Ганданте
+        g_count = sum(1 for item in results if item['is_gandanta'])
+        if g_count > 0:
+            st.error(f"🚨 ВНИМАНИЕ: Обнаружено планет в Ганданте: **{g_count}**. Высокий риск разворота тренда / волатильности!")
+        else:
+            st.success("✅ Все исследуемые объекты находятся вне критических зон Ганданты.")
+
+        # HTML Таблица в нашем VIP-стиле
+        html_g_table = """
+        <table style="width:100%; border-collapse:collapse; background-color:#111827; border-radius:10px; overflow:hidden; margin-top:15px;">
+            <thead>
+                <tr style="background-color:#1e293b; color:#94a3b8; font-family:'Unbounded', sans-serif; font-size:0.75rem; text-align:left;">
+                    <th style="padding:12px;">ОБЪЕКТ</th>
+                    <th style="padding:12px;">РОЛЬ</th>
+                    <th style="padding:12px;">ПОЛОЖЕНИЕ В ЗОДИАКЕ</th>
+                    <th style="padding:12px;">НАКШАТРА & ПАДА</th>
+                    <th style="padding:12px;">СТАТУС ГАНДАНТЫ</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+
+        for item in results:
+            if item['is_gandanta']:
+                status_badge = '<span style="background-color:#b91c1c; color:#ffffff; font-size:0.75rem; padding:4px 8px; border-radius:4px; font-weight:bold; letter-spacing:0.5px;">🔥 ГАНДАНТА (4 Пада)</span>'
+                row_bg = 'background-color: rgba(185, 28, 28, 0.15);'
+            else:
+                status_badge = '<span style="background-color:#1e293b; color:#64748b; font-size:0.75rem; padding:4px 8px; border-radius:4px;">Штатно</span>'
+                row_bg = ''
+
+            p_icon = P_ICONS.get(item['planet'], item['planet'])
+            z_icon = Z_ICONS.get(item['sign'], item['sign'])
+            deg_str = deg_to_dms(item['deg_in_sign'])
+
+            html_g_table += f"""
+            <tr style="border-bottom:1px solid #1e293b; font-family:'Montserrat', sans-serif; font-size:0.85rem; {row_bg}">
+                <td style="padding:12px;"><b style="color:#ffffff; font-size:0.95rem;">{p_icon}</b></td>
+                <td style="padding:12px;"><span style="background:#7c3aed; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">{item['role']}</span></td>
+                <td style="padding:12px; color:#f1f5f9;"><b>{z_icon}</b> <span style="font-family:monospace; color:#38bdf8; font-weight:600;">{deg_str}</span></td>
+                <td style="padding:12px; color:#cbd5e1;"><b>{item['nakshatra']}</b> (Пада {item['pada']})</td>
+                <td style="padding:12px;">{status_badge}</td>
+            </tr>
+            """
+
+        html_g_table += "</tbody></table>"
+        st.markdown(html_g_table, unsafe_allow_html=True)
