@@ -976,12 +976,12 @@ with t3:
             <table style="width:100%; border-collapse:collapse; background-color:#111827; border-radius:10px; overflow:hidden; margin-top:15px; font-family:'Montserrat', sans-serif;">
                 <thead>
                     <tr style="background-color:#1e293b; color:#94a3b8; font-size:0.8rem; text-align:left;">
-                        <th style="padding:12px;">ПЕРИОД (С — ПО)</th>
-                        <th style="padding:12px;">ОБЪЕКТ</th>
-                        <th style="padding:12px;">РОЛЬ</th>
-                        <th style="padding:12px;">ПОЛОЖЕНИЕ В ЗОДИАКЕ</th>
-                        <th style="padding:12px;">НАКШАТРА & ПАДА</th>
-                        <th style="padding:12px;">СТАТУС</th>
+                        <th style="padding:12px; width:22%;">ПЕРИОД (С — ПО)</th>
+                        <th style="padding:12px; width:12%;">ОБЪЕКТ</th>
+                        <th style="padding:12px; width:12%;">РОЛЬ</th>
+                        <th style="padding:12px; width:22%;">ПОЛОЖЕНИЕ В ЗОДИАКЕ</th>
+                        <th style="padding:12px; width:20%;">НАКШАТРА & ПАДА</th>
+                        <th style="padding:12px; width:12%;">СТАТУС</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1008,6 +1008,9 @@ with t3:
 
             html_g_table += "</tbody></table>"
             
+            # Удаляем переходы строк \n, чтобы Streamlit не превращал HTML в код
+            clean_html_g_table = html_g_table.replace('\n', '')
+
             # Кнопка печати
             print_g_title = f"Отчет по Гандантам ({g_start_date.strftime('%d.%m.%Y')} - {g_end_date.strftime('%d.%m.%Y')})"
             g_print_html = f"""
@@ -1018,7 +1021,6 @@ with t3:
                 <style>
                     @page {{ size: landscape; margin: 10mm; }}
                     body {{ font-family: sans-serif; padding: 20px; color: #111; }}
-                    h2 {{ color: #b91c1c; border-bottom: 2px solid #b91c1c; padding-bottom: 10px; text-align: center; }}
                     table {{ border-collapse: collapse; width: 100%; margin-top: 15px; }}
                     th, td {{ border: 1px solid #333; padding: 8px; font-size: 11px; text-align: left; }}
                     th {{ background-color: #f8fafc; color: #1e293b; }}
@@ -1026,7 +1028,7 @@ with t3:
                 </style>
                 </head><body>
                     <h2>⚡ {print_g_title}</h2>
-                    {html_g_table}
+                    {clean_html_g_table}
                 </body></html>`);
                 win.document.close();
                 setTimeout(() => {{ win.print(); }}, 500);
@@ -1036,5 +1038,5 @@ with t3:
             """
             components.html(g_print_html, height=60)
             
-            # Правильное отображение HTML в Streamlit без отображения сырого кода
-            st.markdown(html_g_table, unsafe_allow_html=True)
+            # Корректное отображение HTML в интерфейсе
+            st.write(clean_html_g_table, unsafe_allow_html=True)
