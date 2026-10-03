@@ -227,7 +227,7 @@ st.markdown("""
 
     /* ГАРАНТИЯ ИЗБАВЛЕНИЯ ОТ БЕЛОЙ ПОЛОСЫ СНИЗУ */
     html, body, [data-testid="stAppViewContainer"], .stApp {
-        background-color: #0e1117 !important;
+        background: transparent !important;
         color: #f1f5f9 !important;
         min-height: 100vh !important;
     }
