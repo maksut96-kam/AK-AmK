@@ -356,11 +356,12 @@ def check_gandanta(lon):
 
 def scan_gandanta_range(start_dt, end_dt, step_hours=1):
     """
-    Сканирование диапазона дат на наличие планет в Ганданте
+    Сканирование диапазона дат с объединением последовательных часов в интервалы
+    (Начало Ганданты — Конец Ганданты).
     """
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     
-    events = []
+    hourly_records = []
     curr = start_dt
     
     while curr <= end_dt:
@@ -377,8 +378,8 @@ def scan_gandanta_range(start_dt, end_dt, step_hours=1):
                 n_idx = int(lon / n_deg) % 27
                 pada = int((lon % n_deg) / (n_deg / 4)) + 1
                 
-                events.append({
-                    "datetime": curr + timedelta(hours=3), # Перевод в локальное время
+                hourly_records.append({
+                    "dt": curr + timedelta(hours=3), # Локальное время
                     "planet": p_name,
                     "role": role,
                     "deg_exact": lon % 30,
@@ -388,7 +389,53 @@ def scan_gandanta_range(start_dt, end_dt, step_hours=1):
                 })
         curr += timedelta(hours=step_hours)
         
-    return events
+    if not hourly_records:
+        return []
+
+    # Группировка почасовых записей в непрерывные интервалы (периоды)
+    grouped_events = []
+    # Сортируем по планете и времени
+    hourly_records.sort(key=lambda x: (x['planet'], x['dt']))
+    
+    current_interval = None
+    
+    for rec in hourly_records:
+        if current_interval is None:
+            current_interval = {
+                "planet": rec['planet'],
+                "role": rec['role'],
+                "sign": rec['sign'],
+                "nakshatra": rec['nakshatra'],
+                "pada": rec['pada'],
+                "start_dt": rec['dt'],
+                "end_dt": rec['dt'],
+                "start_deg": rec['deg_exact'],
+                "end_deg": rec['deg_exact']
+            }
+        else:
+            # Если та же планета и разница во времени <= step_hours (1 час)
+            if rec['planet'] == current_interval['planet'] and (rec['dt'] - current_interval['end_dt']) <= timedelta(hours=step_hours + 0.5):
+                current_interval['end_dt'] = rec['dt']
+                current_interval['end_deg'] = rec['deg_exact']
+            else:
+                grouped_events.append(current_interval)
+                current_interval = {
+                    "planet": rec['planet'],
+                    "role": rec['role'],
+                    "sign": rec['sign'],
+                    "nakshatra": rec['nakshatra'],
+                    "pada": rec['pada'],
+                    "start_dt": rec['dt'],
+                    "end_dt": rec['dt'],
+                    "start_deg": rec['deg_exact'],
+                    "end_deg": rec['deg_exact']
+                }
+    if current_interval:
+        grouped_events.append(current_interval)
+        
+    # Сортировка по дате начала
+    grouped_events.sort(key=lambda x: x['start_dt'])
+    return grouped_events
 
 def format_cell(row):
     lon = row.get('Lon', 0)
@@ -922,14 +969,14 @@ with t3:
         if not g_events:
             st.success("✅ За выбранный период планет в критических зонах Ганданты не обнаружено.")
         else:
-            st.warning(f"🚨 Найдено фиксаций в Ганданте: **{len(g_events)}**. Рекомендуется учет при торговле!")
+            st.warning(f"🚨 Найдено периодов Ганданты: **{len(g_events)}**. Рекомендуется учет при торговле!")
 
             # Формирование HTML Таблицы
             html_g_table = """
-            <table id="gandanta-table" style="width:100%; border-collapse:collapse; background-color:#111827; border-radius:10px; overflow:hidden; margin-top:15px;">
+            <table style="width:100%; border-collapse:collapse; background-color:#111827; border-radius:10px; overflow:hidden; margin-top:15px; font-family:'Montserrat', sans-serif;">
                 <thead>
-                    <tr style="background-color:#1e293b; color:#94a3b8; font-family:'Unbounded', sans-serif; font-size:0.75rem; text-align:left;">
-                        <th style="padding:12px;">ДАТА И ВРЕМЯ</th>
+                    <tr style="background-color:#1e293b; color:#94a3b8; font-size:0.8rem; text-align:left;">
+                        <th style="padding:12px;">ПЕРИОД (С — ПО)</th>
                         <th style="padding:12px;">ОБЪЕКТ</th>
                         <th style="padding:12px;">РОЛЬ</th>
                         <th style="padding:12px;">ПОЛОЖЕНИЕ В ЗОДИАКЕ</th>
@@ -943,11 +990,14 @@ with t3:
             for item in g_events:
                 p_icon = P_ICONS.get(item['planet'], item['planet'])
                 z_icon = Z_ICONS.get(item['sign'], item['sign'])
-                deg_str = deg_to_dms(item['deg_exact'])
+                
+                # Форматирование периода
+                time_str = f"{item['start_dt'].strftime('%d.%m.%Y %H:%M')} — {item['end_dt'].strftime('%d.%m.%Y %H:%M')}"
+                deg_str = f"{deg_to_dms(item['start_deg'])} → {deg_to_dms(item['end_deg'])}"
 
                 html_g_table += f"""
-                <tr style="border-bottom:1px solid #1e293b; font-family:'Montserrat', sans-serif; font-size:0.85rem; background-color: rgba(185, 28, 28, 0.15);">
-                    <td style="padding:12px; font-weight:bold; color:#fca5a5;">{item['datetime'].strftime('%d.%m.%Y %H:%M')}</td>
+                <tr style="border-bottom:1px solid #1e293b; font-size:0.85rem; background-color: rgba(185, 28, 28, 0.15);">
+                    <td style="padding:12px; font-weight:bold; color:#fca5a5;">{time_str}</td>
                     <td style="padding:12px;"><b style="color:#ffffff; font-size:0.95rem;">{p_icon}</b></td>
                     <td style="padding:12px;"><span style="background:#7c3aed; color:white; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">{item['role']}</span></td>
                     <td style="padding:12px; color:#f1f5f9;"><b>{z_icon}</b> <span style="font-family:monospace; color:#38bdf8; font-weight:600;">{deg_str}</span></td>
@@ -985,4 +1035,6 @@ with t3:
             <button onclick="printGandanta()" style="width:100%; padding:14px; background:#dc2626; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-bottom:15px;">🖨️ ПЕЧАТЬ ОТЧЕТА ПО ГАНДАНТАМ (АЛЬБОМНЫЙ ФОРМАТ)</button>
             """
             components.html(g_print_html, height=60)
-            st.write(html_g_table, unsafe_allow_html=True)
+            
+            # Правильное отображение HTML в Streamlit без отображения сырого кода
+            st.markdown(html_g_table, unsafe_allow_html=True)
