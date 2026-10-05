@@ -963,6 +963,59 @@ with t3:
         with st.spinner("Идет сканирование эфемерид..."):
             g_events = scan_gandanta_range(s_dt, e_dt, step_hours=1)
 
+        # 🔹 ВОТ СЮДА (сохранение в сессию):
+        st.session_state['g_events_data'] = g_events
+        st.session_state['g_start_str'] = g_start_date.strftime('%Y%m%d')
+        st.session_state['g_end_str'] = g_end_date.strftime('%Y%m%d')
+
+        # --- БЛОК ЭКСПОРТА ДЛЯ MAX PRO TRADER HUB ---
+        if g_events:
+            export_list = []
+            for item in g_events:
+                duration_hours = round((item['end_dt'] - item['start_dt']).total_seconds() / 3600, 2)
+                export_list.append({
+                    "planet": item['planet'],
+                    "role": item['role'],
+                    "sign": item['sign'],
+                    "nakshatra": item['nakshatra'],
+                    "pada": item['pada'],
+                    "start_time_iso": item['start_dt'].isoformat(),
+                    "end_time_iso": item['end_dt'].isoformat(),
+                    "start_timestamp": int(item['start_dt'].timestamp()),
+                    "end_timestamp": int(item['end_dt'].timestamp()),
+                    "duration_hours": duration_hours,
+                    "start_deg": round(item['start_deg'], 4),
+                    "end_deg": round(item['end_deg'], 4)
+                })
+
+            df_export = pd.DataFrame(export_list)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("📥 Экспорт данных для Max Pro Trader Hub")
+            
+            col_csv, col_json = st.columns(2)
+
+            with col_csv:
+                csv_bytes = df_export.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📄 Скачать CSV (Max Pro Hub)",
+                    data=csv_bytes,
+                    file_name=f"gandanta_{g_start_date.strftime('%Y%m%d')}_{g_end_date.strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+
+            with col_json:
+                json_bytes = json.dumps(export_list, ensure_ascii=False, indent=4).encode('utf-8')
+                st.download_button(
+                    label="📦 Скачать JSON (Max Pro Hub)",
+                    data=json_bytes,
+                    file_name=f"gandanta_{g_start_date.strftime('%Y%m%d')}_{g_end_date.strftime('%Y%m%d')}.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
+    
+
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(f"#### 📊 Отчет по Гандантам с {g_start_date.strftime('%d.%m.%Y')} по {g_end_date.strftime('%d.%m.%Y')}")
 
